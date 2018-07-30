@@ -1,0 +1,17 @@
+﻿<Application x:Class="Visualizer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Visualizer"
+             xmlns:wpfPlus="clr-namespace:WpfPlus;assembly=WpfPlus"
+             xmlns:properties="clr-namespace:Visualizer.Properties"
+             StartupUri="MainWindow.xaml"
+             Exit="Application_Exit">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <wpfPlus:LightTheme />
+            </ResourceDictionary.MergedDictionaries>
+            <properties:Settings x:Key="Settings" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
