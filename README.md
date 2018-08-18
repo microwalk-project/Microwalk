@@ -1,5 +1,5 @@
 # MicroWalk
-*MicroWalk* is a microarchitectural leakage detection framework, that uses dynamic instrumentation to compare a given program's behaviour for a random set of test cases; if these execution traces differ, it tries to quantify the amount of leaked information. For a deeper explanation of its functionality, please consult the corresponding scientific paper. TODO link
+*MicroWalk* is a microarchitectural leakage detection framework, that uses dynamic instrumentation to compare a given program's behaviour for a random set of test cases; if these execution traces differ, it tries to quantify the amount of leaked information. For a deeper explanation of its functionality, please consult the corresponding scientific [paper](https://arxiv.org/abs/1808.05575).
 
 ## Structure
 The software consists of the following modules:
