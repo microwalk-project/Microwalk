@@ -261,4 +261,3 @@ paket-files/
 __pycache__/
 *.pyc
 *ipp/
-PinSettings.props
