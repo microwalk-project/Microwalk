@@ -153,9 +153,6 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="SampleLibrary.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <MASM Include="functions.asm" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

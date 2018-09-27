@@ -51,9 +51,6 @@ namespace LeakageDetector
             Log($"Total execution time: {stopwatch.Elapsed.Hours}:{stopwatch.Elapsed.Minutes}:{stopwatch.Elapsed.Seconds}.{stopwatch.Elapsed.Milliseconds} (total {stopwatch.Elapsed.TotalMilliseconds}ms)", LogLevel.Info);
 
             // OK
-            Console.ReadLine();
-
-
             return 0;
         }
 

@@ -22,9 +22,4 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <MASM Include="functions.asm">
-      <Filter>Quelldateien</Filter>
-    </MASM>
-  </ItemGroup>
 </Project>
