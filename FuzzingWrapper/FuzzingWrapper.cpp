@@ -16,8 +16,7 @@ Note: If the target library is written in C++ and exports mangled names, this pr
 
 /*** IMPORT INVESTIGATED LIBRARY ***/
 #pragma comment(lib, "SampleLibrary.lib")
-__declspec(dllimport) uint64_t LeakingFunction(int x);
-__declspec(dllimport) uint32_t LeakInputBits(const unsigned char *input, int inputLength, bool randomize);
+__declspec(dllimport) uint32_t LeakInputBits(const unsigned char *input, int inputLength);
 
 
 /* GLOBALS */
@@ -45,16 +44,11 @@ __declspec(noinline) void RunTarget(FILE *input)
 {
     /*** INSERT THE LIBRARY CALLING CODE HERE ***/
 
-    /**/
-    unsigned char data[1];
+    // Leak input bytes
+    unsigned char data[16];
     if(fread(data, 1, sizeof(data), input) <= 0)
         return;
-    LeakInputBits(data, sizeof(data), true);
-    /*/
-    int x;
-    fscanf_s(input, "%d", &x);
-    LeakingFunction(x);
-    /**/
+    LeakInputBits(data, sizeof(data));
 }
 
 // Notify PIN that a testcase starts/ends.

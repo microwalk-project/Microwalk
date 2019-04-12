@@ -6,7 +6,7 @@ The software consists of the following modules:
 
 - `Trace`: A so-called *Pintool* that uses Intel's dynamic instrumentation framework *Pin* to generate raw execution traces for a given executable. The resulting raw trace files are divided per test case.
 - `FuzzingWrapper`: A template for the analyzed binary. This program receives the input test cases from the main executable `LeakageDetector`, and calls the target binary/functions to process each test case, while notifying the Pintool on each test case start and end
-- `SampleLibrary`: A dummy target to test some of *MicroWalk*'s leakage detection capabilities. Only used for debugging.
+- `SampleLibrary`: An example target to test some of *MicroWalk*'s leakage detection capabilities.
 - `LeakageDetector`: *MicroWalk*'s main program. It implements the leakage detection pipeline: Generate test cases, pass them to the `FuzzingWrapper` for execution trace generation, collect raw traces from Pintool `Trace`, preprocess these traces to remove unnecessary information and free disk space, and finally analyze the preprocessed traces for leakages.
 - `Diff`: Auxiliary .NET wrapper for the C++ `dtl` diff library.
 - `Visualizer`: Experimental tool for graphical trace comparison. Should only be used for small programs.
@@ -56,7 +56,7 @@ If the program does not crash, everything is working fine. If we did any outputs
 *Note*: There is also a mode `1` for using *WinAFL* as a test case generator; it is still experimental and thus not documented here.
 
 #### Compiling the toolchain
-Before we can compile the *MicroWalk* toolchain, we need to configure the *Pin* path. Assuming that *Pin* is installed at `C:\pin\pin-3.5-97503-gac534ca30-msvc-windows`, we modify `Trace\PinSettings.props` to contain the correct path:
+Before we can compile the *MicroWalk* toolchain, we need to configure the *Pin* path. The toolchain was successfully tested with *Pin* versions 3.5, 3.6 and 3.7. Assuming that *Pin* is installed at `C:\pin\pin-3.5-97503-gac534ca30-msvc-windows`, we modify `Trace\PinSettings.props` to contain the correct path:
 
 ```xml
 ...
