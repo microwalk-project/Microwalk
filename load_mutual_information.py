@@ -10,7 +10,7 @@ while line:
 	print hex(target), val
 	cmnt = "MutualInformation %s"%(val)
 	MakeComm(target, cmnt)
-	SetColor(target, CIC_ITEM, 0xFFFF00);
+	SetColor(target, CIC_ITEM, 0x7FFFFF);
   line = f.readline()
 
   

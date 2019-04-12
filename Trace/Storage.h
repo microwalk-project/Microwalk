@@ -57,7 +57,7 @@ struct TraceEntry
     UINT8 _padding[3];
 
     // The address of the instruction triggering the trace entry creation.
-    // Used with: MemoryRead, MemoryWrite, Branch, StackPointerWrite.
+    // Used with: MemoryRead, MemoryWrite, Branch.
     UINT64 InstructionAddress;
 
     // The accessed/passed memory address.
@@ -98,7 +98,7 @@ public:
         _outputFilenamePrefix = filenamePrefix;
 
         // Set trace prefix mode
-        TestcaseStart(0);
+        TestcaseStart(0, _entries);
     }
 
     // Frees resources.
@@ -183,7 +183,7 @@ public:
 
                 case TraceEntryTypes::StackPointerWrite:
                 {
-                    _outputFileStream << "StackPointer: <" << hex << entry->InstructionAddress << ">: " << hex << entry->MemoryAddress << endl;
+                    _outputFileStream << "StackPointer: " << hex << entry->MemoryAddress << endl;
                     break;
                 }
             }
@@ -191,12 +191,12 @@ public:
     }
 
     // Sets the next testcase ID and opens a suitable trace file.
-    void TestcaseStart(int testcaseId)
+    void TestcaseStart(int testcaseId, TraceEntry *nextEntry)
     {
         // Exit prefix mode if necessary
         if(_testcaseId == 0)
         {
-            TestcaseEnd(_entries);
+            TestcaseEnd(nextEntry);
             //cerr << "Prefix mode ended." << endl;
         }
 
@@ -323,11 +323,10 @@ public:
     }
 
     // Creates a new StackPointerWrite entry.
-    static TraceEntry* InsertStackPointerWriteEntry(TraceEntry *nextEntry, ADDRINT instructionAddress, ADDRINT stackPointerValue)
+    static TraceEntry* InsertStackPointerWriteEntry(TraceEntry *nextEntry, ADDRINT stackPointerValue)
     {
         // Create entry
         nextEntry->Type = TraceEntryTypes::StackPointerWrite;
-        nextEntry->InstructionAddress = instructionAddress;
         nextEntry->MemoryAddress = stackPointerValue;
         return ++nextEntry;
     }

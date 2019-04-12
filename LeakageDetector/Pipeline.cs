@@ -2,12 +2,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
-using System.Numerics;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -50,17 +49,17 @@ namespace LeakageDetector
         /// <summary>
         /// The directory where the initial inputs are stored.
         /// </summary>
-        private string _initialInputDirectory;
+        private readonly string _initialInputDirectory;
 
         /// <summary>
         /// The directory where the temporary files of the Fuzzer are stored.
         /// </summary>
-        private string _fuzzerDirectory;
+        private readonly string _fuzzerDirectory;
 
         /// <summary>
         /// The directory where the Fuzzer-generated testcase files are stored.
         /// </summary>
-        private string _testcaseDirectory;
+        private readonly string _testcaseDirectory;
 
         /// <summary>
         /// The directory where the Pin-generated trace data is stored.
@@ -70,7 +69,7 @@ namespace LeakageDetector
         /// <summary>
         /// The directory where the analysis results are stored.
         /// </summary>
-        private string _resultDirectory;
+        private readonly string _resultDirectory;
 
         /// <summary>
         /// The process handle of the Pin tool.
@@ -115,7 +114,7 @@ namespace LeakageDetector
         /// <summary>
         /// The list of known image names, used for trace comparison.
         /// </summary>
-        private List<string> _knownImages = new List<string>();
+        private readonly List<string> _knownImages = new List<string>();
 
         /// <summary>
         /// Contains traces that were identified as unique until now.
@@ -130,7 +129,7 @@ namespace LeakageDetector
         /// <summary>
         /// The currently used analysis mode.
         /// </summary>
-        private AnalysisModes _analysisMode;
+        private readonly AnalysisModes _analysisMode;
 
         /// <summary>
         /// Lists of hashes per trace. Used for mutual information computation.
@@ -180,7 +179,7 @@ namespace LeakageDetector
         /// <summary>
         /// Determines whether traces from a previous run shall be loaded.
         /// </summary>
-        private bool _directTraceLoad = false;
+        private readonly bool _directTraceLoad = false;
 
         /// <summary>
         /// The memory address comparison granularity.
@@ -333,6 +332,7 @@ namespace LeakageDetector
                     RedirectStandardError = true
                 };
                 pinToolProcessStartInfo.Environment["Path"] += ";" + Path.GetDirectoryName(wrapper);
+                Program.Log("Pin tool command: " + pinToolProcessStartInfo.FileName + " " + pinToolProcessStartInfo.Arguments + "\n", Program.LogLevel.Debug);
                 _pinToolProcess = Process.Start(pinToolProcessStartInfo);
 
                 // Read error output of pin tool to avoid blocking on buffer overflow

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LeakageDetector
 {
-    class Temp
+    class PEMExport
     {
         public static void ExportPrivateKey(RSAParameters parameters, TextWriter outputStream)
         {

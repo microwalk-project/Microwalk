@@ -59,6 +59,7 @@ bool _useFixedRandomNumber = false;
 // The fixed random number to be returned after each RDRAND instruction.
 unsigned long long _fixedRandomNumber = 0;
 
+
 /* CALLBACK PROTOTYPES */
 
 VOID InstrumentTrace(TRACE trace, VOID *v);
@@ -66,7 +67,7 @@ VOID ThreadStart(THREADID tid, CONTEXT *ctxt, INT32 flags, VOID *v);
 VOID ThreadFini(THREADID tid, const CONTEXT *ctxt, INT32 code, VOID *v);
 VOID InstrumentImage(IMG img, VOID *v);
 TraceEntry *CheckBufferAndStore(TraceEntry *nextEntry, TraceEntry *entryBufferEnd, THREADID tid);
-TraceEntry *TestcaseStart(ADDRINT newTestcaseId, THREADID tid);
+TraceEntry *TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry *nextEntry);
 TraceEntry *TestcaseEnd(TraceEntry *nextEntry, THREADID tid);
 EXCEPT_HANDLING_RESULT HandlePinToolException(THREADID tid, EXCEPTION_INFO *exceptionInfo, PHYSICAL_CONTEXT *physicalContext, VOID *v);
 ADDRINT CheckNextTraceEntryPointerValid(TraceEntry *nextEntry);
@@ -185,7 +186,7 @@ VOID InstrumentTrace(TRACE trace, VOID *v)
         bool interesting = img->IsInteresting();
 
         // Always save current stack pointer at beginning of block
-        BBL_InsertIfCall(bbl, IPOINT_BEFORE, AFUNPTR(CheckNextTraceEntryPointerValid),
+        /*BBL_InsertIfCall(bbl, IPOINT_BEFORE, AFUNPTR(CheckNextTraceEntryPointerValid),
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_END);
         BBL_InsertThenCall(bbl, IPOINT_BEFORE, AFUNPTR(TraceLogger::InsertStackPointerWriteEntry),
@@ -203,7 +204,7 @@ VOID InstrumentTrace(TRACE trace, VOID *v)
             IARG_REG_VALUE, _entryBufferEndReg,
             IARG_THREAD_ID,
             IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
+            IARG_END);*/
 
         // Run through instructions
         for(INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins))
@@ -342,7 +343,7 @@ VOID InstrumentTrace(TRACE trace, VOID *v)
             xed_iform_enum_t insForm = xed_decoded_inst_get_iform_enum(INS_XedDec(ins));
             if(INS_RegWContain(ins, REG_STACK_PTR) && !INS_IsCall(ins) && insForm != XED_IFORM_RET_FAR && insForm != XED_IFORM_RET_NEAR)
             {
-                LEVEL_VM::IPOINT pos = (INS_HasFallThrough(ins) ? IPOINT_AFTER : IPOINT_TAKEN_BRANCH);
+                /*LEVEL_VM::IPOINT pos = (INS_HasFallThrough(ins) ? IPOINT_AFTER : IPOINT_TAKEN_BRANCH);
                 INS_InsertIfCall(ins, pos, AFUNPTR(CheckNextTraceEntryPointerValid),
                     IARG_REG_VALUE, _nextBufferEntryReg,
                     IARG_END);
@@ -361,7 +362,7 @@ VOID InstrumentTrace(TRACE trace, VOID *v)
                     IARG_REG_VALUE, _entryBufferEndReg,
                     IARG_THREAD_ID,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
-                    IARG_END);
+                    IARG_END);*/
                 continue;
             }
 
@@ -521,6 +522,7 @@ VOID InstrumentImage(IMG img, VOID *v)
         RTN_InsertCall(notifyStartRtn, IPOINT_BEFORE, AFUNPTR(TestcaseStart),
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
             IARG_THREAD_ID,
+            IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_RETURN_REGS, _nextBufferEntryReg,
             IARG_END);
 
@@ -545,6 +547,44 @@ VOID InstrumentImage(IMG img, VOID *v)
 
         // Show debug info
         cerr << "    PinNotifyTestcaseEnd() instrumented." << endl;
+    }
+
+    // Find the Pin stack pointer notification function
+    RTN notifyStackPointerRtn = RTN_FindByName(img, "PinNotifyStackPointer");
+    if(RTN_Valid(notifyStackPointerRtn))
+    {
+        RTN_Open(notifyStackPointerRtn);
+
+        // Save stack pointer value
+        // Min
+        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceLogger::InsertStackPointerWriteEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        // Max
+        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceLogger::InsertStackPointerWriteEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+
+        RTN_Close(notifyStackPointerRtn);
+
+        // Show debug info
+        cerr << "    PinNotifyStackPointer() instrumented." << endl;
     }
 
     // Find the malloc() function to log allocation sizes and addresses    
@@ -630,11 +670,11 @@ TraceEntry *CheckBufferAndStore(TraceEntry *nextEntry, TraceEntry *entryBufferEn
 }
 
 // Handles the beginning of a testcase.
-TraceEntry *TestcaseStart(ADDRINT newTestcaseId, THREADID tid)
+TraceEntry *TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry *nextEntry)
 {
     // Get trace logger object and set the new testcase ID
     TraceLogger *traceLogger = static_cast<TraceLogger *>(PIN_GetThreadData(_traceLoggerTlsKey, tid));
-    traceLogger->TestcaseStart(static_cast<int>(newTestcaseId));
+    traceLogger->TestcaseStart(static_cast<int>(newTestcaseId), nextEntry);
     return traceLogger->Begin();
 }
 

@@ -19,7 +19,7 @@ namespace LeakageDetector
         /// <summary>
         /// When this is set to true, the preprocessor only saves the allocation information in the trace prefix, effectively reducing the overhead of all trace files.
         /// </summary>
-        private const bool REDUCE_TRACE_SIZE = true;
+        private const bool REDUCE_TRACE_PREFIX_SIZE = true;
 
         /// <summary>
         /// The preprocessed trace prefix.
@@ -223,7 +223,7 @@ namespace LeakageDetector
                         break;
                     }
 
-                    case RawTraceEntryTypes.MemoryRead when !_prefixMode || !REDUCE_TRACE_SIZE:
+                    case RawTraceEntryTypes.MemoryRead when !_prefixMode || !REDUCE_TRACE_PREFIX_SIZE:
                     {
                         // Reset suffix offset variable
                         allocFreeSuffixStartOffset = -1;
@@ -262,7 +262,7 @@ namespace LeakageDetector
                         break;
                     }
 
-                    case RawTraceEntryTypes.MemoryWrite when !_prefixMode || !REDUCE_TRACE_SIZE:
+                    case RawTraceEntryTypes.MemoryWrite when !_prefixMode || !REDUCE_TRACE_PREFIX_SIZE:
                     {
                         // Reset suffix offset variable
                         allocFreeSuffixStartOffset = -1;
@@ -301,7 +301,7 @@ namespace LeakageDetector
                         break;
                     }
 
-                    case RawTraceEntryTypes.Branch when !_prefixMode || !REDUCE_TRACE_SIZE:
+                    case RawTraceEntryTypes.Branch when !_prefixMode || !REDUCE_TRACE_PREFIX_SIZE:
                     {
                         // Reset suffix offset variable
                         allocFreeSuffixStartOffset = -1;
@@ -334,9 +334,6 @@ namespace LeakageDetector
                         // Reset suffix offset variable
                         allocFreeSuffixStartOffset = -1;
                         suffixEntryCount = 0;
-
-                        // Find image of instruction
-                        var (containingImageIndex, containingImage) = FindImage(entry.InstructionAddress);
 
                         // Update base stack pointer
                         if(entry.MemoryAddress < stackPointerMin)
