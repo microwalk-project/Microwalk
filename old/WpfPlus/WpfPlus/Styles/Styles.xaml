@@ -1,0 +1,46 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Helpers.xaml" />
+
+        <ResourceDictionary Source="WindowStyle.xaml" />
+        <ResourceDictionary Source="TabControlStyle.xaml" />
+        <ResourceDictionary Source="ButtonStyle.xaml" />
+        <ResourceDictionary Source="TextBoxStyle.xaml" />
+        <ResourceDictionary Source="ComboBoxStyle.xaml" />
+        <ResourceDictionary Source="CheckBoxStyle.xaml" />
+        <ResourceDictionary Source="RadioButtonStyle.xaml" />
+        <ResourceDictionary Source="GroupBoxStyle.xaml" />
+        <ResourceDictionary Source="ListBoxStyle.xaml" />
+        <ResourceDictionary Source="DataGridStyle.xaml" />
+        <ResourceDictionary Source="ScrollBarStyle.xaml" />
+        <ResourceDictionary Source="ScrollViewerStyle.xaml" />
+        <ResourceDictionary Source="GridSplitterStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <ResourceDictionary x:Key="ContainedStyles">
+        <Style TargetType="{x:Type TabControl}" BasedOn="{StaticResource TabControlStyle}">
+            <Setter Property="Background" Value="{DynamicResource TabControlContainedBackgroundBrush}" />
+        </Style>
+        <Style TargetType="{x:Type GroupBox}" BasedOn="{StaticResource GroupBoxStyle}">
+            <Setter Property="Background" Value="{DynamicResource GroupBoxContainedBackgroundBrush}" />
+        </Style>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="FlatControlStyles">
+        <Style TargetType="{x:Type TabControl}" BasedOn="{StaticResource TabControlStyle}" Resources="{StaticResource ContainedStyles}" />
+        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ButtonStyle}" />
+        <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource TextBoxStyle}" />
+        <Style TargetType="{x:Type ComboBox}" BasedOn="{StaticResource ComboBoxStyle}" />
+        <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource CheckBoxStyle}" />
+        <Style TargetType="{x:Type RadioButton}" BasedOn="{StaticResource RadioButtonStyle}" />
+        <Style TargetType="{x:Type GroupBox}" BasedOn="{StaticResource GroupBoxStyle}" Resources="{StaticResource ContainedStyles}" />
+        <Style TargetType="{x:Type ListBox}" BasedOn="{StaticResource ListBoxStyle}" />
+        <Style TargetType="{x:Type DataGrid}" BasedOn="{StaticResource DataGridStyle}" />
+        <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource ScrollBarStyle}" />
+        <Style TargetType="{x:Type ScrollViewer}" BasedOn="{StaticResource ScrollViewerStyle}" />
+        <Style TargetType="{x:Type GridSplitter}" BasedOn="{StaticResource GridSplitterStyle}" />
+    </ResourceDictionary>
+
+    <Style x:Key="FlatWindowStyle" TargetType="{x:Type Window}" BasedOn="{StaticResource WindowStyle}" Resources="{StaticResource FlatControlStyles}" />
+</ResourceDictionary>
