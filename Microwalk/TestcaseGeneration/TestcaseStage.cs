@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration
@@ -10,65 +12,24 @@ namespace Microwalk.TestcaseGeneration
     /// <summary>
     /// Abstract base class for the test case generation stage.
     /// </summary>
-    abstract class TestcaseStage
+    abstract class TestcaseStage : PipelineStage
     {
-        #region Abstract methods
-
         /// <summary>
-        /// Initializes the stage with the given configuration data.
+        /// Factory object for modules implementing this stage.
         /// </summary>
-        /// <param name="moduleOptions">The module-specific options, as defined in the configuration file.</param>
-        protected abstract void Init(YamlMappingNode moduleOptions);
+        public static ModuleFactory<TestcaseStage> Factory { get; } = new ModuleFactory<TestcaseStage>();
 
         /// <summary>
         /// Generates a new testcase and returns a fitting <see cref="TraceEntity"/> object.
         /// </summary>
+        /// <param name="token">Cancellation token to stop test case generation early.</param>
         /// <returns></returns>
-        public abstract TraceEntity NextTestcase();
-
-        #endregion
-
-        #region Factory code
+        public abstract Task<TraceEntity> NextTestcaseAsync(CancellationToken token);
 
         /// <summary>
-        /// Contains a list of modules that can be implement this stage.
+        /// Returns whether the test case stage has completed and does not produce further inputs. This method is called before requesting a new test case.
         /// </summary>
-        private static readonly Dictionary<string, Type> _registeredModules = new Dictionary<string, Type>();
-
-        /// <summary>
-        /// Registers the given type as a module for the given name.
-        /// </summary>
-        /// <typeparam name="T">Module type.</typeparam>
-        /// <param name="name">Module name.</param>
-        public static void Register<T>() where T : TestcaseStage
-        {
-            // Check whether module attributes are present
-            var attribute = typeof(T).GetCustomAttributes<Module>().FirstOrDefault();
-            if(attribute == null)
-                throw new ArgumentException($"The given module implementation \"{ typeof(T).FullName }\" does not implement the \"{ typeof(Module).FullName }\" attribute.");
-
-            // Register module
-            _registeredModules.Add(attribute.Name, typeof(T));
-        }
-
-        /// <summary>
-        /// Returns a new, initialized instance of the given module.
-        /// </summary>
-        /// <param name="name">The name of the requested module.</param>
-        /// <param name="moduleOptions">The module-specific options, as defined in the configuration file.</param>
         /// <returns></returns>
-        public static TestcaseStage Create(string name, YamlMappingNode moduleOptions)
-        {
-            // Check parameters
-            if(!_registeredModules.ContainsKey(name))
-                throw new ArgumentException($"Can not find a module named \"{ name }\".");
-
-            // Create module
-            var module = (TestcaseStage)Activator.CreateInstance(_registeredModules[name]);
-            module.Init(moduleOptions);
-            return module;
-        }
-
-        #endregion
+        public abstract Task<bool> IsDoneAsync();
     }
 }

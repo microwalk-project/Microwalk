@@ -8,7 +8,7 @@ namespace Microwalk
     /// Contains metadata about a framework module.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-    class Module : Attribute
+    class FrameworkModule : Attribute
     {
         /// <summary>
         /// The module's name. This name is also used to specify the module in the configuration file.
@@ -25,7 +25,7 @@ namespace Microwalk
         /// </summary>
         /// <param name="name">The module's name. This name is also used to specify the module in the configuration file.</param>
         /// <param name="description">The module's description. This is used for displaying help texts.</param>
-        public Module(string name, string description)
+        public FrameworkModule(string name, string description)
         {
             Name = name;
             Description = description;

@@ -13,12 +13,17 @@ namespace Microwalk
     class TraceEntity
     {
         /// <summary>
+        /// A unique number identifying this object.
+        /// </summary>
+        public int Id { get; set; }
+        
+        /// <summary>
         /// The associated testcase file.
         /// </summary>
         public string TestcaseFile { get; set; }
 
         /// <summary>
-        /// The associated trace file.
+        /// The associated preprocessed trace file.
         /// </summary>
         public string TraceFile { get; set; }
     }
