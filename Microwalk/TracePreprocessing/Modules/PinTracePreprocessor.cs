@@ -14,8 +14,8 @@ namespace Microwalk.TracePreprocessing.Modules
         public override Task PreprocessTraceAsync(TraceEntity traceEntity)
         {
             c++;
-            if(c == 30)
-                throw new ArgumentException("test");
+            //if(c == 30)
+            //    throw new ArgumentException("test");
             return Task.CompletedTask;
         }
 
