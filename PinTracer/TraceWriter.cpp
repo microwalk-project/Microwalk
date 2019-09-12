@@ -9,18 +9,18 @@
 /* STATIC VARIABLES */
 
 bool TraceWriter::_prefixMode;
-ofstream TraceWriter::_prefixDataFileStream;
+std::ofstream TraceWriter::_prefixDataFileStream;
 
 
 /* TYPES */
 
-TraceWriter::TraceWriter(string filenamePrefix)
+TraceWriter::TraceWriter(std::string filenamePrefix)
 {
     // Remember prefix
     _outputFilenamePrefix = filenamePrefix;
 
     // Open prefix output file
-    string filename = static_cast<ostringstream&>(ostringstream() << filenamePrefix << "prefix.trace").str();
+	std::string filename = static_cast<std::ostringstream&>(std::ostringstream() << filenamePrefix << "prefix.trace").str();
     OpenOutputFile(filename);
 }
 
@@ -30,21 +30,21 @@ TraceWriter::~TraceWriter()
     _outputFileStream.close();
 }
 
-void TraceWriter::InitPrefixMode(const string& filenamePrefix)
+void TraceWriter::InitPrefixMode(const std::string& filenamePrefix)
 {
     // Start trace prefix mode
     _prefixMode = true;
 
     // Open prefix metadata output file
-    _prefixDataFileStream.exceptions(ofstream::failbit | ofstream::badbit);
-    string prefixDataFilename = static_cast<ostringstream&>(ostringstream() << filenamePrefix << "prefix_data.txt").str();
-    _prefixDataFileStream.open(prefixDataFilename.c_str(), ofstream::out | ofstream::trunc);
+    _prefixDataFileStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	std::string prefixDataFilename = static_cast<std::ostringstream&>(std::ostringstream() << filenamePrefix << "prefix_data.txt").str();
+    _prefixDataFileStream.open(prefixDataFilename.c_str(), std::ofstream::out | std::ofstream::trunc);
     if(!_prefixDataFileStream)
     {
-        cerr << "Error: Could not open prefix metadata output file '" << prefixDataFilename << "'." << endl;
+        std::cerr << "Error: Could not open prefix metadata output file '" << prefixDataFilename << "'." << std::endl;
         exit(1);
     }
-    cerr << "Trace prefix mode started" << endl;
+    std::cerr << "Trace prefix mode started" << std::endl;
 }
 
 TraceEntry* TraceWriter::Begin()
@@ -57,15 +57,15 @@ TraceEntry* TraceWriter::End()
     return &_entries[ENTRY_BUFFER_SIZE];
 }
 
-void TraceWriter::OpenOutputFile(string& filename)
+void TraceWriter::OpenOutputFile(std::string& filename)
 {
     // Open file for writing
-    _outputFileStream.exceptions(ofstream::failbit | ofstream::badbit);
+    _outputFileStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
     _currentOutputFilename = filename;
-    _outputFileStream.open(_currentOutputFilename.c_str(), ofstream::out | ofstream::trunc | ofstream::binary);
+    _outputFileStream.open(_currentOutputFilename.c_str(), std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
     if(!_outputFileStream)
     {
-        cerr << "Error: Could not open output file '" << _currentOutputFilename << "'." << endl;
+        std::cerr << "Error: Could not open output file '" << _currentOutputFilename << "'." << std::endl;
         exit(1);
     }
 }
@@ -87,9 +87,9 @@ void TraceWriter::TestcaseStart(int testcaseId, TraceEntry* nextEntry)
     _testcaseId = testcaseId;
 
     // Open file for writing
-    string filename = static_cast<ostringstream&>(ostringstream() << _outputFilenamePrefix << "t" << dec << _testcaseId << ".trace").str();
+	std::string filename = static_cast<std::ostringstream&>(std::ostringstream() << _outputFilenamePrefix << "t" << std::dec << _testcaseId << ".trace").str();
     OpenOutputFile(filename);
-    cerr << "Switched to testcase #" << dec << _testcaseId << endl;
+    std::cerr << "Switched to testcase #" << std::dec << _testcaseId << std::endl;
 }
 
 void TraceWriter::TestcaseEnd(TraceEntry* nextEntry)
@@ -107,29 +107,29 @@ void TraceWriter::TestcaseEnd(TraceEntry* nextEntry)
     {
         _prefixDataFileStream.close();
         _prefixMode = false;
-        cerr << "Trace prefix mode ended" << endl;
+        std::cerr << "Trace prefix mode ended" << std::endl;
     }
     else
     {
         // Notify caller that the trace file is complete
-        cout << "t\t" << _currentOutputFilename << endl;
+		std::cout << "t\t" << _currentOutputFilename << std::endl;
     }
 
     // Disable tracing until next test case starts
     _testcaseId = -1;
 }
 
-void TraceWriter::WriteImageLoadData(int interesting, uint64_t startAddress, uint64_t endAddress, string& name)
+void TraceWriter::WriteImageLoadData(int interesting, uint64_t startAddress, uint64_t endAddress, std::string& name)
 {
     // Prefix mode active?
     if(!_prefixMode)
     {
-        cerr << "Image load ignored: " << name << endl;
+        std::cerr << "Image load ignored: " << name << std::endl;
         return;
     }
 
     // Write image data
-    _prefixDataFileStream << "i\t" << interesting << "\t" << hex << startAddress << "\t" << hex << endAddress << "\t" << name << endl;
+    _prefixDataFileStream << "i\t" << interesting << "\t" << std::hex << startAddress << "\t" << std::hex << endAddress << "\t" << name << std::endl;
 }
 
 bool TraceWriter::CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBufferEnd)
@@ -206,19 +206,20 @@ TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sou
     // Create entry
     ADDRINT retAddress;
     PIN_GetContextRegval(contextAfterRet, REG_INST_PTR, reinterpret_cast<UINT8*>(&retAddress));
-    return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, 2);
+    return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, 4);
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertStackPointerWriteEntry(TraceEntry* nextEntry, ADDRINT stackPointerValue)
+TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax)
 {
     // Create entry
-    nextEntry->Type = TraceEntryTypes::StackPointerWrite;
-    nextEntry->Param2 = stackPointerValue;
+    nextEntry->Type = TraceEntryTypes::StackPointerInfo;
+    nextEntry->Param1 = stackPointerMin;
+	nextEntry->Param2 = stackPointerMax;
     return ++nextEntry;
 }
 
-ImageData::ImageData(bool interesting, string name, UINT64 startAddress, UINT64 endAddress)
+ImageData::ImageData(bool interesting, std::string name, UINT64 startAddress, UINT64 endAddress)
 {
     _interesting = interesting;
     _name = name;

@@ -42,6 +42,8 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// </summary>
         private readonly HashSet<byte[]> _knownTestcases = new HashSet<byte[]>(new Utilities.ByteArrayComparer());
 
+        public override bool SupportsParallelism => true;
+
         internal override Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Parse options
@@ -75,11 +77,11 @@ namespace Microwalk.TestcaseGeneration.Modules
             var traceEntity = new TraceEntity
             {
                 Id = _nextTestcaseNumber,
-                TestcaseFile = testcaseFileName
+                TestcaseFilePath = testcaseFileName
             };
 
             // Done
-            await Logger.LogInfoAsync("Testcase #" + traceEntity.Id);
+            await Logger.LogDebugAsync("Testcase #" + traceEntity.Id);
             ++_nextTestcaseNumber;
             return traceEntity;
         }

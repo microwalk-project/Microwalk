@@ -89,6 +89,22 @@ namespace Microwalk
         }
 
         /// <summary>
+        /// Gets the boolean value of the given scalar node. Error checking is included.
+        /// </summary>
+        /// <param name="node">Node.</param>
+        /// <returns></returns>
+        public static bool GetNodeBoolean(this YamlNode node)
+        {
+            if(node == null)
+                throw new ConfigurationException("The given node object is null. Probably it is a mandatory entry that was not specified in the configuration file?");
+            if(!(node is YamlScalarNode scalarNode))
+                throw new ConfigurationException("Invalid node type.");
+            if(!bool.TryParse(scalarNode.Value, out bool nodeValue))
+                throw new ConfigurationException("Invalid node value.");
+            return nodeValue;
+        }
+
+        /// <summary>
         /// Adds the given range of elements to the given collection.
         /// </summary>
         /// <typeparam name="T"></typeparam>

@@ -22,6 +22,8 @@ namespace Microwalk.TraceGeneration.Modules
         /// </summary>
         private Process _pinToolProcess;
 
+        public override bool SupportsParallelism => false;
+
         public override async Task GenerateTraceAsync(TraceEntity traceEntity)
         {
             // Debug
@@ -29,7 +31,7 @@ namespace Microwalk.TraceGeneration.Modules
 
             // Send test case
             _pinToolProcess.StandardInput.WriteLine($"t {traceEntity.Id}");
-            _pinToolProcess.StandardInput.WriteLine(traceEntity.TestcaseFile);
+            _pinToolProcess.StandardInput.WriteLine(traceEntity.TestcaseFilePath);
             while(true)
             {
                 // Read Pin tool output
@@ -44,7 +46,7 @@ namespace Microwalk.TraceGeneration.Modules
                 if(outputParts[0] == "t")
                 {
                     // Store trace file name
-                    traceEntity.TraceFile = outputParts[1];
+                    traceEntity.RawTraceFilePath = outputParts[1];
                     break;
                 }
                 else

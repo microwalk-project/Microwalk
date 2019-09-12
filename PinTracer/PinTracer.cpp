@@ -14,10 +14,10 @@ To get meaningful outputs, make sure that these functions are called with "call"
 /* GLOBAL VARIABLES */
 
 // The output file command line option.
-KNOB<string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "out", "specify file name/path prefix for LeakageDetectorTrace output");
+KNOB<std::string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "out", "specify file name/path prefix for LeakageDetectorTrace output");
 
 // The names of interesting images, separated by semicolons.
-KNOB<string> KnobInterestingImageList(KNOB_MODE_WRITEONCE, "pintool", "i", ".exe", "specify list of interesting images, separated by semicolons");
+KNOB<std::string> KnobInterestingImageList(KNOB_MODE_WRITEONCE, "pintool", "i", ".exe", "specify list of interesting images, separated by semicolons");
 
 // The desired CPU feature level.
 KNOB<int> KnobCpuFeatureLevel(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "specify desired CPU model: 0 = Default, 1 = Pentium3, 2 = Merom, 3 = Westmere, 4 = Ivybridge (your own CPU should form a superset of the selected option)");
@@ -27,7 +27,7 @@ KNOB<int> KnobCpuFeatureLevel(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "specify
 KNOB<unsigned long long> KnobFixedRandomNumbers(KNOB_MODE_WRITEONCE, "pintool", "r", "841534158063459245", "set constant output for RDRAND instruction");
 
 // The names of interesting images, parsed from the command line option.
-vector<string> _interestingImages;
+std::vector<std::string> _interestingImages;
 
 // The thread local storage key for the trace logger objects.
 TLS_KEY _traceWriterTlsKey;
@@ -45,7 +45,7 @@ REG _cpuIdEaxInputReg;
 REG _cpuIdEcxInputReg;
 
 // Data of loaded images for lookup during trace instrumentation.
-vector<ImageData*> _images;
+std::vector<ImageData*> _images;
 
 // Determines whether RDRAND random numbers shall be replaced by fixed ones.
 bool _useFixedRandomNumber = false;
@@ -78,14 +78,14 @@ int main(int argc, char* argv[])
     if(PIN_Init(argc, argv))
     {
         // Print help message if -h(elp) is specified in the command line or the command line is invalid 
-        cerr << KNOB_BASE::StringKnobSummary() << endl;
+        std::cerr << KNOB_BASE::StringKnobSummary() << std::endl;
         return -1;
     }
     
     // Split list of interesting images
-    stringstream interestingImagesStringStream(KnobInterestingImageList);
-    string item;
-    while(getline(interestingImagesStringStream, item, ';'))
+	std::stringstream interestingImagesStringStream(KnobInterestingImageList);
+	std::string item;
+    while(std::getline(interestingImagesStringStream, item, ';'))
         if(!item.empty())
         {
             tolower(item);
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     {
         _useFixedRandomNumber = true;
         _fixedRandomNumber = KnobFixedRandomNumbers.Value();
-        cerr << "Using fixed RDRAND output " << _fixedRandomNumber << endl;
+        std::cerr << "Using fixed RDRAND output " << _fixedRandomNumber << std::endl;
     }
 
     // Initialize prefix mode
@@ -155,7 +155,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
         if(img == nullptr)
         {
             // Should not happen
-            cerr << "Error: Cannot resolve image of basic block " << hex << BBL_Address(bbl) << endl;
+            std::cerr << "Error: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << std::endl;
             continue;
         }
         bool interesting = img->IsInteresting();
@@ -226,7 +226,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_INST_PTR,
                     IARG_BRANCH_TARGET_ADDR,
                     IARG_BOOL, 1,
-                    IARG_UINT32, 1,
+                    IARG_UINT32, 2,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
@@ -251,7 +251,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_INST_PTR,
                     IARG_BRANCH_TARGET_ADDR,
                     IARG_BRANCH_TAKEN,
-                    IARG_UINT32, 0,
+                    IARG_UINT32, 1,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
@@ -388,7 +388,7 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     else
     {
         // Set entry buffer pointers as null pointers
-        cerr << "Ignoring thread #" << tid << endl;
+        std::cerr << "Ignoring thread #" << tid << std::endl;
         PIN_SetContextReg(ctxt, _nextBufferEntryReg, NULL);
         PIN_SetContextReg(ctxt, _entryBufferEndReg, NULL);
     }
@@ -413,12 +413,12 @@ VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
 VOID InstrumentImage(IMG img, VOID* v)
 {
     // Retrieve image name
-    string imageName = IMG_Name(img);
+	std::string imageName = IMG_Name(img);
 
     // Check whether image is interesting (its name appears in the image name list passed over the command line)
-    string imageNameLower = imageName;
+	std::string imageNameLower = imageName;
     tolower(imageNameLower);
-    INT8 interesting = (find_if(_interestingImages.begin(), _interestingImages.end(), [&](string& interestingImageName) { return imageNameLower.find(interestingImageName) != string::npos; }) != _interestingImages.end()) ? 1 : 0;
+    INT8 interesting = (find_if(_interestingImages.begin(), _interestingImages.end(), [&](std::string& interestingImageName) { return imageNameLower.find(interestingImageName) != std::string::npos; }) != _interestingImages.end()) ? 1 : 0;
 
     // Retrieve image memory offsets
     UINT64 imageStart = IMG_LowAddress(img);
@@ -429,7 +429,7 @@ VOID InstrumentImage(IMG img, VOID* v)
 
     // Remember image for filtered trace instrumentation
     _images.push_back(new ImageData(interesting, imageName, imageStart, imageEnd));
-    cerr << "Image '" << imageName << "' loaded at " << hex << imageStart << " ... " << hex << imageEnd << (interesting != 0 ? " [interesting]" : "") << endl;
+    std::cerr << "Image '" << imageName << "' loaded at " << std::hex << imageStart << " ... " << std::hex << imageEnd << (interesting != 0 ? " [interesting]" : "") << std::endl;
 
     // Find the Pin notification functions to insert testcase markers
     RTN notifyStartRtn = RTN_FindByName(img, "PinNotifyTestcaseStart");
@@ -445,7 +445,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(notifyStartRtn);
 
-        cerr << "    PinNotifyTestcaseStart() instrumented." << endl;
+        std::cerr << "    PinNotifyTestcaseStart() instrumented." << std::endl;
     }
     RTN notifyEndRtn = RTN_FindByName(img, "PinNotifyTestcaseEnd");
     if(RTN_Valid(notifyEndRtn))
@@ -459,7 +459,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(notifyEndRtn);
 
-        cerr << "    PinNotifyTestcaseEnd() instrumented." << endl;
+        std::cerr << "    PinNotifyTestcaseEnd() instrumented." << std::endl;
     }
 
     // Find the Pin stack pointer notification function
@@ -468,22 +468,10 @@ VOID InstrumentImage(IMG img, VOID* v)
     {
         // Save stack pointer value
         RTN_Open(notifyStackPointerRtn);
-        // Min
-        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertStackPointerWriteEntry),
+        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertStackPointerInfoEntry),
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        // Max
-        RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertStackPointerWriteEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
             IARG_RETURN_REGS, _nextBufferEntryReg,
             IARG_END);
         RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
@@ -494,7 +482,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(notifyStackPointerRtn);
 
-        cerr << "    PinNotifyStackPointer() instrumented." << endl;
+        std::cerr << "    PinNotifyStackPointer() instrumented." << std::endl;
     }
 
     // Find the malloc() function to log allocation sizes and addresses    
@@ -529,7 +517,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(mallocRtn);
 
-        cerr << "    malloc() instrumented." << endl;
+        std::cerr << "    malloc() instrumented." << std::endl;
     }
 
     // Find the free() function to log free addresses    
@@ -551,7 +539,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(freeRtn);
 
-        cerr << "    free() instrumented." << endl;
+        std::cerr << "    free() instrumented." << std::endl;
     }
 }
 
@@ -595,7 +583,7 @@ TraceEntry* TestcaseEnd(TraceEntry* nextEntry, THREADID tid)
 EXCEPT_HANDLING_RESULT HandlePinToolException(THREADID tid, EXCEPTION_INFO* exceptionInfo, PHYSICAL_CONTEXT* physicalContext, VOID* v)
 {
     // Output exception data
-    std::cerr << "Internal exception: " << PIN_ExceptionToString(exceptionInfo) << endl;
+    std::cerr << "Internal exception: " << PIN_ExceptionToString(exceptionInfo) << std::endl;
     return EHR_UNHANDLED;
 }
 

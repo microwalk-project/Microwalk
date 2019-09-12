@@ -37,8 +37,8 @@ enum struct TraceEntryTypes : UINT32
     // A code branch.
     Branch = 6,
 
-    // A write to the stack pointer register (primarily add/sub and retn instructions, that impose large changes).
-    StackPointerWrite = 7
+    // Stack pointer information.
+    StackPointerInfo = 7
 };
 
 // Represents one entry in a trace buffer.
@@ -56,11 +56,11 @@ struct TraceEntry
     UINT8 _padding[3];
 
     // The address of the instruction triggering the trace entry creation, or the size of an allocation.
-    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter.
+    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
     UINT64 Param1;
 
     // The accessed/passed memory address.
-    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerWrite.
+    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo.
     UINT64 Param2;
 };
 #pragma pack(pop)
@@ -72,13 +72,13 @@ class TraceWriter
 {
 private:
     // The path prefix of the output file.
-    string _outputFilenamePrefix;
+    std::string _outputFilenamePrefix;
 
     // The file where the trace data is currently written to.
-    ofstream _outputFileStream;
+	std::ofstream _outputFileStream;
 
     // The name of the currently open output file.
-    string _currentOutputFilename;
+	std::string _currentOutputFilename;
 
     // The buffer entries.
     TraceEntry _entries[ENTRY_BUFFER_SIZE];
@@ -91,17 +91,17 @@ private:
     static bool _prefixMode;
 
     // The file where some additional trace prefix meta data is stored.
-    static ofstream _prefixDataFileStream;
+    static std::ofstream _prefixDataFileStream;
 
 private:
     // Opens the output file and sets the respective internal state.
-    void OpenOutputFile(string& filename);
+    void OpenOutputFile(std::string& filename);
 
 public:
 
     // Creates a new trace logger.
     // -> filenamePrefix: The path prefix of the output file. Existing files are overwritten.
-    TraceWriter(string filenamePrefix);
+    TraceWriter(std::string filenamePrefix);
 
     // Frees resources.
     ~TraceWriter();
@@ -143,21 +143,21 @@ public:
     static TraceEntry* InsertFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
 
     // Creates a new Branch entry.
-    // type: 0 for jumps, 1 for call and 2 for ret.
+    // type: 1 for jumps, 2 for call and 4 for ret.
     static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, BOOL flag, UINT32 type);
 
     // Creates a new "ret" Branch entry.
     static TraceEntry* InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, CONTEXT* contextAfterRet);
 
-    // Creates a new StackPointerWrite entry.
-    static TraceEntry* InsertStackPointerWriteEntry(TraceEntry* nextEntry, ADDRINT stackPointerValue);
+    // Creates a new StackPointerInfo entry.
+    static TraceEntry* InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax);
 
     // Initializes the static part of the prefix mode (record image loads, even when the thread's TraceWriter object is not yet initialized).
     // -> filenamePrefix: The path prefix of the output file. Existing files are overwritten.
-    static void InitPrefixMode(const string& filenamePrefix);
+    static void InitPrefixMode(const std::string& filenamePrefix);
 
     // Writes information about the given loaded image into the trace metadata file.
-    static void WriteImageLoadData(int interesting, uint64_t startAddress, uint64_t endAddress, string& name);
+    static void WriteImageLoadData(int interesting, uint64_t startAddress, uint64_t endAddress, std::string& name);
 };
 
 // Contains meta data of loaded images.
@@ -165,13 +165,13 @@ struct ImageData
 {
 public:
     bool _interesting;
-    string _name;
+	std::string _name;
     UINT64 _startAddress;
     UINT64 _endAddress;
 
 public:
     // Constructor.
-    ImageData(bool interesting, string name, UINT64 startAddress, UINT64 endAddress);
+    ImageData(bool interesting, std::string name, UINT64 startAddress, UINT64 endAddress);
 
     // Checks whether the given basic block is contained in this image.
     bool ContainsBasicBlock(BBL basicBlock);

@@ -20,11 +20,21 @@ namespace Microwalk
         /// <summary>
         /// The associated testcase file.
         /// </summary>
-        public string TestcaseFile { get; set; }
+        public string TestcaseFilePath { get; set; }
+
+        /// <summary>
+        /// The associated raw trace file. May be null.
+        /// </summary>
+        public string RawTraceFilePath { get; set; }
+
+        /// <summary>
+        /// The associated preprocessed trace file. May be null.
+        /// </summary>
+        public string PreprocessedTraceFilePath { get; set; }
 
         /// <summary>
         /// The associated preprocessed trace file.
         /// </summary>
-        public string TraceFile { get; set; }
+        public TraceFile PreprocessedTraceFile { get; set; }
     }
 }

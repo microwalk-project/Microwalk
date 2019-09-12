@@ -10,7 +10,7 @@ namespace Microwalk.Analysis
     /// </summary>
     /// <remarks>
     /// This stage functions as a sink; it receives a stream of <see cref="TraceEntity"/> objects, which might be processed on the fly, or stored for later processing.
-    /// After processing all traces, the function <see cref="Finish"/> is called by the pipeline implementation; this may either be a no-op, or perform final analysis steps like outputting results.
+    /// After processing all traces, the function <see cref="FinishAsync"/> is called by the pipeline implementation; this may either be a no-op, or perform final analysis steps like outputting results.
     /// </remarks>
     abstract class AnalysisStage : PipelineStage
     {

@@ -116,8 +116,8 @@ namespace Microwalk
                     {
                         case "testcase":
                         {
-                           await Logger.LogDebugAsync("Reading and applying 'testcase' stage configuration");
-                            
+                            await Logger.LogDebugAsync("Reading and applying 'testcase' stage configuration");
+
                             // There must be a module name node
                             string moduleName = mainNode.Value.GetChildNodeWithKey("module").GetNodeString();
 
@@ -220,7 +220,7 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1),
+                    MaxDegreeOfParallelism = _moduleConfiguration.TraceStageModule.SupportsParallelism ? _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
                 });
                 var preprocessorStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
@@ -231,7 +231,7 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1),
+                    MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism ? _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
                 });
                 var analysisStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
@@ -242,7 +242,7 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1),
+                    MaxDegreeOfParallelism = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism) ? _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
                 });
 
                 // Link pipeline stages
