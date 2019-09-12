@@ -1,0 +1,1 @@
+Note: Microwalk is currently being reimplemented to achieve better portability (up to now it worked on Windows only). The former (paper) version can be found in the [old/ sub directory](old/).
