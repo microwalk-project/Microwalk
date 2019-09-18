@@ -40,6 +40,7 @@ namespace Microwalk
             PreprocessorStage.Factory.Register<TracePreprocessing.Modules.PinTracePreprocessor>();
             // Analysis
             AnalysisStage.Factory.Register<Analysis.Modules.TraceDumper>();
+            AnalysisStage.Factory.Register<Analysis.Modules.MemoryAccessMi>();
 
             // Parse command line and execute framework using these options
             Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
@@ -69,19 +70,19 @@ namespace Microwalk
                 Console.WriteLine("Available modules:");
                 Console.WriteLine("  Testcase generation:");
                 foreach(var (name, description) in TestcaseStage.Factory.GetSupportedModules())
-                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 16 - name.Length)) + description);
+                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 24 - name.Length)) + description);
                 Console.WriteLine();
                 Console.WriteLine("  Trace generation:");
                 foreach(var (name, description) in TraceStage.Factory.GetSupportedModules())
-                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 16 - name.Length)) + description);
+                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 24 - name.Length)) + description);
                 Console.WriteLine();
                 Console.WriteLine("  Trace preprocessing:");
                 foreach(var (name, description) in PreprocessorStage.Factory.GetSupportedModules())
-                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 16 - name.Length)) + description);
+                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 24 - name.Length)) + description);
                 Console.WriteLine();
                 Console.WriteLine("  Analysis:");
                 foreach(var (name, description) in AnalysisStage.Factory.GetSupportedModules())
-                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 16 - name.Length)) + description);
+                    Console.WriteLine(new string(' ', 4) + name + new string(' ', Math.Max(1, 24 - name.Length)) + description);
                 Console.WriteLine();
 
                 // Done

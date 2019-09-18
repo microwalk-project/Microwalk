@@ -10,7 +10,7 @@ namespace Microwalk.TraceEntryTypes
     /// </summary>
     public class StackMemoryAccess : TraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.StackMemoryRead;
+        public override TraceEntryTypes EntryType => TraceEntryTypes.StackMemoryAccess;
 
         protected override void Init(FastBinaryReader reader)
         {

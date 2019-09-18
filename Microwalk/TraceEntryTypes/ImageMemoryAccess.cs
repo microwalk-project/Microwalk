@@ -10,7 +10,7 @@ namespace Microwalk.TraceEntryTypes
     /// </summary>
     public class ImageMemoryAccess : TraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryRead;
+        public override TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryAccess;
 
         protected override void Init(FastBinaryReader reader)
         {

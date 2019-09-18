@@ -20,11 +20,6 @@ namespace Microwalk.Analysis.Modules
         private DirectoryInfo _outputDirectory;
 
         /// <summary>
-        /// Determines whether to print absolute instead of relative addresses for heap accesses.
-        /// </summary>
-        private bool _heapPrintAbsoluteAddresses;
-
-        /// <summary>
         /// Determines whether to include the trace prefix.
         /// </summary>
         private bool _includePrefix;
@@ -65,7 +60,7 @@ namespace Microwalk.Analysis.Modules
                 foreach(var entry in entries)
                 {
                     // Print entry index and proper identation based on call level
-                    await writer.WriteAsync($"[{i.ToString().PadLeft(entryIndexWidth, ' ')}] {new string(' ', 4 * callLevel)}");
+                    await writer.WriteAsync($"[{i.ToString().PadLeft(entryIndexWidth, ' ')}] {new string(' ', 2 * callLevel)}");
 
                     // Print entry depending on type
                     switch(entry.EntryType)
@@ -83,13 +78,13 @@ namespace Microwalk.Analysis.Modules
                         {
                             // Find matching allocation data
                             var freeEntry = (TraceEntryTypes.Free)entry;
-                            TraceEntryTypes.Allocation allocationEntry;
-                            if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(freeEntry.Id, out allocationEntry) && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(freeEntry.Id, out allocationEntry))
+                            if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(freeEntry.Id, out TraceEntryTypes.Allocation allocationEntry)
+                                && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(freeEntry.Id, out allocationEntry))
                                 await Logger.LogWarningAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
                             else
                             {
                                 // Print entry
-                                await writer.WriteLineAsync($"Free: #{freeEntry.Id}, {allocationEntry.Address}");
+                                await writer.WriteLineAsync($"Free: #{freeEntry.Id}, {allocationEntry.Address.ToString("X16")}");
                             }
 
                             break;
@@ -122,7 +117,7 @@ namespace Microwalk.Analysis.Modules
                                 {
                                     // Just output a warning, this was probably caused by trampoline functions and similar constructions
                                     callLevel = 0;
-                                    await Logger.LogWarningAsync("Encountered return entry {i}, but call stack is empty; indentation might break here.");
+                                    await Logger.LogWarningAsync($"Encountered return entry {i}, but call stack is empty; indentation might break here.");
                                 }
                             }
                             else if(branchEntry.BranchType == TraceEntryTypes.Branch.BranchTypes.Jump)
@@ -140,14 +135,13 @@ namespace Microwalk.Analysis.Modules
                             string formattedInstructionAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId].Name + ":" + accessEntry.InstructionRelativeAddress.ToString("X8"); // TODO resolve function names
 
                             // Find allocation block
-                            TraceEntryTypes.Allocation allocationEntry;
-                            if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out allocationEntry)
+                            if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out TraceEntryTypes.Allocation allocationEntry)
                             && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out allocationEntry))
                                 await Logger.LogWarningAsync($"Could not find associated allocation block #{accessEntry.MemoryAllocationBlockId} for heap access entry {i}, skipping");
                             else
                             {
                                 // Format accessed address
-                                string formattedMemoryAddress = $"#{accessEntry.MemoryAllocationBlockId}+{accessEntry.MemoryRelativeAddress} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress).ToString("X16")})";
+                                string formattedMemoryAddress = $"#{accessEntry.MemoryAllocationBlockId}+{accessEntry.MemoryRelativeAddress.ToString("X8")} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress).ToString("X16")})";
 
                                 // Print entry
                                 string formattedAccessType = accessEntry.IsWrite ? "HeapRead" : "HeapWrite";
@@ -164,7 +158,7 @@ namespace Microwalk.Analysis.Modules
                             string formattedInstructionAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId].Name + ":" + accessEntry.InstructionRelativeAddress.ToString("X8"); // TODO resolve function names
 
                             // Format accessed address
-                            string formattedMemoryAddress = $"$+{accessEntry.MemoryRelativeAddress}";
+                            string formattedMemoryAddress = $"$+{accessEntry.MemoryRelativeAddress.ToString("X8")}";
 
                             // Print entry
                             string formattedAccessType = accessEntry.IsWrite ? "StackRead" : "StackWrite";
@@ -210,15 +204,6 @@ namespace Microwalk.Analysis.Modules
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
-
-            // Address print mode
-            string addressingOption = moduleOptions.GetChildNodeWithKey("heap-addresses")?.GetNodeString();
-            if(addressingOption == null || string.Compare(addressingOption, "relative", true) == 0)
-                _heapPrintAbsoluteAddresses = false;
-            else if(string.Compare(addressingOption, "absolute", true) == 0)
-                _heapPrintAbsoluteAddresses = true;
-            else
-                throw new ConfigurationException("Addresses have to be either 'relative' or 'absolute'.");
 
             // Include prefix
             _includePrefix = moduleOptions.GetChildNodeWithKey("include-prefix")?.GetNodeBoolean() ?? false;

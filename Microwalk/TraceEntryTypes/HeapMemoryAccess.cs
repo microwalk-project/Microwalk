@@ -10,7 +10,7 @@ namespace Microwalk.TraceEntryTypes
     /// </summary>
     public class HeapMemoryAccess : TraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.HeapMemoryRead;
+        public override TraceEntryTypes EntryType => TraceEntryTypes.HeapMemoryAccess;
 
         protected override void Init(FastBinaryReader reader)
         {

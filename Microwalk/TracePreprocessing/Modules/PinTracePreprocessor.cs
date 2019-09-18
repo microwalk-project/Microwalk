@@ -439,6 +439,7 @@ namespace Microwalk.TracePreprocessing.Modules
             _storeTraces = moduleOptions.GetChildNodeWithKey("store-traces")?.GetNodeBoolean() ?? false;
             if(_storeTraces && outputDirectoryPath == null)
                 throw new ConfigurationException("Missing output directory for preprocessed traces.");
+            _keepRawTraces = moduleOptions.GetChildNodeWithKey("keep-raw-traces")?.GetNodeBoolean() ?? false;
 
             return Task.CompletedTask;
         }

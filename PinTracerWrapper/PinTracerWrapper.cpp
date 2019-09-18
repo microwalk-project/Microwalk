@@ -21,7 +21,8 @@ Note: If the target library is written in C++ and exports mangled names, this pr
 #endif
 
 /*** TODO REFERENCE INVESTIGATED LIBRARY ***/
-
+#pragma comment(lib, "bcrypt.lib")
+#include <bcrypt.h>
 
 /* TYPES */
 
@@ -38,12 +39,47 @@ struct _TEB
 
 /* FUNCTIONS */
 
+// Performs target initialization steps.
+// This function is called once in the very beginning, to make sure that the target is entirely loaded, and incorporated into the trace prefix.
+_NOINLINE void InitTarget()
+{
+	/*** TODO INSERT THE TARGET INITIALIZATION CODE HERE ***/
+	BCRYPT_ALG_HANDLE dummy;
+	BCryptOpenAlgorithmProvider(&dummy, BCRYPT_AES_ALGORITHM, NULL, 0);
+	BCryptCloseAlgorithmProvider(dummy, 0);
+}
+
 // Executes the target function.
 // This function should only call the investigated library functions, this executable will not analyzed by the fuzzer.
 // Do not use global variables, since the fuzzer might reuse the instrumented version of this executable for several different inputs.
 _NOINLINE void RunTarget(FILE* input)
 {
     /*** TODO INSERT THE LIBRARY CALLING CODE HERE ***/
+	BYTE secret_key[16];
+	if(fread(secret_key, 1, 16, input) != 16)
+		return;
+
+	BYTE plain[16];
+	if(fread(plain, 1, 16, input) != 16)
+		return;
+
+	BCRYPT_ALG_HANDLE aesAlg;
+	BCRYPT_KEY_HANDLE aesKey;
+	BCryptOpenAlgorithmProvider(&aesAlg, BCRYPT_AES_ALGORITHM, NULL, 0);
+	DWORD keyObjectSize;
+	DWORD data;
+	BCryptGetProperty(aesAlg, BCRYPT_OBJECT_LENGTH, (PUCHAR)& keyObjectSize, sizeof(DWORD), &data, 0);
+
+	BYTE* keyObj = (BYTE*)malloc(keyObjectSize);
+	DWORD blockLength;
+	BCryptGetProperty(aesAlg, BCRYPT_BLOCK_LENGTH, (PBYTE)& blockLength, sizeof(DWORD), &data, 0);
+	BCryptSetProperty(aesAlg, BCRYPT_CHAINING_MODE, (PBYTE)BCRYPT_CHAIN_MODE_ECB, sizeof(BCRYPT_CHAIN_MODE_ECB), 0);
+	BCryptGenerateSymmetricKey(aesAlg, &aesKey, keyObj, keyObjectSize, (PBYTE)secret_key, sizeof(secret_key), 0);
+
+	DWORD cipherTextSize;
+	BCryptEncrypt(aesKey, plain, sizeof(plain), NULL, NULL, 0, NULL, 0, &cipherTextSize, 0);
+	BYTE* cipherText = (BYTE*)malloc(cipherTextSize);
+	BCryptEncrypt(aesKey, plain, sizeof(plain), NULL, NULL, 0, cipherText, cipherTextSize, &data, 0);
 }
 
 // Notify PIN that a testcase starts/ends.
@@ -73,14 +109,17 @@ void ReadAndSendStackPointer()
 //     A line with "e 0" terminates the program.
 extern "C" _EXPORT void TraceFunc(int argc, const char** argv)
 {
+	// First transmit stack pointer information
+	ReadAndSendStackPointer();
+
+	// Initialize target library
+	InitTarget();
+
     // Run until exit is requested
     char inputBuffer[512];
     char errBuffer[128];
     while(true)
     {
-        // First transmit stack pointer information
-        ReadAndSendStackPointer();
-
         // Read command and testcase ID (0 for exit command)
         char command;
         int testcaseId;
