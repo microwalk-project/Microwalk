@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -9,17 +8,17 @@ namespace Microwalk
     /// Provides functions for fast reading from binary data.
     /// This class does not do error checking!
     /// </summary>
-    public class FastBinaryReader:IDisposable
+    public class FastBinaryReader : IDisposable
     {
         /// <summary>
         /// Returns or sets the current read position.
         /// </summary>
-        public int Position { get; set; } = 0;
+        public int Position { get; set; }
 
         /// <summary>
         /// The byte buffer this object reads from.
         /// </summary>
-        public byte[] Buffer { get; private set; }
+        public byte[] Buffer { get; }
 
         /// <summary>
         /// Loads the given file into the internal buffer.
@@ -58,8 +57,8 @@ namespace Microwalk
         public unsafe string ReadString(int length)
         {
             // Read and increase position
-            string str = null;
-            fixed (byte* buf = &Buffer[Position])
+            string str;
+            fixed(byte* buf = &Buffer[Position])
                 str = new string((sbyte*)buf, 0, length, Encoding.Default);
             Position += length;
             return str;
@@ -73,7 +72,7 @@ namespace Microwalk
         {
             // Read and increase position
             int val;
-            fixed (byte* buf = &Buffer[Position])
+            fixed(byte* buf = &Buffer[Position])
                 if((Position & 0b11) == 0) // If the alignment is right, direct conversion is possible
                     val = *((int*)buf);
                 else
@@ -100,7 +99,7 @@ namespace Microwalk
         {
             // Read and increase position
             long val;
-            fixed (byte* buf = &Buffer[Position])
+            fixed(byte* buf = &Buffer[Position])
                 if((Position & 0b111) == 0) // If the alignment is right, direct conversion is possible
                     val = *((long*)buf);
                 else
@@ -110,6 +109,7 @@ namespace Microwalk
                     int i2 = (*(buf + 4)) | (*(buf + 5) << 8) | (*(buf + 6) << 16) | (*(buf + 7) << 24);
                     val = (uint)i1 | ((long)i2 << 32);
                 }
+
             Position += 8;
             return val;
         }

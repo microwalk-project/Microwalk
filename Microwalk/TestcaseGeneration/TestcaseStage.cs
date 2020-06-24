@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration
 {
     /// <summary>
     /// Abstract base class for the test case generation stage.
     /// </summary>
-    abstract class TestcaseStage : PipelineStage
+    internal abstract class TestcaseStage : PipelineStage
     {
         /// <summary>
         /// Factory object for modules implementing this stage.

@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microwalk.Extensions;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TraceGeneration.Modules
 {
     [FrameworkModule("pin", "Generates traces using a Pin tool.")]
-    class PinTraceGenerator : TraceStage
+    internal class PinTraceGenerator : TraceStage
     {
         /// <summary>
         /// The trace output directory.
@@ -30,15 +29,15 @@ namespace Microwalk.TraceGeneration.Modules
             await Logger.LogDebugAsync("Trace #" + traceEntity.Id);
 
             // Send test case
-            _pinToolProcess.StandardInput.WriteLine($"t {traceEntity.Id}");
-            _pinToolProcess.StandardInput.WriteLine(traceEntity.TestcaseFilePath);
+            await _pinToolProcess.StandardInput.WriteLineAsync($"t {traceEntity.Id}");
+            await _pinToolProcess.StandardInput.WriteLineAsync(traceEntity.TestcaseFilePath);
             while(true)
             {
                 // Read Pin tool output
-                await Logger.LogDebugAsync($"Read from Pin tool stdout...");
+                await Logger.LogDebugAsync("Read from Pin tool stdout...");
                 string pinToolOutput = await _pinToolProcess.StandardOutput.ReadLineAsync();
                 if(pinToolOutput == null)
-                    throw new IOException($"Could not read from Pin tool standard output (null). Probably the process has exited early.");
+                    throw new IOException("Could not read from Pin tool standard output (null). Probably the process has exited early.");
 
                 // Parse output
                 await Logger.LogDebugAsync($"Pin tool output: {pinToolOutput}");
@@ -49,8 +48,9 @@ namespace Microwalk.TraceGeneration.Modules
                     traceEntity.RawTraceFilePath = outputParts[1];
                     break;
                 }
-                else
-                    await Logger.LogWarningAsync("Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
+
+                await Logger.LogWarningAsync(
+                    "Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
             }
         }
 
@@ -73,18 +73,22 @@ namespace Microwalk.TraceGeneration.Modules
             int cpuModelId = moduleOptions.GetChildNodeWithKey("cpu")?.GetNodeInteger() ?? 0;
 
             // Prepare argument list
-            List<string> pinArgs = new List<string>
+            var pinArgs = new List<string>
             {
-                $"-t", $"{pinToolPath}",
-                $"-o", $"{Path.GetFullPath(_outputDirectory.FullName) + Path.DirectorySeparatorChar} ", // The trailing space is required on Windows: Pin's command line parser else believes that the final backslash is an escape character
-                $"-i", $"{imagesList}"
+                "-t", $"{pinToolPath}",
+                "-o",
+                $"{Path.GetFullPath(_outputDirectory.FullName) + Path.DirectorySeparatorChar} ", // The trailing space is required on Windows: Pin's command line parser else believes that the final backslash is an escape character
+                "-i", $"{imagesList}"
             };
             if(fixedRdrand != null)
             {
-                pinArgs.Add($"-r"); pinArgs.Add($"{fixedRdrand.Value}");
+                pinArgs.Add("-r");
+                pinArgs.Add($"{fixedRdrand.Value}");
             }
-            pinArgs.Add($"-c"); pinArgs.Add($"{cpuModelId}");
-            pinArgs.Add($"--");
+
+            pinArgs.Add("-c");
+            pinArgs.Add($"{cpuModelId}");
+            pinArgs.Add("--");
             pinArgs.Add(wrapperPath);
 
             // Prepare Pin tool process
@@ -105,6 +109,11 @@ namespace Microwalk.TraceGeneration.Modules
 
             // Start Pin tool
             _pinToolProcess = Process.Start(pinToolProcessStartInfo);
+            if(_pinToolProcess == null)
+            {
+                await Logger.LogErrorAsync("Could not start the Pin process.\n");
+                return;
+            }
 
             // Read and log error output of Pin tool (avoids pipe contention leading to I/O hangs)
             _pinToolProcess.ErrorDataReceived += async (sender, e) => await Logger.LogDebugAsync($"Pin tool stderr: {e.Data}");

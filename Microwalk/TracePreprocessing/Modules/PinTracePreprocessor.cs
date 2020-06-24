@@ -1,18 +1,18 @@
-﻿using Microwalk.TraceGeneration;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
+using Microwalk.Extensions;
+using Microwalk.TraceEntryTypes;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TracePreprocessing.Modules
 {
     [FrameworkModule("pin", "Preprocesses trace generated with the Pin tool.")]
-    class PinTracePreprocessor : PreprocessorStage
+    internal class PinTracePreprocessor : PreprocessorStage
     {
         /// <summary>
         /// The preprocessed trace output directory.
@@ -57,7 +57,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// <summary>
         /// Allocation information from the trace prefix, indexed by start address.
         /// </summary>
-        private SortedList<ulong, TraceEntryTypes.Allocation> _tracePrefixAllocationLookup;
+        private SortedList<ulong, Allocation> _tracePrefixAllocationLookup;
 
         /// <summary>
         /// The last allocation ID used by the trace prefix.
@@ -105,8 +105,8 @@ namespace Microwalk.TracePreprocessing.Modules
                 if(_storeTraces)
                 {
                     string outputPath = Path.Combine(_outputDirectory.FullName, "prefix.trace.preprocessed");
-                    using(var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None)))
-                        _tracePrefix.Save(writer);
+                    await using var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None));
+                    _tracePrefix.Save(writer);
                 }
             }
 
@@ -129,8 +129,8 @@ namespace Microwalk.TracePreprocessing.Modules
             if(_storeTraces)
             {
                 traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory.FullName, Path.GetFileName(rawTraceFilePath) + ".preprocessed");
-                using(var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None)))
-                    preprocessedTraceFile.Save(writer);
+                await using var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None));
+                preprocessedTraceFile.Save(writer);
             }
 
             // Keep trace data in memory for the analysis stages
@@ -160,10 +160,10 @@ namespace Microwalk.TracePreprocessing.Modules
             var lastAllocationSizes = new Stack<uint>();
             ulong lastAllocReturnAddress = 0;
             bool encounteredSizeSinceLastAlloc = false;
-            var allocationLookup = new SortedList<ulong, TraceEntryTypes.Allocation>();
-            var allocationData = new List<TraceEntryTypes.Allocation>();
+            var allocationLookup = new SortedList<ulong, Allocation>();
+            var allocationData = new List<Allocation>();
             int nextAllocationId = isPrefix ? 0 : _tracePrefixLastAllocationId + 1;
-            fixed (byte* inputFilePtr = inputFile)
+            fixed(byte* inputFilePtr = inputFile)
                 for(long pos = 0; pos < inputFileLength; pos += rawTraceEntrySize)
                 {
                     // Read entry
@@ -194,10 +194,11 @@ namespace Microwalk.TracePreprocessing.Modules
                                 Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty\n").Wait();
                                 break;
                             }
+
                             uint size = lastAllocationSizes.Pop();
 
                             // Create entry
-                            var entry = new TraceEntryTypes.Allocation
+                            var entry = new Allocation
                             {
                                 Id = nextAllocationId++,
                                 Size = size,
@@ -223,14 +224,14 @@ namespace Microwalk.TracePreprocessing.Modules
                                 break;
                             if(!allocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                             {
-                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2.ToString("X16")} does not correspond to any allocation, skipping").Wait();
+                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any allocation, skipping").Wait();
                                 break;
                             }
 
                             // Create entry
-                            var entry = new TraceEntryTypes.Free
+                            var entry = new Free
                             {
-                                Id = allocationEntry.Id,
+                                Id = allocationEntry.Id
                             };
                             traceEntries.Add(entry);
 
@@ -256,7 +257,7 @@ namespace Microwalk.TracePreprocessing.Modules
                             var (destinationImageId, destinationImage) = FindImage(rawTraceEntry.Param2);
                             if(sourceImageId < 0 || destinationImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1.ToString("X16")} -> {rawTraceEntry.Param2.ToString("X16")}, skipping").Wait();
+                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
                                 break;
                             }
 
@@ -266,7 +267,7 @@ namespace Microwalk.TracePreprocessing.Modules
 
                             // Create entry
                             var flags = (RawTraceBranchEntryFlags)rawTraceEntry.Flag;
-                            var entry = new TraceEntryTypes.Branch
+                            var entry = new Branch
                             {
                                 SourceImageId = sourceImageId,
                                 SourceInstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - sourceImage.StartAddress),
@@ -275,16 +276,17 @@ namespace Microwalk.TracePreprocessing.Modules
                                 Taken = flags.HasFlag(RawTraceBranchEntryFlags.Taken)
                             };
                             if(flags.HasFlag(RawTraceBranchEntryFlags.Jump))
-                                entry.BranchType = TraceEntryTypes.Branch.BranchTypes.Jump;
+                                entry.BranchType = Branch.BranchTypes.Jump;
                             else if(flags.HasFlag(RawTraceBranchEntryFlags.Call))
-                                entry.BranchType = TraceEntryTypes.Branch.BranchTypes.Call;
+                                entry.BranchType = Branch.BranchTypes.Call;
                             else if(flags.HasFlag(RawTraceBranchEntryFlags.Return))
-                                entry.BranchType = TraceEntryTypes.Branch.BranchTypes.Return;
+                                entry.BranchType = Branch.BranchTypes.Return;
                             else
                             {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1.ToString("X16")} -> {rawTraceEntry.Param2.ToString("X16")}, skipping").Wait();
+                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
                                 break;
                             }
+
                             traceEntries.Add(entry);
 
                             break;
@@ -297,7 +299,7 @@ namespace Microwalk.TracePreprocessing.Modules
                             var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
                             if(instructionImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1.ToString("X16")}, skipping").Wait();
+                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
                                 break;
                             }
 
@@ -310,7 +312,7 @@ namespace Microwalk.TracePreprocessing.Modules
                             if(_stackPointerMin <= rawTraceEntry.Param2 && rawTraceEntry.Param2 <= _stackPointerMax)
                             {
                                 // Stack
-                                var entry = new TraceEntryTypes.StackMemoryAccess
+                                var entry = new StackMemoryAccess
                                 {
                                     IsWrite = isWrite,
                                     InstructionImageId = instructionImageId,
@@ -325,7 +327,7 @@ namespace Microwalk.TracePreprocessing.Modules
                                 var (accessedImageId, accessedImage) = FindImage(rawTraceEntry.Param2);
                                 if(accessedImageId >= 0)
                                 {
-                                    var entry = new TraceEntryTypes.ImageMemoryAccess
+                                    var entry = new ImageMemoryAccess
                                     {
                                         IsWrite = isWrite,
                                         InstructionImageId = instructionImageId,
@@ -343,11 +345,13 @@ namespace Microwalk.TracePreprocessing.Modules
                                         (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixAllocationLookup, rawTraceEntry.Param2);
                                     if(allocationBlockId < 0)
                                     {
-                                        Logger.LogWarningAsync($"Could not resolve target of memory access {rawTraceEntry.Param1.ToString("X16")} -> [{rawTraceEntry.Param2.ToString("X16")}] ({(isWrite ? "write" : "read")}), skipping").Wait();
+                                        Logger.LogWarningAsync(
+                                                $"Could not resolve target of memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
+                                            .Wait();
                                         break;
                                     }
 
-                                    var entry = new TraceEntryTypes.HeapMemoryAccess
+                                    var entry = new HeapMemoryAccess
                                     {
                                         IsWrite = isWrite,
                                         InstructionImageId = instructionImageId,
@@ -397,15 +401,17 @@ namespace Microwalk.TracePreprocessing.Modules
                     return (-1, null);
                 }
             }
+
             return (-1, null);
         }
 
         /// <summary>
         /// Finds the allocation block that contains the given address and returns its ID, or -1 if the block is not found.
         /// </summary>
+        /// <param name="allocationData">List containing all allocations.</param>
         /// <param name="address">The address to be searched.</param>
         /// <returns></returns>
-        private (int, TraceEntryTypes.Allocation) FindAllocation(SortedList<ulong, TraceEntryTypes.Allocation> allocationData, ulong address)
+        private (int, Allocation) FindAllocation(SortedList<ulong, Allocation> allocationData, ulong address)
         {
             // Find by start address
             // Reverse search order:
@@ -423,6 +429,7 @@ namespace Microwalk.TracePreprocessing.Modules
                     return (-1, null);
                 }
             }
+
             return (-1, null);
         }
 
@@ -436,6 +443,7 @@ namespace Microwalk.TracePreprocessing.Modules
                 if(!_outputDirectory.Exists)
                     _outputDirectory.Create();
             }
+
             _storeTraces = moduleOptions.GetChildNodeWithKey("store-traces")?.GetNodeBoolean() ?? false;
             if(_storeTraces && outputDirectoryPath == null)
                 throw new ConfigurationException("Missing output directory for preprocessed traces.");
@@ -444,55 +452,50 @@ namespace Microwalk.TracePreprocessing.Modules
             return Task.CompletedTask;
         }
 
-        public override Task UninitAsync()
-        {
-            return base.UninitAsync();
-        }
-
         /// <summary>
         /// One trace entry, as present in the trace files.
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
-        ref struct RawTraceEntry
+        private readonly ref struct RawTraceEntry
         {
             /// <summary>
             /// The type of this entry.
             /// </summary>
-            public RawTraceEntryTypes Type;
+            public readonly RawTraceEntryTypes Type;
 
             /// <summary>
             /// Flag.
             /// Used with: Branch.
             /// </summary>
-            public byte Flag;
+            public readonly byte Flag;
 
             /// <summary>
             /// (Padding for reliable parsing by analysis programs)
             /// </summary>
-            private byte _padding1;
+            private readonly byte _padding1;
 
             /// <summary>
             /// (Padding for reliable parsing by analysis programs)
             /// </summary>
-            private short _padding2;
+            private readonly short _padding2;
 
             /// <summary>
             /// The address of the instruction triggering the trace entry creation, or the size of an allocation.
             /// Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
             /// </summary>
-            public ulong Param1;
+            public readonly ulong Param1;
 
             /// <summary>
             /// The accessed/passed memory address.
             /// Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo.
             /// </summary>
-            public ulong Param2;
+            public readonly ulong Param2;
         }
 
         /// <summary>
         /// The different types of trace entries, as used in the raw trace files.
         /// </summary>
-        enum RawTraceEntryTypes : uint
+        private enum RawTraceEntryTypes : uint
         {
             /// <summary>
             /// A memory read access.
@@ -534,7 +537,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// Flags assigned to a branch entry in the raw trace.
         /// </summary>
         [Flags]
-        enum RawTraceBranchEntryFlags : byte
+        private enum RawTraceBranchEntryFlags : byte
         {
             /// <summary>
             /// Indicates that the branch was taken.

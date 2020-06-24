@@ -1,24 +1,28 @@
-﻿using CommandLine;
-using Microwalk.Analysis;
-using Microwalk.TestcaseGeneration;
-using Microwalk.TraceGeneration;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using YamlDotNet.RepresentationModel;
-using YamlDotNet.Helpers;
-using System.Threading.Tasks.Dataflow;
-using Microwalk.TracePreprocessing;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
+using CommandLine;
+using Microwalk.Analysis;
+using Microwalk.Analysis.Modules;
+using Microwalk.Extensions;
+using Microwalk.TestcaseGeneration;
+using Microwalk.TestcaseGeneration.Modules;
+using Microwalk.TraceGeneration;
+using Microwalk.TraceGeneration.Modules;
+using Microwalk.TracePreprocessing;
+using Microwalk.TracePreprocessing.Modules;
+using YamlDotNet.RepresentationModel;
 
 namespace Microwalk
 {
     /// <summary>
     /// Main class. Contains initialization and pipeline logic.
     /// </summary>
-    class Program
+    internal class Program
     {
         /// <summary>
         /// Contains information about the configured pipeline stage modules.
@@ -33,24 +37,24 @@ namespace Microwalk
         {
             // Register modules
             // Testcase generation
-            TestcaseStage.Factory.Register<TestcaseGeneration.Modules.RandomTestcaseGenerator>();
+            TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
             // Trace generation
-            TraceStage.Factory.Register<TraceGeneration.Modules.PinTraceGenerator>();
+            TraceStage.Factory.Register<PinTraceGenerator>();
             // Trace preprocessing
-            PreprocessorStage.Factory.Register<TracePreprocessing.Modules.PinTracePreprocessor>();
+            PreprocessorStage.Factory.Register<PinTracePreprocessor>();
             // Analysis
-            AnalysisStage.Factory.Register<Analysis.Modules.TraceDumper>();
-            AnalysisStage.Factory.Register<Analysis.Modules.MemoryAccessMi>();
+            AnalysisStage.Factory.Register<TraceDumper>();
+            AnalysisStage.Factory.Register<MemoryAccessMi>();
 
             // Parse command line and execute framework using these options
             Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
                 opts => RunAsync(opts)
-                        .ContinueWith((t) =>
-                        {
-                            if(t.IsFaulted)
-                                Console.WriteLine(t.Exception.ToString());
-                        })
-                        .Wait()
+                    .ContinueWith((t) =>
+                    {
+                        if(t.IsFaulted)
+                            Console.WriteLine(t.Exception.ToString());
+                    })
+                    .Wait()
             );
         }
 
@@ -58,7 +62,7 @@ namespace Microwalk
         /// Executes the framework using the given command line options.
         /// </summary>
         /// <param name="commandLineOptions">Command line options.</param>
-        static async Task RunAsync(CommandLineOptions commandLineOptions)
+        private static async Task RunAsync(CommandLineOptions commandLineOptions)
         {
             // Configuration file supplied?
             if(commandLineOptions.ConfigurationFile == null)
@@ -204,10 +208,11 @@ namespace Microwalk
                 // Check presence of needed pipeline modules
                 await Logger.LogDebugAsync("Doing some sanity checks");
                 if(_moduleConfiguration.TestcaseStageModule == null
-                    || _moduleConfiguration.TraceStageModule == null
-                    || _moduleConfiguration.PreprocessorStageModule == null
-                    || !_moduleConfiguration.AnalysesStageModules.Any())
-                    throw new ConfigurationException("Incomplete module specification. Make sure that there is at least one module for testcase generation, trace generation, preprocessing and analysis, respectively.");
+                   || _moduleConfiguration.TraceStageModule == null
+                   || _moduleConfiguration.PreprocessorStageModule == null
+                   || !_moduleConfiguration.AnalysesStageModules.Any())
+                    throw new ConfigurationException(
+                        "Incomplete module specification. Make sure that there is at least one module for testcase generation, trace generation, preprocessing and analysis, respectively.");
 
                 // Initialize pipeline stages
                 // -> [buffer] -> trace -> [buffer]-> preprocess -> [buffer] -> analysis
@@ -221,7 +226,9 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.TraceStageModule.SupportsParallelism ? _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
+                    MaxDegreeOfParallelism = _moduleConfiguration.TraceStageModule.SupportsParallelism
+                        ? _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        : 1
                 });
                 var preprocessorStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
@@ -232,7 +239,9 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism ? _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
+                    MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism
+                        ? _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        : 1
                 });
                 var analysisStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
@@ -243,7 +252,9 @@ namespace Microwalk
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true,
-                    MaxDegreeOfParallelism = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism) ? _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1) : 1,
+                    MaxDegreeOfParallelism = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism)
+                        ? _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        : 1
                 });
 
                 // Link pipeline stages
@@ -262,16 +273,16 @@ namespace Microwalk
                 await Logger.LogInfoAsync("Start testcase thread -> pipeline start");
                 var testcaseTaskCancellationTokenSource = new CancellationTokenSource();
                 var testcaseTask = PostTestcases(traceStageBuffer, testcaseTaskCancellationTokenSource.Token)
-                                    .ContinueWith(async (t) =>
-                                    {
-                                        if(t.IsFaulted && !t.Exception.Flatten().InnerExceptions.Any(e => e is TaskCanceledException))
-                                        {
-                                            // Log exception
-                                            await Logger.LogErrorAsync("Testcase generation has stopped due to an unhandled exception:");
-                                            await Logger.LogErrorAsync(t.Exception.ToString());
-                                            await Logger.LogWarningAsync("Pipeline execution will be continued with the existing test cases.");
-                                        }
-                                    }, testcaseTaskCancellationTokenSource.Token);
+                    .ContinueWith(async (t) =>
+                    {
+                        if(t.IsFaulted && !t.Exception.Flatten().InnerExceptions.Any(e => e is TaskCanceledException))
+                        {
+                            // Log exception
+                            await Logger.LogErrorAsync("Testcase generation has stopped due to an unhandled exception:");
+                            await Logger.LogErrorAsync(t.Exception.ToString());
+                            await Logger.LogWarningAsync("Pipeline execution will be continued with the existing test cases.");
+                        }
+                    }, testcaseTaskCancellationTokenSource.Token);
 
                 // Handle pipeline exceptions
                 try
@@ -334,6 +345,12 @@ namespace Microwalk
                     Console.WriteLine(ex.ToString());
                 }
             }
+            finally
+            {
+                // Make sure logger is disposed properly
+                if(Logger.IsInitialized())
+                    Logger.Deinitialize();
+            }
         }
 
         /// <summary>
@@ -382,10 +399,10 @@ namespace Microwalk
         /// </summary>
         /// <param name="t">Input trace entity.</param>
         /// <returns></returns>
-        private static async Task AnalysisStageFunc(TraceEntity t)
+        private static Task AnalysisStageFunc(TraceEntity t)
         {
             // Run modules in parallel
-            await Task.WhenAll(_moduleConfiguration.AnalysesStageModules.Select(module => module.AddTraceAsync(t)));
+            return Task.WhenAll(_moduleConfiguration.AnalysesStageModules.Select(module => module.AddTraceAsync(t)));
         }
 
         /// <summary>

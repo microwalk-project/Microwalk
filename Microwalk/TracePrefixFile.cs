@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using Microwalk.TraceEntryTypes;
 
 namespace Microwalk
 {
@@ -38,7 +37,7 @@ namespace Microwalk
         /// <param name="entries">The trace entries.</param>
         /// <param name="imageFiles">The loaded images, indexed by their IDs.</param>
         /// <param name="allocations">The allocations, indexed by their IDs.</param>
-        internal TracePrefixFile(List<TraceEntry> entries, Dictionary<int, ImageFileInfo> imageFiles, Dictionary<int, TraceEntryTypes.Allocation> allocations)
+        internal TracePrefixFile(List<TraceEntry> entries, Dictionary<int, ImageFileInfo> imageFiles, Dictionary<int, Allocation> allocations)
             : base(null, entries, allocations)
         {
             // Store arguments
@@ -69,7 +68,8 @@ namespace Microwalk
             /// Creates a new empty image file descriptor.
             /// </summary>
             public ImageFileInfo()
-            { }
+            {
+            }
 
             /// <summary>
             /// Reads the image data from the given stream.

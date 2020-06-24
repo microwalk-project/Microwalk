@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
+﻿using System.IO;
+using Microwalk.TraceEntryTypes;
 
 namespace Microwalk
 {
@@ -43,42 +41,33 @@ namespace Microwalk
         /// <summary>
         /// Deserializes an entire trace entry from the given binary reader.
         /// </summary>
-        /// <typeparam name="T">Trace entry type.</typeparam>
         /// <param name="reader">Binary reader containing the trace data.</param>
         /// <returns></returns>
         public static TraceEntry DeserializeNextEntry(FastBinaryReader reader)
         {
             // Read depending on type
             TraceEntryTypes entryType = (TraceEntryTypes)reader.ReadByte();
-            switch(entryType)
+            return entryType switch
             {
-                case TraceEntryTypes.ImageMemoryAccess:
-                    return Deserialize<Microwalk.TraceEntryTypes.ImageMemoryAccess>(reader);
-                case TraceEntryTypes.HeapMemoryAccess:
-                    return Deserialize<Microwalk.TraceEntryTypes.HeapMemoryAccess>(reader);
-                case TraceEntryTypes.StackMemoryAccess:
-                    return Deserialize<Microwalk.TraceEntryTypes.StackMemoryAccess>(reader);
-                case TraceEntryTypes.Allocation:
-                    return Deserialize<Microwalk.TraceEntryTypes.Allocation>(reader);
-                case TraceEntryTypes.Free:
-                    return Deserialize<Microwalk.TraceEntryTypes.Free>(reader);
-                case TraceEntryTypes.Branch:
-                    return Deserialize<Microwalk.TraceEntryTypes.Branch>(reader);
-
-                default:
-                    throw new TraceFormatException($"Unknown trace entry type.");
-            }
+                TraceEntryTypes.ImageMemoryAccess => Deserialize<ImageMemoryAccess>(reader),
+                TraceEntryTypes.HeapMemoryAccess => Deserialize<HeapMemoryAccess>(reader),
+                TraceEntryTypes.StackMemoryAccess => Deserialize<StackMemoryAccess>(reader),
+                TraceEntryTypes.Allocation => Deserialize<Allocation>(reader),
+                TraceEntryTypes.Free => Deserialize<Free>(reader),
+                TraceEntryTypes.Branch => Deserialize<Branch>(reader),
+                _ => throw new TraceFormatException("Unknown trace entry type.")
+            };
         }
 
         /// <summary>
         /// Deserializes a trace entry from the given binary reader (the type byte is assumed have been read already).
         /// </summary>
-        /// <typeparam name="T">Trace entry type.</typeparam>
+        /// <typeparam name="TEntry">Trace entry type.</typeparam>
         /// <param name="reader">Binary reader containing the trace data.</param>
         /// <returns></returns>
-        private static T Deserialize<T>(FastBinaryReader reader) where T : TraceEntry, new()
+        private static TEntry Deserialize<TEntry>(FastBinaryReader reader) where TEntry : TraceEntry, new()
         {
-            var traceEntry = new T();
+            var traceEntry = new TEntry();
             traceEntry.Init(reader);
             return traceEntry;
         }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Microwalk.Analysis
 {
@@ -12,7 +9,7 @@ namespace Microwalk.Analysis
     /// This stage functions as a sink; it receives a stream of <see cref="TraceEntity"/> objects, which might be processed on the fly, or stored for later processing.
     /// After processing all traces, the function <see cref="FinishAsync"/> is called by the pipeline implementation; this may either be a no-op, or perform final analysis steps like outputting results.
     /// </remarks>
-    abstract class AnalysisStage : PipelineStage
+    internal abstract class AnalysisStage : PipelineStage
     {
         /// <summary>
         /// Factory object for modules implementing this stage.

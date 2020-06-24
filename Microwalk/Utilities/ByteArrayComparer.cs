@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Microwalk.Utilities
 {
@@ -10,7 +9,7 @@ namespace Microwalk.Utilities
     /// </summary>
     internal class ByteArrayComparer : IEqualityComparer<byte[]>
     {
-        public bool Equals(byte[] x, byte[] y) => x.SequenceEqual(y);
+        public bool Equals(byte[] x, byte[] y) => (x ?? Array.Empty<byte>()).SequenceEqual(y ?? Array.Empty<byte>());
 
         public int GetHashCode(byte[] obj)
         {

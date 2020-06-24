@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk
 {
     /// <summary>
     /// Abstract base class for pipeline stages.
-    /// TODO Convert this into an interface with default functions when C# 8 becomes available
     /// </summary>
-    abstract class PipelineStage
+    internal abstract class PipelineStage
     {
         /// <summary>
         /// Returns whether the stage is thread-safe and thus supports parallel execution.

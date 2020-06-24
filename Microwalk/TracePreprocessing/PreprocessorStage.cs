@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Microwalk.TracePreprocessing
 {
     /// <summary>
     /// Abstract base class for the trace preprocessor stage.
     /// </summary>
-    abstract class PreprocessorStage : PipelineStage
+    internal abstract class PreprocessorStage : PipelineStage
     {
         /// <summary>
         /// Factory object for modules implementing this stage.

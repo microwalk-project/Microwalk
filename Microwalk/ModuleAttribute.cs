@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Microwalk
 {
@@ -8,7 +6,7 @@ namespace Microwalk
     /// Contains metadata about a framework module.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-    class FrameworkModule : Attribute
+    internal class FrameworkModule : Attribute
     {
         /// <summary>
         /// The module's name. This name is also used to specify the module in the configuration file.

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
+﻿using System.IO;
 
 namespace Microwalk.TraceEntryTypes
 {
@@ -10,7 +7,7 @@ namespace Microwalk.TraceEntryTypes
     /// </summary>
     public class Allocation : TraceEntry
     {
-        public override TraceEntryTypes EntryType =>  TraceEntryTypes.Allocation;
+        public override TraceEntryTypes EntryType => TraceEntryTypes.Allocation;
 
         protected override void Init(FastBinaryReader reader)
         {
@@ -25,7 +22,7 @@ namespace Microwalk.TraceEntryTypes
             writer.Write(Size);
             writer.Write(Address);
         }
-        
+
         /// <summary>
         /// The ID of the allocated block.
         /// </summary>

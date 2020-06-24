@@ -1,9 +1,8 @@
-﻿using Nito.AsyncEx;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk
@@ -12,7 +11,7 @@ namespace Microwalk
     /// Provides functionality to write log messages to console and file system.
     /// The static logging functions are thread safe.
     /// </summary>
-    class Logger : IDisposable
+    internal class Logger : IDisposable
     {
         /// <summary>
         /// Logger instance.
@@ -22,14 +21,15 @@ namespace Microwalk
         /// <summary>
         /// Colors assigned for each log level.
         /// </summary>
-        private readonly Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)> _logLevelColors = new Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)>
-        {
-            { LogLevel.Debug, ( ConsoleColor.Cyan, ConsoleColor.Black) },
-            { LogLevel.Info, ( ConsoleColor.Gray, ConsoleColor.Black) },
-            { LogLevel.Warning, ( ConsoleColor.Yellow, ConsoleColor.Black) },
-            { LogLevel.Error, ( ConsoleColor.White, ConsoleColor.Red) },
-            { LogLevel.Result, ( ConsoleColor.Green, ConsoleColor.Black) },
-        };
+        private readonly Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)> _logLevelColors =
+            new Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)>
+            {
+                {LogLevel.Debug, (ConsoleColor.Cyan, ConsoleColor.Black)},
+                {LogLevel.Info, (ConsoleColor.Gray, ConsoleColor.Black)},
+                {LogLevel.Warning, (ConsoleColor.Yellow, ConsoleColor.Black)},
+                {LogLevel.Error, (ConsoleColor.White, ConsoleColor.Red)},
+                {LogLevel.Result, (ConsoleColor.Green, ConsoleColor.Black)}
+            };
 
         /// <summary>
         /// Contains the initial console colors, that are used as default text color.
@@ -109,8 +109,7 @@ namespace Microwalk
         /// <summary>
         /// Sets the current console color.
         /// </summary>
-        /// <param name="foreground">Foreground color.</param>
-        /// <param name="background">Background color.</param>
+        /// <param name="color">New console color.</param>
         private void SetConsoleColor((ConsoleColor Foreground, ConsoleColor Background) color)
         {
             Console.ForegroundColor = color.Foreground;
@@ -139,7 +138,7 @@ namespace Microwalk
             // Ensure that message is correctly indented
             int indent = elapsedTimeString.Length + 2 + logLevelString.Length + 2;
             string indentString = new string(' ', indent);
-            string[] messageLines = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            string[] messageLines = message.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None);
             for(int i = 1; i < messageLines.Length; ++i)
                 messageLines[i] = indentString + messageLines[i];
             string indentedMessage = string.Join(Environment.NewLine, messageLines);
@@ -165,7 +164,7 @@ namespace Microwalk
 
                 // Write to file, if requested
                 if(_outputFileWriter != null)
-                    _outputFileWriter.WriteLine($"{elapsedTimeString} [{logLevelString}] {indentedMessage}");
+                    await _outputFileWriter.WriteLineAsync($"{elapsedTimeString} [{logLevelString}] {indentedMessage}");
             }
         }
 
@@ -234,7 +233,7 @@ namespace Microwalk
     /// <summary>
     /// Contains the different log levels.
     /// </summary>
-    enum LogLevel : int
+    internal enum LogLevel
     {
         Debug = 0,
         Info = 10,

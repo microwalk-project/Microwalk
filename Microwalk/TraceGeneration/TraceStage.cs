@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using YamlDotNet.RepresentationModel;
+﻿using System.Threading.Tasks;
 
 namespace Microwalk.TraceGeneration
 {
     /// <summary>
     /// Abstract base class for the trace generation stage.
     /// </summary>
-    abstract class TraceStage : PipelineStage
+    internal abstract class TraceStage : PipelineStage
     {
         /// <summary>
         /// Factory object for modules implementing this stage.

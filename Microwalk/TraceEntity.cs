@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Microwalk
+﻿namespace Microwalk
 {
     /// <summary>
     /// Contains metadata for a single test case and the associated trace.
@@ -10,13 +6,13 @@ namespace Microwalk
     /// 
     /// Interfaces defined in this class must be filled properly by all stages.
     /// </summary>
-    class TraceEntity
+    internal class TraceEntity
     {
         /// <summary>
         /// A unique number identifying this object.
         /// </summary>
         public int Id { get; set; }
-        
+
         /// <summary>
         /// The associated testcase file.
         /// </summary>

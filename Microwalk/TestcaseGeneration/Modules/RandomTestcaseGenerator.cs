@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microwalk.Extensions;
+using Microwalk.Utilities;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
 {
     [FrameworkModule("random", "Allows to generate random test cases, that satisfy certain properties.")]
-    class RandomTestcaseGenerator : TestcaseStage
+    internal class RandomTestcaseGenerator : TestcaseStage
     {
         /// <summary>
         /// The amount of test cases to generate.
@@ -40,7 +41,7 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// <summary>
         /// Already generated test cases.
         /// </summary>
-        private readonly HashSet<byte[]> _knownTestcases = new HashSet<byte[]>(new Utilities.ByteArrayComparer());
+        private readonly HashSet<byte[]> _knownTestcases = new HashSet<byte[]>(new ByteArrayComparer());
 
         public override bool SupportsParallelism => true;
 
@@ -55,7 +56,7 @@ namespace Microwalk.TestcaseGeneration.Modules
             const double warnPercentage = 0.95;
             if(Math.Ceiling(Math.Log(_testcaseCount, 2)) >= 8 * _testcaseLength * warnPercentage)
                 await Logger.LogWarningAsync("The requested number of test cases is near to the maximum possible number of possible test cases.\n" +
-                                             "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.");
+                                             "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.\n");
 
             // Make sure output directory exists
             if(!_outputDirectory.Exists)

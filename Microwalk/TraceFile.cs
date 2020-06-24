@@ -1,29 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using Microwalk.TraceEntryTypes;
 
 namespace Microwalk
 {
     /// <summary>
     /// Provides functions to read and write trace files, which mainly consist of a list of <see cref="TraceEntry"/> objects and some associated metadata.
+    /// TODO Allow asynchronous load/save
     /// </summary>
     public class TraceFile
     {
         /// <summary>
         /// The associated trace prefix.
         /// </summary>
-        public virtual TracePrefixFile Prefix { get; private set; }
+        public TracePrefixFile Prefix { get; }
 
         /// <summary>
         /// The entries stored in this trace file.
         /// </summary>
-        public List<TraceEntry> Entries { get; private set; }
+        public List<TraceEntry> Entries { get; }
 
         /// <summary>
         /// The allocations, indexed by their IDs.
         /// </summary>
-        public Dictionary<int, TraceEntryTypes.Allocation> Allocations { get; set; }
+        public Dictionary<int, Allocation> Allocations { get; }
 
         /// <summary>
         /// Reads trace data.
@@ -50,9 +50,10 @@ namespace Microwalk
             {
                 var entry = TraceEntry.DeserializeNextEntry(reader);
                 if(entry.EntryType == TraceEntry.TraceEntryTypes.Allocation)
-                    Allocations.Add(((TraceEntryTypes.Allocation)entry).Id, (TraceEntryTypes.Allocation)entry);
+                    Allocations.Add(((Allocation)entry).Id, (Allocation)entry);
                 entries.Add(entry);
             }
+
             Entries = entries;
         }
 
@@ -62,7 +63,7 @@ namespace Microwalk
         /// <param name="prefix">The associated prefix file.</param>
         /// <param name="entries">The trace entries.</param>
         /// <param name="allocations">The allocations, indexed by their IDs.</param>
-        internal TraceFile(TracePrefixFile prefix, List<TraceEntry> entries, Dictionary<int, TraceEntryTypes.Allocation> allocations)
+        internal TraceFile(TracePrefixFile prefix, List<TraceEntry> entries, Dictionary<int, Allocation> allocations)
         {
             // Store arguments
             Prefix = prefix;
