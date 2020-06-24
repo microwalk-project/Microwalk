@@ -44,12 +44,18 @@ namespace Microwalk.TestcaseGeneration.Modules
 
         public override bool SupportsParallelism => true;
 
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        internal override async Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Parse options
             _testcaseCount = moduleOptions.GetChildNodeWithKey("amount").GetNodeInteger();
             _testcaseLength = moduleOptions.GetChildNodeWithKey("length").GetNodeInteger();
             _outputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("output-directory").GetNodeString());
+
+            // Sanity check
+            const double warnPercentage = 0.95;
+            if(Math.Ceiling(Math.Log(_testcaseCount, 2)) >= 8 * _testcaseLength * warnPercentage)
+                await Logger.LogWarningAsync("The requested number of test cases is near to the maximum possible number of possible test cases.\n" +
+                                             "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.");
 
             // Make sure output directory exists
             if(!_outputDirectory.Exists)
@@ -57,8 +63,6 @@ namespace Microwalk.TestcaseGeneration.Modules
 
             // Initialize RNG
             _rng = RandomNumberGenerator.Create();
-
-            return Task.CompletedTask;
         }
 
         public override async Task<TraceEntity> NextTestcaseAsync(CancellationToken token)
@@ -68,6 +72,9 @@ namespace Microwalk.TestcaseGeneration.Modules
             do
                 _rng.GetBytes(random);
             while(_knownTestcases.Contains(random));
+
+            // Remember test case
+            _knownTestcases.Add(random);
 
             // Store test case
             string testcaseFileName = Path.Combine(_outputDirectory.FullName, $"{_nextTestcaseNumber}.testcase");
