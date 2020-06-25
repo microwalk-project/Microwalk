@@ -19,16 +19,16 @@ namespace Microwalk
         private static Logger _instance;
 
         /// <summary>
-        /// Colors assigned for each log level.
+        /// Data assigned with each log level.
         /// </summary>
-        private readonly Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)> _logLevelColors =
-            new Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background)>
+        private static readonly Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background, string String)> _logLevelData =
+            new Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background, string String)>
             {
-                {LogLevel.Debug, (ConsoleColor.Cyan, ConsoleColor.Black)},
-                {LogLevel.Info, (ConsoleColor.Gray, ConsoleColor.Black)},
-                {LogLevel.Warning, (ConsoleColor.Yellow, ConsoleColor.Black)},
-                {LogLevel.Error, (ConsoleColor.White, ConsoleColor.Red)},
-                {LogLevel.Result, (ConsoleColor.Green, ConsoleColor.Black)}
+                [LogLevel.Debug] = (ConsoleColor.Gray, ConsoleColor.Black, "dbug"),
+                [LogLevel.Info] = (ConsoleColor.Cyan, ConsoleColor.Black, "info"),
+                [LogLevel.Warning] = (ConsoleColor.Yellow, ConsoleColor.Black, "warn"),
+                [LogLevel.Error] = (ConsoleColor.White, ConsoleColor.Red, "fail"),
+                [LogLevel.Result] = (ConsoleColor.Green, ConsoleColor.Black, "rslt")
             };
 
         /// <summary>
@@ -109,11 +109,12 @@ namespace Microwalk
         /// <summary>
         /// Sets the current console color.
         /// </summary>
-        /// <param name="color">New console color.</param>
-        private void SetConsoleColor((ConsoleColor Foreground, ConsoleColor Background) color)
+        /// <param name="foreground">Foreground color.</param>
+        /// <param name="background">Background color.</param>
+        private void SetConsoleColor(ConsoleColor foreground, ConsoleColor background)
         {
-            Console.ForegroundColor = color.Foreground;
-            Console.BackgroundColor = color.Background;
+            Console.ForegroundColor = foreground;
+            Console.BackgroundColor = background;
         }
 
         /// <summary>
@@ -131,14 +132,15 @@ namespace Microwalk
             // <hour>:<min>:<sec> [<log level>] <message>
 
             // Prepare message parts
+            var logLevelData = _logLevelData[logLevel];
             TimeSpan elapsedTime = DateTime.Now - _startupTime;
             string elapsedTimeString = elapsedTime.ToString("hh\\:mm\\:ss");
-            string logLevelString = logLevel.ToString().ToLower();
+            string logLevelString = logLevelData.String;
 
             // Ensure that message is correctly indented
             int indent = elapsedTimeString.Length + 2 + logLevelString.Length + 2;
             string indentString = new string(' ', indent);
-            string[] messageLines = message.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None);
+            string[] messageLines = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             for(int i = 1; i < messageLines.Length; ++i)
                 messageLines[i] = indentString + messageLines[i];
             string indentedMessage = string.Join(Environment.NewLine, messageLines);
@@ -151,9 +153,9 @@ namespace Microwalk
 
                 // Log level
                 Console.Write(" [");
-                SetConsoleColor(_logLevelColors[logLevel]);
-                Console.Write(logLevelString);
-                SetConsoleColor(_defaultConsoleColor);
+                SetConsoleColor(logLevelData.Foreground, logLevelData.Background);
+                Console.Write(logLevelData.String);
+                SetConsoleColor(_defaultConsoleColor.Foreground, _defaultConsoleColor.Background);
                 Console.Write("] ");
 
                 // Message
