@@ -184,7 +184,7 @@ namespace Microwalk.TracePreprocessing.Modules
                             // Catch double returns of the same allocated address (happens for some allocator implementations)
                             if(rawTraceEntry.Param2 == lastAllocReturnAddress && !encounteredSizeSinceLastAlloc)
                             {
-                                Logger.LogWarningAsync("Skipped double return of allocated address").Wait();
+                                Logger.LogDebugAsync("Skipped double return of allocated address").Wait();
                                 break;
                             }
 
