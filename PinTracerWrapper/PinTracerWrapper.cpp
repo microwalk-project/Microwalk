@@ -1,8 +1,12 @@
 /*
 This program is a lightweight wrapper for the investigated library.
 In trace mode (using Pin) it periodically reads test input file names from stdin and loads the given testcases.
+
 Note: If the target library is written in C++ and exports mangled names, this program should also be compiled as C++ so it can find those exports.
       If the target library is written in C, do not forget to use `extern "C"` when including the headers.
+     
+Some functions have _EXPORT annotations, even though they are not used externally. This ensures that the function name is included in the binary,
+which helps reading the resulting call tree.
 */
 
 /* INCLUDES */
@@ -42,7 +46,7 @@ struct _TEB
 
 // Performs target initialization steps.
 // This function is called once in the very beginning, to make sure that the target is entirely loaded, and incorporated into the trace prefix.
-_NOINLINE void InitTarget()
+_EXPORT _NOINLINE void InitTarget()
 {
 	/*** TODO INSERT THE TARGET INITIALIZATION CODE HERE ***/
 	BCRYPT_ALG_HANDLE dummy;
@@ -53,7 +57,7 @@ _NOINLINE void InitTarget()
 // Executes the target function.
 // This function should only call the investigated library functions, this executable will not analyzed by the fuzzer.
 // Do not use global variables, since the fuzzer might reuse the instrumented version of this executable for several different inputs.
-_NOINLINE void RunTarget(FILE* input)
+_EXPORT _NOINLINE void RunTarget(FILE* input)
 {
     /*** TODO INSERT THE LIBRARY CALLING CODE HERE ***/
 	BYTE secret_key[16];
@@ -93,7 +97,7 @@ extern "C" _EXPORT _NOINLINE int PinNotifyStackPointer(uint64_t spMin, uint64_t 
 #pragma optimize("", on)
 
 // Reads the stack pointer base value and transmits it to Pin.
-void ReadAndSendStackPointer()
+_EXPORT void ReadAndSendStackPointer()
 {
 #if defined(_WIN32)
     // Read stack pointer

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;
+using Microwalk.Utilities;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
@@ -21,6 +23,11 @@ namespace Microwalk.Analysis.Modules
         /// Determines whether to include the trace prefix.
         /// </summary>
         private bool _includePrefix;
+
+        /// <summary>
+        /// MAP file collection for resolving symbol names.
+        /// </summary>
+        private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
 
         public override bool SupportsParallelism => true;
 
@@ -93,10 +100,8 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function names of instructions
                         var branchEntry = (Branch)entry;
-                        string formattedSource = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.SourceImageId].Name + ":" +
-                                                 branchEntry.SourceInstructionRelativeAddress.ToString("X8"); // TODO resolve function names
-                        string formattedDestination = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId].Name + ":" +
-                                                      branchEntry.DestinationInstructionRelativeAddress.ToString("X8"); // TODO resolve function names
+                        string formattedSource = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
+                        string formattedDestination = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
 
                         // Output entry and update call level
                         if(branchEntry.BranchType == Branch.BranchTypes.Call)
@@ -133,8 +138,7 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
-                        string formattedInstructionAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId].Name + ":" +
-                                                             accessEntry.InstructionRelativeAddress.ToString("X8"); // TODO resolve function names
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Find allocation block
                         if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out Allocation allocationEntry)
@@ -148,7 +152,7 @@ namespace Microwalk.Analysis.Modules
                                 $"#{accessEntry.MemoryAllocationBlockId}+{accessEntry.MemoryRelativeAddress:X8} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress):X16})";
 
                             // Print entry
-                            string formattedAccessType = accessEntry.IsWrite ? "HeapRead" : "HeapWrite";
+                            string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
                             await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
                         }
 
@@ -159,14 +163,13 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (StackMemoryAccess)entry;
-                        string formattedInstructionAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId].Name + ":" +
-                                                             accessEntry.InstructionRelativeAddress.ToString("X8"); // TODO resolve function names
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
                         string formattedMemoryAddress = $"$+{accessEntry.MemoryRelativeAddress:X8}";
 
                         // Print entry
-                        string formattedAccessType = accessEntry.IsWrite ? "StackRead" : "StackWrite";
+                        string formattedAccessType = accessEntry.IsWrite ? "StackWrite" : "StackRead";
                         await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
 
                         break;
@@ -176,15 +179,13 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (ImageMemoryAccess)entry;
-                        string formattedInstructionAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId].Name + ":" +
-                                                             accessEntry.InstructionRelativeAddress.ToString("X8"); // TODO resolve function names
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
-                        string formattedMemoryAddress = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.MemoryImageId].Name + ":" +
-                                                        accessEntry.MemoryRelativeAddress.ToString("X8"); // TODO resolve function names
+                        string formattedMemoryAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.MemoryImageId], accessEntry.MemoryRelativeAddress);
 
                         // Print entry
-                        string formattedAccessType = accessEntry.IsWrite ? "ImageRead" : "ImageWrite";
+                        string formattedAccessType = accessEntry.IsWrite ? "ImageWrite" : "ImageRead";
                         await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
 
                         break;
@@ -201,7 +202,7 @@ namespace Microwalk.Analysis.Modules
             return Task.CompletedTask;
         }
 
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        internal override async Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Output directory
             string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
@@ -214,10 +215,11 @@ namespace Microwalk.Analysis.Modules
             // Include prefix
             _includePrefix = moduleOptions.GetChildNodeWithKey("include-prefix")?.GetNodeBoolean() ?? false;
 
-            // TODO map files
-
-
-            return Task.CompletedTask;
+            // Load MAP files
+            var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
+            if(mapFilesNode != null && mapFilesNode is YamlSequenceNode mapFileListNode)
+                foreach(var mapFileNode in mapFileListNode.Children)
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString());
         }
     }
 }

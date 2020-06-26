@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,14 +19,24 @@ namespace Microwalk.Analysis.Modules
     internal class MemoryAccessMi : AnalysisStage
     {
         /// <summary>
-        /// Maps testcase IDs to lists of instruction hashes (testcase ID => instruction address => hash).
+        /// Maps testcase IDs to lists of instruction hashes (testcase ID => instruction ID => hash).
         /// </summary>
         private readonly ConcurrentDictionary<int, Dictionary<ulong, byte[]>> _testcaseInstructionHashes = new ConcurrentDictionary<int, Dictionary<ulong, byte[]>>();
+
+        /// <summary>
+        /// Maps instruction addresses to formatted instructions.
+        /// </summary>
+        private readonly ConcurrentDictionary<ulong, string> _formattedInstructions = new ConcurrentDictionary<ulong, string>();
 
         /// <summary>
         /// The output directory for analysis results.
         /// </summary>
         private DirectoryInfo _outputDirectory;
+
+        /// <summary>
+        /// MAP file collection for resolving symbol names.
+        /// </summary>
+        private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
 
         public override bool SupportsParallelism => true;
 
@@ -37,30 +48,45 @@ namespace Microwalk.Analysis.Modules
             // Hash all memory access instructions
             foreach(var traceEntry in traceEntity.PreprocessedTraceFile.Entries)
             {
-                // Extract instruction and memory address
-                ulong instructionAddress;
-                ulong memoryAddress;
+                // Extract instruction and memory address IDs (some kind of hash consisting of image ID and relative address)
+                ulong instructionId;
+                ulong memoryAddressId;
                 switch(traceEntry.EntryType)
                 {
                     case TraceEntry.TraceEntryTypes.HeapMemoryAccess:
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
-                        instructionAddress = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
-                        memoryAddress = ((ulong)heapMemoryAccess.MemoryAllocationBlockId << 32) | heapMemoryAccess.MemoryRelativeAddress;
+                        instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
+                        memoryAddressId = ((ulong)heapMemoryAccess.MemoryAllocationBlockId << 32) | heapMemoryAccess.MemoryRelativeAddress;
+
+                        // Format instruction
+                        StoreFormattedInstruction(instructionId, 
+                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[heapMemoryAccess.InstructionImageId],
+                            heapMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
                     case TraceEntry.TraceEntryTypes.ImageMemoryAccess:
                     {
                         var imageMemoryAccess = (ImageMemoryAccess)traceEntry;
-                        instructionAddress = ((ulong)imageMemoryAccess.InstructionImageId << 32) | imageMemoryAccess.InstructionRelativeAddress;
-                        memoryAddress = ((ulong)imageMemoryAccess.MemoryImageId << 32) | imageMemoryAccess.MemoryRelativeAddress;
+                        instructionId = ((ulong)imageMemoryAccess.InstructionImageId << 32) | imageMemoryAccess.InstructionRelativeAddress;
+                        memoryAddressId = ((ulong)imageMemoryAccess.MemoryImageId << 32) | imageMemoryAccess.MemoryRelativeAddress;
+
+                        // Format instruction
+                        StoreFormattedInstruction(instructionId,
+                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[imageMemoryAccess.InstructionImageId],
+                            imageMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
                     case TraceEntry.TraceEntryTypes.StackMemoryAccess:
                     {
                         var stackMemoryAccess = (StackMemoryAccess)traceEntry;
-                        instructionAddress = ((ulong)stackMemoryAccess.InstructionImageId << 32) | stackMemoryAccess.InstructionRelativeAddress;
-                        memoryAddress = stackMemoryAccess.MemoryRelativeAddress;
+                        instructionId = ((ulong)stackMemoryAccess.InstructionImageId << 32) | stackMemoryAccess.InstructionRelativeAddress;
+                        memoryAddressId = stackMemoryAccess.MemoryRelativeAddress;
+
+                        // Format instruction
+                        StoreFormattedInstruction(instructionId,
+                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[stackMemoryAccess.InstructionImageId],
+                            stackMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
                     default:
@@ -68,14 +94,14 @@ namespace Microwalk.Analysis.Modules
                 }
 
                 // Update hash
-                if(!instructionHashes.TryGetValue(instructionAddress, out var hash))
+                if(!instructionHashes.TryGetValue(instructionId, out var hash))
                 {
                     hash = new byte[32];
-                    instructionHashes.Add(instructionAddress, hash);
+                    instructionHashes.Add(instructionId, hash);
                 }
 
                 var hashSpan = hash.AsSpan();
-                MemoryMarshal.Write(hashSpan, ref memoryAddress); // Will overwrite first 8 bytes of hash
+                BinaryPrimitives.WriteUInt64LittleEndian(hashSpan, memoryAddressId); // Will overwrite first 8 bytes of hash
                 Blake2s.ComputeAndWriteHash(hashSpan, hashSpan);
             }
 
@@ -146,9 +172,14 @@ namespace Microwalk.Analysis.Modules
                     maximumMutualInformation = instructionData.Value;
 
                 // Write result
-                // TODO allow to convert instruction addresses into nice text form (including MAP file)
-                await writer.WriteLineAsync($"Instruction 0x{instructionData.Key:X16}: {instructionData.Value.ToString("N3", CultureInfo.InvariantCulture)} bits");
+                await writer.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: {instructionData.Value.ToString("N3", CultureInfo.InvariantCulture)} bits");
             }
+
+            // Leakage found?
+            if(maximumMutualInformation > 0.0)
+                await Logger.LogResultAsync("Positive MI -> possible leakage. Check output file for further information.\n");
+            else
+                await Logger.LogResultAsync("Zero MI -> no leakage identified.\n");
 
             // Show warning if there likely were not enough testcases
             const double warnThreshold = 0.9;
@@ -158,7 +189,7 @@ namespace Microwalk.Analysis.Modules
                     "For some instructions the calculated mutual information is suspiciously near to the testcase range. It is recommended to run more testcases.\n");
         }
 
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        internal override async Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Extract output path
             string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
@@ -168,7 +199,24 @@ namespace Microwalk.Analysis.Modules
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
-            return Task.CompletedTask;
+            // Load MAP files
+            var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
+            if(mapFilesNode != null && mapFilesNode is YamlSequenceNode mapFileListNode)
+                foreach(var mapFileNode in mapFileListNode.Children)
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString());
+
+            // TODO Optional CSV export, add other measures, rename to MemoryAccessTraceLeakage
+        }
+
+
+        private void StoreFormattedInstruction(ulong instructionKey, TracePrefixFile.ImageFileInfo imageFileInfo, uint instructionAddress)
+        {
+            // Instruction already known?
+            if(_formattedInstructions.ContainsKey(instructionKey))
+                return;
+
+            // Store formatted instruction
+            _formattedInstructions.TryAdd(instructionKey, _mapFileCollection.FormatAddress(imageFileInfo, instructionAddress));
         }
 
         /// <summary>
