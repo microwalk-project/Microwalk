@@ -49,8 +49,7 @@ namespace Microwalk.TraceGeneration.Modules
                     break;
                 }
 
-                await Logger.LogWarningAsync(
-                    "Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
+                await Logger.LogWarningAsync("Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
             }
         }
 
@@ -111,7 +110,7 @@ namespace Microwalk.TraceGeneration.Modules
             _pinToolProcess = Process.Start(pinToolProcessStartInfo);
             if(_pinToolProcess == null)
             {
-                await Logger.LogErrorAsync("Could not start the Pin process.\n");
+                await Logger.LogErrorAsync("Could not start the Pin process.");
                 return;
             }
 

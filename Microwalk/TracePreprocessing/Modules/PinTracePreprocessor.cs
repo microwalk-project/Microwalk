@@ -191,7 +191,7 @@ namespace Microwalk.TracePreprocessing.Modules
                             // Allocation stack empty?
                             if(lastAllocationSizes.Count == 0)
                             {
-                                Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty\n").Wait();
+                                Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty").Wait();
                                 break;
                             }
 

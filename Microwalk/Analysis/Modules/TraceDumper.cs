@@ -143,8 +143,7 @@ namespace Microwalk.Analysis.Modules
                         // Find allocation block
                         if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out Allocation allocationEntry)
                            && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out allocationEntry))
-                            await Logger.LogWarningAsync(
-                                $"Could not find associated allocation block #{accessEntry.MemoryAllocationBlockId} for heap access entry {i}, skipping");
+                            await Logger.LogWarningAsync($"Could not find associated allocation block #{accessEntry.MemoryAllocationBlockId} for heap access entry {i}, skipping");
                         else
                         {
                             // Format accessed address

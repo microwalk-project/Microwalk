@@ -80,7 +80,7 @@ namespace Microwalk.Utilities
                    || match.Groups.Count != 3
                    || !uint.TryParse(match.Groups[1].Value, NumberStyles.HexNumber, null, out uint entryAddress))
                 {
-                    await Logger.LogWarningAsync($"Ignoring unrecognized line in MAP file: {line}\n");
+                    await Logger.LogWarningAsync($"Ignoring unrecognized line in MAP file: {line}");
                     continue;
                 }
                 string entrySymbolName = match.Groups[2].Value;

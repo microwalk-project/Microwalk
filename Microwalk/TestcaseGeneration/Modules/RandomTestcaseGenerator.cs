@@ -54,7 +54,7 @@ namespace Microwalk.TestcaseGeneration.Modules
 
             // Sanity check
             const double warnPercentage = 0.95;
-            if(Math.Ceiling(Math.Log(_testcaseCount, 2)) >= 8 * _testcaseLength * warnPercentage)
+            if(Math.Ceiling(Math.Log2(_testcaseCount)) >= 8 * _testcaseLength * warnPercentage)
                 await Logger.LogWarningAsync("The requested number of test cases is near to the maximum possible number of possible test cases.\n" +
                                              "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.\n");
 

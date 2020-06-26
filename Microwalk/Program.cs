@@ -44,7 +44,7 @@ namespace Microwalk
             PreprocessorStage.Factory.Register<PinTracePreprocessor>();
             // Analysis
             AnalysisStage.Factory.Register<TraceDumper>();
-            AnalysisStage.Factory.Register<MemoryAccessMi>();
+            AnalysisStage.Factory.Register<MemoryAccessTraceLeakage>();
 
             // Parse command line and execute framework using these options
             Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
