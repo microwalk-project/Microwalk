@@ -125,7 +125,8 @@ namespace Microwalk
         private async Task LogAsync(LogLevel logLevel, string message)
         {
             // Check log level
-            if(logLevel < _logLevel)
+            // Only debug outputs and warnings can be suppressed
+            if(logLevel < _logLevel && (logLevel == LogLevel.Debug || logLevel == LogLevel.Warning))
                 return;
 
             // Message format:
@@ -208,12 +209,6 @@ namespace Microwalk
         public static async Task LogDebugAsync(string message) => await _instance.LogAsync(LogLevel.Debug, message);
 
         /// <summary>
-        /// Logs the given info message.
-        /// </summary>
-        /// <param name="message">Message.</param>
-        public static async Task LogInfoAsync(string message) => await _instance.LogAsync(LogLevel.Info, message);
-
-        /// <summary>
         /// Logs the given warning.
         /// </summary>
         /// <param name="message">Message.</param>
@@ -230,6 +225,13 @@ namespace Microwalk
         /// </summary>
         /// <param name="message">Message.</param>
         public static async Task LogResultAsync(string message) => await _instance.LogAsync(LogLevel.Result, message);
+
+        /// <summary>
+        /// Logs the given info message.
+        /// Use this for status messages, which should always be displayed.
+        /// </summary>
+        /// <param name="message">Message.</param>
+        public static async Task LogInfoAsync(string message) => await _instance.LogAsync(LogLevel.Info, message);
     }
 
     /// <summary>
@@ -238,9 +240,9 @@ namespace Microwalk
     internal enum LogLevel
     {
         Debug = 0,
-        Info = 10,
-        Warning = 20,
-        Error = 30,
-        Result = 40
+        Warning = 10,
+        Error = 20,
+        Result = 30,
+        Info = 40,
     }
 }
