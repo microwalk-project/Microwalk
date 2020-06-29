@@ -6,6 +6,7 @@ namespace Microwalk.Utilities
 {
     /// <summary>
     /// Helper class for hashing and comparing byte arrays.
+    /// Note: This class is optimized for *random* byte arrays (e.g., hashes). Using this with uniform byte arrays may yield unexpected results.
     /// </summary>
     internal class ByteArrayComparer : IEqualityComparer<byte[]>
     {

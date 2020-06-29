@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -37,6 +38,11 @@ namespace Microwalk.Analysis.Modules
         /// Output format.
         /// </summary>
         private OutputFormat _outputFormat = OutputFormat.Csv;
+
+        /// <summary>
+        /// Controls whether the entire final state should be written to a dump file.
+        /// </summary>
+        private bool _dumpFullData = false;
 
         /// <summary>
         /// MAP file collection for resolving symbol names.
@@ -140,6 +146,15 @@ namespace Microwalk.Analysis.Modules
                     ++instructionData.TestcaseCount;
                     instructionData.HashCounts.TryGetValue(instruction.Value, out int hashCount); // Will be 0 if not existing
                     instructionData.HashCounts[instruction.Value] = hashCount + 1;
+
+                    // Store testcase IDs only when a full data dump is requested, since this is quite expensive
+                    if(_dumpFullData)
+                    {
+                        // Make sure testcase ID list exists
+                        if(!instructionData.HashTestcases.ContainsKey(instruction.Value))
+                            instructionData.HashTestcases.Add(instruction.Value, new List<int>());
+                        instructionData.HashTestcases[instruction.Value].Add(testcase.Key);
+                    }
                 }
             }
 
@@ -195,15 +210,21 @@ namespace Microwalk.Analysis.Modules
                 // Minimum conditional guessing entropy
                 {
                     // Find minimum guessing entropy of each trace, weighting is not needed here
+                    // Also store the hash value which has the lowest guessing entropy value
                     double minConditionalGuessingEntropy = double.MaxValue;
+                    byte[] minConditionalGuessingEntropyHash = null;
                     foreach(var hashCount in instruction.Value.HashCounts)
                     {
                         double traceConditionalGuessingEntropy = (hashCount.Value + 1.0) / 2;
                         if(traceConditionalGuessingEntropy < minConditionalGuessingEntropy)
+                        {
                             minConditionalGuessingEntropy = traceConditionalGuessingEntropy;
+                            minConditionalGuessingEntropyHash = hashCount.Key;
+                        }
                     }
 
                     leakageResult.MinConditionalGuessingEntropy = minConditionalGuessingEntropy;
+                    leakageResult.MinConditionalGuessingEntropyHash = minConditionalGuessingEntropyHash;
                 }
             }
 
@@ -227,13 +248,18 @@ namespace Microwalk.Analysis.Modules
                 // Sort instructions by leakage in descending order
                 var numberFormat = new NumberFormatInfo { NumberDecimalSeparator = ".", NumberDecimalDigits = 3 };
                 foreach(var instructionData in instructionLeakage.OrderByDescending(l => l.Value.MutualInformation).ThenBy(mi => mi.Key))
-                    await mutualInformationWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: {instructionData.Value.MutualInformation.ToString("N", numberFormat)} bits");
+                    await mutualInformationWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: " +
+                                                                 $"{instructionData.Value.MutualInformation.ToString("N", numberFormat)} bits");
                 foreach(var instructionData in instructionLeakage.OrderByDescending(l => l.Value.MinEntropy).ThenBy(mi => mi.Key))
-                    await minEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: {instructionData.Value.MinEntropy.ToString("N", numberFormat)} bits");
+                    await minEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: " +
+                                                          $"{instructionData.Value.MinEntropy.ToString("N", numberFormat)} bits");
                 foreach(var instructionData in instructionLeakage.OrderBy(l => l.Value.ConditionalGuessingEntropy).ThenBy(mi => mi.Key))
-                    await condGuessEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: {instructionData.Value.ConditionalGuessingEntropy.ToString("N", numberFormat)} guesses");
+                    await condGuessEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: " +
+                                                                $"{instructionData.Value.ConditionalGuessingEntropy.ToString("N", numberFormat)} guesses");
                 foreach(var instructionData in instructionLeakage.OrderBy(l => l.Value.MinConditionalGuessingEntropy).ThenBy(mi => mi.Key))
-                    await minCondGuessEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: {instructionData.Value.MinConditionalGuessingEntropy.ToString("N", numberFormat)} guesses");
+                    await minCondGuessEntropyWriter.WriteLineAsync($"Instruction {_formattedInstructions[instructionData.Key]}: " +
+                                                                   $"{instructionData.Value.MinConditionalGuessingEntropy.ToString("N", numberFormat)} guesses " +
+                                                                   $"[{string.Concat(instructionData.Value.MinConditionalGuessingEntropyHash.Select(b => b.ToString("X2")))}]");
             }
             else if(_outputFormat == OutputFormat.Csv)
             {
@@ -250,7 +276,9 @@ namespace Microwalk.Analysis.Modules
                                                listSeparator +
                                                "Conditional Guessing Entropy" +
                                                listSeparator +
-                                               "Minimum Conditional Guessing Entropy");
+                                               "Minimum Conditional Guessing Entropy" +
+                                               listSeparator +
+                                               "Minimum Conditional Guessing Entropy Hash");
 
                 // Write leakage data
                 foreach(var instructionData in instructionLeakage)
@@ -264,7 +292,42 @@ namespace Microwalk.Analysis.Modules
                                                    listSeparator +
                                                    leakageData.ConditionalGuessingEntropy.ToString("N3") +
                                                    listSeparator +
-                                                   leakageData.MinConditionalGuessingEntropy.ToString("N3"));
+                                                   leakageData.MinConditionalGuessingEntropy.ToString("N3") +
+                                                   listSeparator +
+                                                   string.Concat(leakageData.MinConditionalGuessingEntropyHash.Select(b => b.ToString("X2"))));
+                }
+            }
+
+            // Write entire state into file?
+            if(_dumpFullData)
+            {
+                // Put everything into one big text file
+                await using var writer = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "trace-hash-dump.txt")));
+
+                // Structure:
+                // instruction1
+                //    hash1: testcaseId1, testcaseId2, ...
+                //    hash2: testcaseId3, ...
+                // instruction2
+                // ...
+                foreach(var instruction in instructions)
+                {
+                    // Instruction name
+                    await writer.WriteLineAsync(_formattedInstructions[instruction.Key]);
+
+                    // Hashes
+                    foreach(var hashCount in instruction.Value.HashCounts)
+                    {
+                        // Write hash and number of hits
+                        await writer.WriteAsync($"  {string.Concat(hashCount.Key.Select(b => b.ToString("X2")))}: [{hashCount.Value}]");
+
+                        // Write testcases yielding this hash
+                        foreach(var testcaseId in instruction.Value.HashTestcases[hashCount.Key])
+                            await writer.WriteAsync($" {testcaseId}");
+
+                        // End line
+                        await writer.WriteLineAsync();
+                    }
                 }
             }
         }
@@ -289,6 +352,9 @@ namespace Microwalk.Analysis.Modules
             string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString();
             if(outputFormat != null && !Enum.TryParse(outputFormat, true, out _outputFormat))
                 throw new ConfigurationException("Invalid output format.");
+
+            // Dump internal data?
+            _dumpFullData = moduleOptions.GetChildNodeWithKey("dump-full-data")?.GetNodeBoolean() ?? false;
         }
 
 
@@ -310,10 +376,16 @@ namespace Microwalk.Analysis.Modules
             public int TestcaseCount { get; set; }
             public Dictionary<byte[], int> HashCounts { get; }
 
+            /// <summary>
+            /// This is only filled and used when a data dump is requested.
+            /// </summary>
+            public Dictionary<byte[], List<int>> HashTestcases { get; set; }
+
             public InstructionData()
             {
                 TestcaseCount = 0;
                 HashCounts = new Dictionary<byte[], int>(new ByteArrayComparer());
+                HashTestcases = new Dictionary<byte[], List<int>>(new ByteArrayComparer());
             }
         }
 
@@ -326,6 +398,7 @@ namespace Microwalk.Analysis.Modules
             public double MinEntropy { get; set; }
             public double ConditionalGuessingEntropy { get; set; }
             public double MinConditionalGuessingEntropy { get; set; }
+            public byte[] MinConditionalGuessingEntropyHash { get; set; }
         }
 
         /// <summary>
