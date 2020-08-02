@@ -338,3 +338,8 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/pin-sdk/
+/PinTracer/obj-intel64/
+/Microwalk/Properties/launchSettings.json
+/tmp/
+/Tools/MapFileConverter/Properties/launchSettings.json
