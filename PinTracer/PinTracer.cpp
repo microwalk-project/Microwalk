@@ -389,8 +389,8 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     {
         // Set entry buffer pointers as null pointers
         std::cerr << "Ignoring thread #" << tid << std::endl;
-        PIN_SetContextReg(ctxt, _nextBufferEntryReg, NULL);
-        PIN_SetContextReg(ctxt, _entryBufferEndReg, NULL);
+        PIN_SetContextReg(ctxt, _nextBufferEntryReg, 0);
+        PIN_SetContextReg(ctxt, _entryBufferEndReg, 0);
     }
 }
 
