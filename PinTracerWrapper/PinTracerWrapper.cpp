@@ -148,7 +148,6 @@ _EXPORT void ReadAndSendStackPointer()
     }
     
     PinNotifyStackPointer(reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_max));
-    printf("%016jx %016jx", reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_max));
 #endif
 }
 
