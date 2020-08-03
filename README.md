@@ -47,6 +47,6 @@ Note that the above run command is needed for testing/debugging only, since `Mic
 
 In order to efficiently generate Pin-based trace data, Microwalk needs a special wrapper executable which interactively loads and executes test cases. The `PinTracerWrapper` project contains a skeleton program with further instructions ("`/*** TODO ***/`").
 
-The wrapper skeleton is written in C++ and needs to be linked against the target library. It is compatible to both Windows and Linux.
+The wrapper skeleton is C++-compatible and needs to be linked against the target library. It works on both Windows and Linux (GCC).
 
 Alternatively, it is also possible to use an own wrapper implementation, as long as it exports the Pin notification functions and correctly handles `stdin`.

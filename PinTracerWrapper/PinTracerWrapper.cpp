@@ -10,36 +10,53 @@ which helps reading the resulting call tree.
 */
 
 /* INCLUDES */
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 
 // OS-specific imports and helper macros
 #if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-#define _EXPORT __declspec(dllexport)
-#define _NOINLINE __declspec(noinline)
+    #define _CRT_SECURE_NO_DEPRECATE
+    
+    #define WIN32_LEAN_AND_MEAN
+    #include <Windows.h>
+    
+    #define _EXPORT __declspec(dllexport)
+    #define _NOINLINE __declspec(noinline)
 #else
+    #ifdef _GNU_SOURCE
+        #undef _GNU_SOURCE
+    #endif
 
+    #define _EXPORT __attribute__((visibility("default")))
+    #define _NOINLINE __attribute__((noinline))
+    
+    #include <sys/resource.h>
 #endif
 
-/*** TODO REFERENCE INVESTIGATED LIBRARY ***/
-#pragma comment(lib, "bcrypt.lib")
-#include <bcrypt.h>
+// *** TODO REFERENCE INVESTIGATED LIBRARY [
+#if defined(_WIN32)
+    #pragma comment(lib, "bcrypt.lib")
+    #include <bcrypt.h>
+#endif
+// ] ***
+
+// Standard includes
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cerrno>
+
 
 /* TYPES */
 
 #if defined(_WIN32)
-// Helper struct to read Thread Information Block.
-struct _TEB
-{
-    NT_TIB tib;
-    // Ignore remainder
-};
+    // Helper struct to read Thread Information Block.
+    struct _TEB
+    {
+        NT_TIB tib;
+        // Ignore remainder
+    };
 #else
-
+    // Empty
 #endif
 
 /* FUNCTIONS */
@@ -48,10 +65,15 @@ struct _TEB
 // This function is called once in the very beginning, to make sure that the target is entirely loaded, and incorporated into the trace prefix.
 _EXPORT _NOINLINE void InitTarget()
 {
-	/*** TODO INSERT THE TARGET INITIALIZATION CODE HERE ***/
+	// *** TODO INSERT THE TARGET INITIALIZATION CODE HERE [
+	
+#if defined(_WIN32)
 	BCRYPT_ALG_HANDLE dummy;
 	BCryptOpenAlgorithmProvider(&dummy, BCRYPT_AES_ALGORITHM, nullptr, 0);
 	BCryptCloseAlgorithmProvider(dummy, 0);
+#endif
+	
+    // ] ***
 }
 
 // Executes the target function.
@@ -59,7 +81,9 @@ _EXPORT _NOINLINE void InitTarget()
 // Do not use global variables, since the fuzzer might reuse the instrumented version of this executable for several different inputs.
 _EXPORT _NOINLINE void RunTarget(FILE* input)
 {
-    /*** TODO INSERT THE LIBRARY CALLING CODE HERE ***/
+    // *** TODO INSERT THE LIBRARY CALLING CODE HERE [
+    
+#if defined(_WIN32)
 	BYTE secret_key[16];
 	if(fread(secret_key, 1, 16, input) != 16)
 		return;
@@ -85,6 +109,9 @@ _EXPORT _NOINLINE void RunTarget(FILE* input)
 	BCryptEncrypt(aesKey, plain, sizeof(plain), nullptr, nullptr, 0, nullptr, 0, &cipherTextSize, 0);
 	BYTE* cipherText = static_cast<BYTE*>(malloc(cipherTextSize));
 	BCryptEncrypt(aesKey, plain, sizeof(plain), nullptr, nullptr, 0, cipherText, cipherTextSize, &data, 0);
+#endif
+	
+    // ] ***
 }
 
 // Pin notification functions.
@@ -104,7 +131,24 @@ _EXPORT void ReadAndSendStackPointer()
     _TEB* threadEnvironmentBlock = NtCurrentTeb();
     PinNotifyStackPointer(reinterpret_cast<uint64_t>(threadEnvironmentBlock->tib.StackLimit), reinterpret_cast<uint64_t>(threadEnvironmentBlock->tib.StackBase));
 #else
-
+    // There does not seem to be a reliable way to get the stack size, so we use an estimation
+    // Compiling with -fno-split-stack may be desired, to avoid surprises during analysis
+    
+    // Take the current stack pointer as base value
+    uintptr_t stackBase;
+    asm("mov %%rsp, %0" : "=r"(stackBase));
+    
+    // Get full stack size
+    struct rlimit stackLimit;
+    if(getrlimit(RLIMIT_STACK, &stackLimit) != 0)
+    {
+        char errBuffer[128];
+        strerror_r(errno, errBuffer, sizeof(errBuffer));
+        fprintf(stderr, "Error reading stack limit: [%d] %s\n", errno, errBuffer);
+    }
+    
+    PinNotifyStackPointer(reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_max));
+    printf("%016jx %016jx", reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_max));
 #endif
 }
 
@@ -128,8 +172,8 @@ extern "C" _EXPORT void TraceFunc()
         // Read command and testcase ID (0 for exit command)
         char command;
         int testcaseId;
-        gets_s(inputBuffer, sizeof(inputBuffer));
-        sscanf_s(inputBuffer, "%c %d", &command, 1, &testcaseId);
+        fgets(inputBuffer, sizeof(inputBuffer), stdin);
+        sscanf(inputBuffer, "%c %d", &command, &testcaseId);
 
         // Exit or process given testcase
         if(command == 'e')
@@ -137,15 +181,21 @@ extern "C" _EXPORT void TraceFunc()
         if(command == 't')
         {
             // Read testcase file name
-            gets_s(inputBuffer, sizeof(inputBuffer));
+            fgets(inputBuffer, sizeof(inputBuffer), stdin);
+            int inputFileNameLength = strlen(inputBuffer);
+            if(inputFileNameLength > 0 && inputBuffer[inputFileNameLength - 1] == '\n')
+                inputBuffer[inputFileNameLength - 1] = '\0';
 
             // Load testcase file and run target function
-            FILE* inputFile;
-            errno_t err = fopen_s(&inputFile, inputBuffer, "rb");
+            FILE* inputFile = fopen(inputBuffer, "rb");
             if(inputFile == nullptr)
             {
-                strerror_s(errBuffer, sizeof(errBuffer), err);
-                fprintf(stderr, "Error opening input file '%s': %s\n", inputBuffer, errBuffer);
+#if defined(_WIN32)
+                strerror_s(errBuffer, sizeof(errBuffer), errno);
+#else
+                strerror_r(errno, errBuffer, sizeof(errBuffer));
+#endif
+                fprintf(stderr, "Error opening input file '%s': [%d] %s\n", inputBuffer, errno, errBuffer);
                 continue;
             }
             PinNotifyTestcaseStart(testcaseId);
