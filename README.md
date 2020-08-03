@@ -2,9 +2,12 @@ Note: Microwalk is currently being reimplemented to achieve better portability (
 
 # Microwalk
 
+Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to identify and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
+
+
 ## Compiling
 
-For Windows, it is recommended to install Visual Studio, as it brings almost all dependencies and compilers, as well as debugging support.
+For Windows, it is recommended to install Visual Studio, as it brings almost all dependencies and compilers, as well as debugging support. The solution can then be built directly in the IDE.
 
 The following guide is for Linux systems and command line builds on Windows.
 
@@ -24,7 +27,7 @@ cd Microwalk
 dotnet run <args>
 ```
 
-The command line arguments `<args>` are documented below.
+The command line arguments `<args>` are documented in Section "[Configuration](#configuration)"
 
 ### Pin tool
 
@@ -50,3 +53,40 @@ In order to efficiently generate Pin-based trace data, Microwalk needs a special
 The wrapper skeleton is C++-compatible and needs to be linked against the target library. It works on both Windows and Linux (GCC).
 
 Alternatively, it is also possible to use an own wrapper implementation, as long as it exports the Pin notification functions and correctly handles `stdin`.
+
+## Running Microwalk
+
+The general steps for analyzing a library with Microwalk are:
+
+1. Copy and adjust the `PinTracerWrapper` program to load the investigated library, and read and execute test case files. It is advised to test the wrapper with a few dummy test cases, and use debug outputs to verify its correctness. Make to sure to remove these debug outputs afterwards, else they may clutter the I/O pipe which Microwalk uses for communication with the dynamic instrumentation framework, and lead to errors.
+
+2. Create a custom test case generator module, or check whether the built-in ones are able to yield the expected input formats. Guidelines for adding custom framework modules can be found in the section "[Creating own framework modules](#creating-own-framework-modules)".
+
+3. Compose a configuration file which describes the steps to be executed by Microwalk.
+
+### Configuration
+
+Microwalk takes a single command line argument, which is the path to a YAML-based configuration file. See [config.md](config.md) for a documentation of the file structure and supported options.
+
+## Creating own framework modules
+
+Follow these steps to create a custom framework module:
+1. Create a new class in the respective `Modules` subfolder, which inherits from `XyzStage` and has a `[FrameworkModule]` attribute. `XyzStage` here corresponds to one of the framework's pipeline stages:
+    - `TestcaseStage` (`TestcaseGeneration` directory): Produces a new testcase on each call.
+    - `TraceStage` (`TraceGeneration` directory): Takes a testcases and generates raw trace data.
+    - `PreprocessorStage` (`TracePreprocessing` directory): Takes raw trace data and preprocesses it.
+    - `AnalysisStage` (`Analysis` directory): Takes preprocessed trace data and updates its internal state for each trace. Yields an analysis result once the finish function is called.
+    
+2. Implement the module logic.
+
+3. Register the module, by calling the `XyzStage.Register<>` function in `Main` ([Program.cs](Microwalk/Program.cs)).
+
+4. Compile Microwalk.
+
+## Contributing
+
+Contributions are appreciated! Feel free to submit issues and pull requests.
+
+## License
+
+The entire system is licensed under the MIT license. For further information refer to the [LICENSE](LICENSE) file.
