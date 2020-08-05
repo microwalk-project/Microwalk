@@ -66,7 +66,7 @@ The general steps for analyzing a library with Microwalk are:
 
 ### Configuration
 
-Microwalk takes a single command line argument, which is the path to a YAML-based configuration file. See [config.md](config.md) for a documentation of the file structure and supported options.
+Microwalk takes a single command line argument, which is the path to a [YAML-based configuration file](docs/config.md).
 
 ## Creating own framework modules
 

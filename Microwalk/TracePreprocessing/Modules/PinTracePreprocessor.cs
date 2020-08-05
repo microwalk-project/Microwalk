@@ -11,7 +11,7 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TracePreprocessing.Modules
 {
-    [FrameworkModule("pin", "Preprocesses trace generated with the Pin tool.")]
+    [FrameworkModule("pin", "Preprocesses traces generated with the Pin tool.")]
     internal class PinTracePreprocessor : PreprocessorStage
     {
         /// <summary>

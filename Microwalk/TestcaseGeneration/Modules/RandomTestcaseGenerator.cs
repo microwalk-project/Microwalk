@@ -10,7 +10,7 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
 {
-    [FrameworkModule("random", "Allows to generate random test cases, that satisfy certain properties.")]
+    [FrameworkModule("random", "Generates random byte arrays of a given length.")]
     internal class RandomTestcaseGenerator : TestcaseStage
     {
         /// <summary>

@@ -44,7 +44,7 @@ namespace Microwalk
         /// <summary>
         /// The minimum log level that is displayed.
         /// </summary>
-        private readonly LogLevel _logLevel = LogLevel.Info;
+        private readonly LogLevel _logLevel = LogLevel.Error;
 
         /// <summary>
         /// Stream writer for the log output file ("null" if unused).
