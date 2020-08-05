@@ -20,7 +20,7 @@ TraceWriter::TraceWriter(std::string filenamePrefix)
     _outputFilenamePrefix = filenamePrefix;
 
     // Open prefix output file
-	std::string filename = static_cast<std::ostringstream&>(std::ostringstream() << filenamePrefix << "prefix.trace").str();
+	std::string filename = filenamePrefix + "prefix.trace";
     OpenOutputFile(filename);
 }
 
@@ -37,7 +37,7 @@ void TraceWriter::InitPrefixMode(const std::string& filenamePrefix)
 
     // Open prefix metadata output file
     _prefixDataFileStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-	std::string prefixDataFilename = static_cast<std::ostringstream&>(std::ostringstream() << filenamePrefix << "prefix_data.txt").str();
+	std::string prefixDataFilename = filenamePrefix + "prefix_data.txt";
     _prefixDataFileStream.open(prefixDataFilename.c_str(), std::ofstream::out | std::ofstream::trunc);
     if(!_prefixDataFileStream)
     {
@@ -87,7 +87,9 @@ void TraceWriter::TestcaseStart(int testcaseId, TraceEntry* nextEntry)
     _testcaseId = testcaseId;
 
     // Open file for writing
-	std::string filename = static_cast<std::ostringstream&>(std::ostringstream() << _outputFilenamePrefix << "t" << std::dec << _testcaseId << ".trace").str();
+    std::stringstream filenameStream;
+    filenameStream << _outputFilenamePrefix << "t" << std::dec << _testcaseId << ".trace";
+	std::string filename = filenameStream.str();
     OpenOutputFile(filename);
     std::cerr << "Switched to testcase #" << std::dec << _testcaseId << std::endl;
 }
@@ -207,7 +209,6 @@ TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sou
     ADDRINT retAddress;
     PIN_GetContextRegval(contextAfterRet, REG_INST_PTR, reinterpret_cast<UINT8*>(&retAddress));
     return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, 4);
-    return ++nextEntry;
 }
 
 TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax)

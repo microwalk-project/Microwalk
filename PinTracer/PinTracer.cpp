@@ -24,7 +24,7 @@ KNOB<int> KnobCpuFeatureLevel(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "specify
 
 // Constant random number generator value.
 // Magic default value is 0xBADBADBADBADBAD (Pin does not provide an API to check whether parameter is actually in the command line).
-KNOB<unsigned long long> KnobFixedRandomNumbers(KNOB_MODE_WRITEONCE, "pintool", "r", "841534158063459245", "set constant output for RDRAND instruction");
+KNOB<UINT64> KnobFixedRandomNumbers(KNOB_MODE_WRITEONCE, "pintool", "r", "841534158063459245", "set constant output for RDRAND instruction");
 
 // The names of interesting images, parsed from the command line option.
 std::vector<std::string> _interestingImages;
@@ -51,7 +51,7 @@ std::vector<ImageData*> _images;
 bool _useFixedRandomNumber = false;
 
 // The fixed random number to be returned after each RDRAND instruction.
-unsigned long long _fixedRandomNumber = 0;
+UINT64 _fixedRandomNumber = 0;
 
 
 /* CALLBACK PROTOTYPES */
@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
     SetEmulatedCpu(KnobCpuFeatureLevel.Value());
 
     // Check if constant random numbers are desired
-    if(KnobFixedRandomNumbers.Value() != 0xBADBADBADBADBAD)
+    if(KnobFixedRandomNumbers.Value() != static_cast<UINT64>(0xBADBADBADBADBAD))
     {
         _useFixedRandomNumber = true;
         _fixedRandomNumber = KnobFixedRandomNumbers.Value();

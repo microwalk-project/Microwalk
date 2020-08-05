@@ -9,7 +9,7 @@ Microwalk is a microarchitectural leakage detection framework, which combines dy
 
 For Windows, it is recommended to install Visual Studio, as it brings almost all dependencies and compilers, as well as debugging support. The solution can then be built directly in the IDE.
 
-The following guide is for Linux systems and command line builds on Windows.
+The following guide is mostly for Linux systems and command line builds on Windows.
 
 ### Main application
 
@@ -32,6 +32,8 @@ The command line arguments `<args>` are documented in Section "[Configuration](#
 ### Pin tool
 
 Microwalk comes with a Pin tool for instrumenting and tracing x86 binaries. Building the Pin tool requires the [full Pin kit](https://software.intel.com/content/www/us/en/develop/articles/pin-a-binary-instrumentation-tool-downloads.html), preferably the latest version. It is assumed that Pin's directory path is contained in the variable `$pinDir`.
+
+**When building through Visual Studio**: Edit [Settings.props](PinTracer/Settings.props) to point to the Pin directory.
 
 Compile command:
 ```
