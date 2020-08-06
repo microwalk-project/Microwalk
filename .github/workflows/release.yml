@@ -1,0 +1,69 @@
+name: Build & Push Libraries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-microwalk:
+    runs-on: ubuntu-latest
+    steps:
+      # Create release
+      - uses: actions/checkout@v2
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+      
+      # Build Microwalk
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.101
+      - name: Install dependencies
+        run: |
+          cd Microwalk
+          dotnet restore
+      - name: Build & Pack
+        run: |
+          cd Microwalk
+          dotnet publish --configuration Release --no-restore --output publish --no-self-contained
+          zip -r Microwalk.zip publish/
+      - name: Upload asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Microwalk/Microwalk.zip
+          asset_name: Microwalk.zip
+          asset_content_type: application/zip
+
+      # Build Pin
+      - uses: actions/checkout@v2
+      - name: Setup Pin SDK
+        run: |
+          wget -O pin.tar.gz http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
+          mkdir -p pin-sdk
+          tar -xf pin.tar.gz -C pin-sdk/ --strip-components=1
+      - name: Compile PinTracer
+        run: |
+          pinDir=`pwd`/pin-sdk
+          cd PinTracer
+          make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
+      - name: Upload asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./PinTracer/obj-intel64/PinTracer.so
+          asset_name: PinTracer.so
+          asset_content_type: application/x-elf

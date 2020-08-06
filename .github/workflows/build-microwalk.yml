@@ -1,4 +1,4 @@
-name: Build
+name: Build Microwalk
 
 on:
   push:
@@ -19,6 +19,10 @@ jobs:
         with:
           dotnet-version: 3.1.101
       - name: Install dependencies
-        run: dotnet restore
+        run: |
+          cd Microwalk
+          dotnet restore
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: |
+          cd Microwalk
+          dotnet build --configuration Release --no-restore

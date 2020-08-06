@@ -1,4 +1,4 @@
-name: Build
+name: Build Pin Tool
 
 on:
   push:
@@ -13,14 +13,14 @@ jobs:
   build-pin-tool:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Pin SDK
-      run: |
-        wget -O pin.tar.gz http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
-        mkdir -p pin-sdk
-        tar -xf pin.tar.gz -C pin-sdk/ --strip-components=1
-    - name: Compile PinTracer
-      run: |
-        pinDir=`pwd`/pin-sdk
-        cd PinTracer
-        make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
+      - uses: actions/checkout@v2
+      - name: Setup Pin SDK
+        run: |
+          wget -O pin.tar.gz http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
+          mkdir -p pin-sdk
+          tar -xf pin.tar.gz -C pin-sdk/ --strip-components=1
+      - name: Compile PinTracer
+        run: |
+          pinDir=`pwd`/pin-sdk
+          cd PinTracer
+          make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
