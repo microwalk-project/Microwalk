@@ -23,4 +23,5 @@ jobs:
         run: |
           pinDir=`pwd`/pin-sdk
           cd PinTracer
+          mkdir -p obj-intel64
           make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
