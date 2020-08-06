@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  push:
+    paths:
+      - 'Microwalk/*'
+  pull_request:
+    paths:
+      - 'Microwalk/*'
+
+jobs:
+  build-microwalk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.101
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
