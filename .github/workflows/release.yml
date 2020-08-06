@@ -35,19 +35,19 @@ jobs:
         run: |
           cd Microwalk
           dotnet publish --configuration Release --no-restore --output publish --no-self-contained
-          zip -r Microwalk.zip publish/
+          cd publish
+          zip -r Microwalk.zip .
       - name: Upload asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Microwalk/Microwalk.zip
+          asset_path: ./Microwalk/publish/Microwalk.zip
           asset_name: Microwalk.zip
           asset_content_type: application/zip
 
       # Build Pin
-      - uses: actions/checkout@v2
       - name: Setup Pin SDK
         run: |
           wget -O pin.tar.gz http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
@@ -57,6 +57,7 @@ jobs:
         run: |
           pinDir=`pwd`/pin-sdk
           cd PinTracer
+          mkdir -p obj-intel64
           make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
       - name: Upload asset
         uses: actions/upload-release-asset@v1
