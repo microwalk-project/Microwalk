@@ -102,6 +102,17 @@ General options:
 
   Default: 1
 
+
+### Module: `load`
+
+Loads existing raw traces from a given directory. This module tries to compute the trace file names from test case IDs, and makes the following assumptions:
+- The testcases are loaded using the `load` module;
+- The trace files have not been renamed, i.e. their names follow the `t<ID>.trace` format.
+
+Options:
+- `input-directory`<br>
+  Input directory containing trace files.
+
 ### Module: `pin`
 
 Generates traces using a Pin tool.
