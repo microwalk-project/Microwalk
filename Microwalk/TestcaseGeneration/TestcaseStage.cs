@@ -25,5 +25,10 @@ namespace Microwalk.TestcaseGeneration
         /// </summary>
         /// <returns></returns>
         public abstract Task<bool> IsDoneAsync();
+
+        /// <summary>
+        /// The testcase stage does not allow parallelism.
+        /// </summary>
+        public sealed override bool SupportsParallelism { get; } = false;
     }
 }

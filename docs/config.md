@@ -66,6 +66,14 @@ Controls the logger.
 
 ## `testcase`
 
+### Module: `load`
+
+Loads existing test case files (`*.testcase`) from a single directory.
+
+Options:
+- `input-directory`<br>
+  Input directory containing test case files.
+
 ### Module: `random`
 
 Generates random byte arrays of a given length and stores them as test cases.

@@ -43,8 +43,6 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// </summary>
         private readonly HashSet<byte[]> _knownTestcases = new HashSet<byte[]>(new ByteArrayComparer());
 
-        public override bool SupportsParallelism => true;
-
         internal override async Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Parse options
@@ -56,7 +54,7 @@ namespace Microwalk.TestcaseGeneration.Modules
             const double warnPercentage = 0.95;
             if(Math.Ceiling(Math.Log2(_testcaseCount)) >= 8 * _testcaseLength * warnPercentage)
                 await Logger.LogWarningAsync("The requested number of test cases is near to the maximum possible number of possible test cases.\n" +
-                                             "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.\n");
+                                             "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.");
 
             // Make sure output directory exists
             if(!_outputDirectory.Exists)

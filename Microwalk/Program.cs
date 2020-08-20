@@ -37,6 +37,7 @@ namespace Microwalk
         {
             // Register modules
             // Testcase generation
+            TestcaseStage.Factory.Register<TestcaseLoader>();
             TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
             // Trace generation
             TraceStage.Factory.Register<PinTraceGenerator>();
