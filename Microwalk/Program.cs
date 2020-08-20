@@ -52,7 +52,7 @@ namespace Microwalk
                     .ContinueWith((t) =>
                     {
                         if(t.IsFaulted)
-                            Console.WriteLine(t.Exception.ToString());
+                            Console.WriteLine(t.Exception?.ToString());
                     })
                     .Wait()
             );
@@ -185,8 +185,10 @@ namespace Microwalk
                             if(!(moduleListNode is YamlSequenceNode moduleListSequenceNode))
                                 throw new ConfigurationException("Module list node does not contain a sequence.");
                             _moduleConfiguration.AnalysesStageModules = new List<AnalysisStage>();
-                            foreach(YamlMappingNode moduleEntryNode in moduleListSequenceNode)
+                            foreach(var yamlNode in moduleListSequenceNode)
                             {
+                                var moduleEntryNode = (YamlMappingNode)yamlNode;
+                                
                                 // There must be a module name node
                                 string moduleName = moduleEntryNode.GetChildNodeWithKey("module").GetNodeString();
 
@@ -275,7 +277,7 @@ namespace Microwalk
                 var testcaseTask = PostTestcases(traceStageBuffer, testcaseTaskCancellationTokenSource.Token)
                     .ContinueWith(async (t) =>
                     {
-                        if(t.IsFaulted && !t.Exception.Flatten().InnerExceptions.Any(e => e is TaskCanceledException))
+                        if(t.IsFaulted && t.Exception != null && !t.Exception.Flatten().InnerExceptions.Any(e => e is TaskCanceledException))
                         {
                             // Log exception
                             await Logger.LogErrorAsync("Testcase generation has stopped due to an unhandled exception:");
@@ -336,7 +338,7 @@ namespace Microwalk
                 // Use logger, if already initialized
                 if(Logger.IsInitialized())
                 {
-                    await Logger.LogErrorAsync("A general error ocurred:");
+                    await Logger.LogErrorAsync("A general error occurred:");
                     await Logger.LogErrorAsync(ex.ToString());
                 }
                 else

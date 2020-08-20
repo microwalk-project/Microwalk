@@ -2,11 +2,9 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;

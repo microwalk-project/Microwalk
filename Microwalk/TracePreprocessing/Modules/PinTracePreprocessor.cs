@@ -71,8 +71,9 @@ namespace Microwalk.TracePreprocessing.Modules
             // First test case?
             if(_firstTestcase)
             {
-                // Read image data 
-                string prefixDataFilePath = Path.Combine(Path.GetDirectoryName(traceEntity.RawTraceFilePath), "prefix_data.txt");
+                // Read image data
+                string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath);
+                string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
                 string[] imageDataLines = await File.ReadAllLinesAsync(prefixDataFilePath);
                 int nextImageFileId = 0;
                 foreach(string line in imageDataLines)
@@ -90,7 +91,7 @@ namespace Microwalk.TracePreprocessing.Modules
                 }
 
                 // Handle trace prefix file
-                string tracePrefixFilePath = Path.Combine(Path.GetDirectoryName(traceEntity.RawTraceFilePath), "prefix.trace");
+                string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
                 _tracePrefix = (TracePrefixFile)PreprocessFile(tracePrefixFilePath, true);
                 _firstTestcase = false;
 
