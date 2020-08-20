@@ -18,8 +18,7 @@ namespace Microwalk.TestcaseGeneration.Modules
         internal override async Task InitAsync(YamlMappingNode moduleOptions)
         {
             // Check input directory
-            var inputDirectory =
-                new DirectoryInfo(moduleOptions.GetChildNodeWithKey("input-directory").GetNodeString());
+            var inputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("input-directory").GetNodeString());
             if(!inputDirectory.Exists)
                 throw new ConfigurationException("Could not find input directory.");
 

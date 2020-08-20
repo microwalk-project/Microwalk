@@ -64,7 +64,8 @@ namespace Microwalk.TracePreprocessing.Modules
         /// </summary>
         private int _tracePrefixLastAllocationId;
 
-        public override bool SupportsParallelism => true;
+        // TODO This can be enabled after resolving a potential race condition with the _firstTestcase variable
+        public override bool SupportsParallelism => false;
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
         {
