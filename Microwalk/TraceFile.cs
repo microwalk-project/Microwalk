@@ -43,6 +43,8 @@ namespace Microwalk
         /// <param name="reader">Binary reader containing the trace data.</param>
         protected TraceFile(FastBinaryReader reader)
         {
+            Allocations = new Dictionary<int, Allocation>();
+
             // Read entries
             int entryCount = reader.ReadInt32();
             List<TraceEntry> entries = new List<TraceEntry>(entryCount);

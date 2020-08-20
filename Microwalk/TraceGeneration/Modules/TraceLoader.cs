@@ -7,11 +7,13 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TraceGeneration.Modules
 {
-    [FrameworkModule("load", "Loads existing trace files.")]
+    [FrameworkModule("load", "Loads existing raw traces from a given directory.")]
     internal class TraceLoader : TraceStage
     {
-        DirectoryInfo _inputDirectory;
         public override bool SupportsParallelism { get; } = false;
+        
+        private DirectoryInfo _inputDirectory;
+        
 
         internal override Task InitAsync(YamlMappingNode moduleOptions)
         {

@@ -9,7 +9,7 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
 {
-    [FrameworkModule("load", "Loads existing testcase files.")]
+    [FrameworkModule("load", "Loads existing testcase files from a given directory.")]
     internal class TestcaseLoader : TestcaseStage
     {
         private Queue<string> _testcaseFileNames;

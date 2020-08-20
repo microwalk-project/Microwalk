@@ -41,8 +41,10 @@ namespace Microwalk
             TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
             // Trace generation
             TraceStage.Factory.Register<TraceLoader>();
+            TraceStage.Factory.Register<Passthrough>();
             TraceStage.Factory.Register<PinTraceGenerator>();
             // Trace preprocessing
+            PreprocessorStage.Factory.Register<PreprocessedTraceLoader>();
             PreprocessorStage.Factory.Register<PinTracePreprocessor>();
             // Analysis
             AnalysisStage.Factory.Register<TraceDumper>();

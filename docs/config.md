@@ -68,7 +68,7 @@ Controls the logger.
 
 ### Module: `load`
 
-Loads existing test case files (`*.testcase`) from a single directory.
+Loads existing test case files (`*.testcase`) from a given directory.
 
 Options:
 - `input-directory`<br>
@@ -112,6 +112,10 @@ Loads existing raw traces from a given directory. This module tries to compute t
 Options:
 - `input-directory`<br>
   Input directory containing trace files.
+
+### Module: `passthrough`
+
+Passes through the test cases without generating traces. This module is designed to be used in conjunction with the preprocessed trace loader, where raw traces are not needed.
 
 ### Module: `pin`
 
@@ -170,6 +174,18 @@ General options:
   Amount of concurrent trace threads. This is only applied when the selected preprocessor module supports parallelism.
 
   Default: 1
+
+### Module: `load`
+
+Loads existing preprocessed traces from a given directory. This module tries to compute the trace file names from test case IDs, and makes the following assumptions:
+- The testcases are loaded using the `load` module;
+- The preprocessed trace files have not been renamed, i.e. their names follow the `t<ID>.trace.preprocessed` format.
+
+Raw traces are ignored, thus it is recommended to use the `passthrough` module for the trace stage.
+
+Options:
+- `input-directory`<br>
+  Input directory containing preprocessed trace files.
 
 ### Module: `pin`
 

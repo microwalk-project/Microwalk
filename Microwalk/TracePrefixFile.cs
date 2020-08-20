@@ -96,6 +96,7 @@ namespace Microwalk
                 writer.Write(EndAddress);
                 writer.Write(Name.Length);
                 writer.Write(Name.ToCharArray());
+                writer.Write(Interesting);
             }
 
             /// <summary>
