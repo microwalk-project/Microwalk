@@ -138,13 +138,9 @@ namespace Microwalk
             string elapsedTimeString = elapsedTime.ToString("hh\\:mm\\:ss");
             string logLevelString = logLevelData.String;
 
-            // Ensure that message is correctly indented
+            // Ensure that message is correctly indented (align with first line)
             int indent = elapsedTimeString.Length + 2 + logLevelString.Length + 2;
-            string indentString = new string(' ', indent);
-            string[] messageLines = message.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            for(int i = 1; i < messageLines.Length; ++i)
-                messageLines[i] = indentString + messageLines[i];
-            string indentedMessage = string.Join(Environment.NewLine, messageLines);
+            string indentedMessage = IndentString(message, indent, 1);
 
             // Wait for I/O to be available
             using(await _lock.LockAsync())
@@ -200,6 +196,24 @@ namespace Microwalk
         {
             // Clean up
             _instance.Dispose();
+        }
+
+        /// <summary>
+        /// Utility function. Indents all lines of the given string by the given amount of spaces.
+        /// </summary>
+        /// <param name="str">String to be indented.</param>
+        /// <param name="indentation">Indentation.</param>
+        /// <param name="skipLines">Optional. Allows to skip the n first lines.</param>
+        /// <returns></returns>
+        public static string IndentString(string str, int indentation, int skipLines = 0)
+        {
+            string indentString = new string(' ', indentation);
+
+            string[] lines = str.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            for(int i = skipLines; i < lines.Length; ++i)
+                lines[i] = indentString + lines[i];
+
+            return string.Join(Environment.NewLine, lines);
         }
 
         /// <summary>

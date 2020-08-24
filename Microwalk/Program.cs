@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -285,7 +287,7 @@ namespace Microwalk
                         {
                             // Log exception
                             await Logger.LogErrorAsync("Testcase generation has stopped due to an unhandled exception:");
-                            await Logger.LogErrorAsync(t.Exception.ToString());
+                            await Logger.LogErrorAsync(FormatException(t.Exception));
                             await Logger.LogWarningAsync("Pipeline execution will be continued with the existing test cases.");
                         }
                     }, testcaseTaskCancellationTokenSource.Token);
@@ -308,7 +310,7 @@ namespace Microwalk
 
                     // Log exception
                     await Logger.LogErrorAsync("An exception occured in the pipeline:");
-                    await Logger.LogErrorAsync(ex.ToString());
+                    await Logger.LogErrorAsync(FormatException(ex));
                     await Logger.LogInfoAsync("Trying to stop gracefully");
                 }
 
@@ -343,12 +345,12 @@ namespace Microwalk
                 if(Logger.IsInitialized())
                 {
                     await Logger.LogErrorAsync("A general error occurred:");
-                    await Logger.LogErrorAsync(ex.ToString());
+                    await Logger.LogErrorAsync(FormatException(ex));
                 }
                 else
                 {
                     Console.WriteLine("A general error occured:");
-                    Console.WriteLine(ex.ToString());
+                    Console.WriteLine(FormatException(ex));
                 }
             }
             finally
@@ -409,6 +411,60 @@ namespace Microwalk
         {
             // Run modules in parallel
             return Task.WhenAll(_moduleConfiguration.AnalysesStageModules.Select(module => module.AddTraceAsync(t)));
+        }
+
+        /// <summary>
+        /// Pretty prints exceptions.
+        /// This function traverses <see cref="AggregateException"/> trees, and only outputs necessary information, to make the output less noisy.
+        /// </summary>
+        /// <param name="ex">Exception object.</param>
+        private static string FormatException(Exception baseException)
+        {
+            // This will hold the formatted exception string
+            StringBuilder exceptionStringBuilder = new StringBuilder();
+
+            // Recursive tree traversal function
+            int currentLevel = -1;
+            const int indentationPerLevel = 4;
+            void TraverseExceptionTree(Exception ex)
+            {
+                ++currentLevel;
+                int indentation = currentLevel * indentationPerLevel;
+
+                // Treat exception types differently
+                if(ex is AggregateException ag)
+                {
+                    // Print exception name (message is irrelevant here)
+                    exceptionStringBuilder.AppendLine(Logger.IndentString($"{ex.GetType().FullName}", indentation));
+
+                    // Traverse children
+                    foreach(var child in ag.InnerExceptions)
+                        TraverseExceptionTree(child);
+                }
+                else if(ex.InnerException != null)
+                {
+                    // Print exception name and message
+                    exceptionStringBuilder.AppendLine(Logger.IndentString($"{ex.GetType().FullName}: {ex.Message}", indentation));
+
+                    // Render child
+                    TraverseExceptionTree(ex.InnerException);
+                }
+                else
+                {
+                    // Print exception name and message
+                    exceptionStringBuilder.AppendLine(Logger.IndentString($"{ex.GetType().FullName}: {ex.Message}", indentation));
+                }
+
+                // Print stack trace, if there is any
+                if(!string.IsNullOrWhiteSpace(ex.StackTrace))
+                    exceptionStringBuilder.AppendLine(Logger.IndentString(ex.StackTrace, indentation));
+
+                --currentLevel;
+            }
+
+            // Log exception
+            TraverseExceptionTree(baseException);
+            return exceptionStringBuilder.ToString();
         }
 
         /// <summary>

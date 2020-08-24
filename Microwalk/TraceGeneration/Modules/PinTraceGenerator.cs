@@ -115,7 +115,7 @@ namespace Microwalk.TraceGeneration.Modules
             }
 
             // Read and log error output of Pin tool (avoids pipe contention leading to I/O hangs)
-            _pinToolProcess.ErrorDataReceived += async (sender, e) => await Logger.LogDebugAsync($"Pin tool stderr: {e.Data}");
+            _pinToolProcess.ErrorDataReceived += async (sender, e) => await Logger.LogDebugAsync($"Pin tool log: {e.Data}");
             _pinToolProcess.BeginErrorReadLine();
         }
 
