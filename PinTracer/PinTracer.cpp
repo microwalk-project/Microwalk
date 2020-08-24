@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
     }
 
     // Initialize prefix mode
-    TraceWriter::InitPrefixMode(KnobOutputFilePrefix.Value());
+    TraceWriter::InitPrefixMode(trim(KnobOutputFilePrefix.Value()));
 
     // Instrument instructions and routines
     IMG_AddInstrumentFunction(InstrumentImage, 0);
@@ -376,7 +376,7 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     if(tid == 0)
     {
         // Create new trace logger for this thread
-        TraceWriter* traceWriter = new TraceWriter(KnobOutputFilePrefix.Value());
+        TraceWriter* traceWriter = new TraceWriter(trim(KnobOutputFilePrefix.Value()));
 
         // Put logger into local storage of this thread
         PIN_SetThreadData(_traceWriterTlsKey, traceWriter, tid);
