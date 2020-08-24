@@ -64,7 +64,7 @@ namespace Microwalk.TraceGeneration.Modules
             var imagesNode = moduleOptions.GetChildNodeWithKey("images");
             if(imagesNode == null || !(imagesNode is YamlSequenceNode imagesListNode))
                 throw new ConfigurationException("No images list specified.");
-            string imagesList = string.Join(';', imagesListNode.Children.Select(c => c.GetNodeString()));
+            string imagesList = string.Join(':', imagesListNode.Children.Select(c => c.GetNodeString()));
 
             // Extract optional configuration values
             string pinPath = moduleOptions.GetChildNodeWithKey("pin-path")?.GetNodeString() ?? "pin";

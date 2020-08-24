@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
     // Split list of interesting images
 	std::stringstream interestingImagesStringStream(KnobInterestingImageList);
 	std::string item;
-    while(std::getline(interestingImagesStringStream, item, ';'))
+    while(std::getline(interestingImagesStringStream, item, ':'))
         if(!item.empty())
         {
             tolower(item);
