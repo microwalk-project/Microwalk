@@ -486,7 +486,7 @@ VOID InstrumentImage(IMG img, VOID* v)
     }
 
     // Find allocation and free functions to log allocation sizes and addresses
-#if !defined(_WIN32)
+#if defined(_WIN32)
     RTN mallocRtn = RTN_FindByName(img, "RtlAllocateHeap");
     if(RTN_Valid(mallocRtn))
     {
