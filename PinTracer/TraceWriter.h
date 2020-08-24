@@ -135,6 +135,7 @@ public:
 
     // Creates a new AllocSizeParameter entry.
     static TraceEntry* InsertAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size);
+    static TraceEntry* InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size);
 
     // Creates a new AllocAddressReturn entry.
     static TraceEntry* InsertAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);

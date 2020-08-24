@@ -169,6 +169,11 @@ TraceEntry* TraceWriter::InsertAllocSizeParameterEntry(TraceEntry* nextEntry, UI
     return ++nextEntry;
 }
 
+TraceEntry* TraceWriter::InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size)
+{
+    return InsertAllocSizeParameterEntry(nextEntry, count * size);
+}
+
 TraceEntry* TraceWriter::InsertAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)

@@ -485,7 +485,8 @@ VOID InstrumentImage(IMG img, VOID* v)
         std::cerr << "    PinNotifyStackPointer() instrumented." << std::endl;
     }
 
-    // Find the malloc() function to log allocation sizes and addresses    
+    // Find allocation and free functions to log allocation sizes and addresses
+#if !defined(_WIN32)
     RTN mallocRtn = RTN_FindByName(img, "RtlAllocateHeap");
     if(RTN_Valid(mallocRtn))
     {
@@ -517,10 +518,9 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(mallocRtn);
 
-        std::cerr << "    malloc() instrumented." << std::endl;
+        std::cerr << "    RtlAllocateHeap() instrumented." << std::endl;
     }
 
-    // Find the free() function to log free addresses    
     RTN freeRtn = RTN_FindByName(img, "RtlFreeHeap");
     if(RTN_Valid(freeRtn))
     {
@@ -539,8 +539,133 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
         RTN_Close(freeRtn);
 
+        std::cerr << "    RtlFreeHeap() instrumented." << std::endl;
+    }
+#else
+    RTN mallocRtn = RTN_FindByName(img, "malloc");
+    if(RTN_Valid(mallocRtn))
+    {
+        // Trace size parameter
+        RTN_Open(mallocRtn);
+        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+
+        // Trace returned address
+        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, REG_RAX,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_Close(mallocRtn);
+
+        std::cerr << "    malloc() instrumented." << std::endl;
+    }
+
+    RTN callocRtn = RTN_FindByName(img, "calloc");
+    if(RTN_Valid(callocRtn))
+    {
+        // Trace size parameter
+        RTN_Open(callocRtn);
+        RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertCallocSizeParameterEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+
+        // Trace returned address
+        RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, REG_RAX,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_Close(callocRtn);
+
+        std::cerr << "    calloc() instrumented." << std::endl;
+    }
+
+    RTN reallocRtn = RTN_FindByName(img, "realloc");
+    if(RTN_Valid(reallocRtn))
+    {
+        // Trace size parameter
+        RTN_Open(reallocRtn);
+        RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+
+        // Trace returned address
+        RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, REG_RAX,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_Close(reallocRtn);
+
+        std::cerr << "    realloc() instrumented." << std::endl;
+    }
+
+    RTN freeRtn = RTN_FindByName(img, "free");
+    if(RTN_Valid(freeRtn))
+    {
+        // Trace address parameter
+        RTN_Open(freeRtn);
+        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertFreeAddressParameterEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_Close(freeRtn);
+
         std::cerr << "    free() instrumented." << std::endl;
     }
+#endif
 }
 
 // Determines whether the given trace entry buffer is full, and stores its contents if neccessary.
