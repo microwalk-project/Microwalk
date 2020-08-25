@@ -565,7 +565,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             // Trace returned address
             RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
-                IARG_REG_VALUE, REG_RAX,
+                IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
                 IARG_END);
             RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
@@ -600,7 +600,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             // Trace returned address
             RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
-                IARG_REG_VALUE, REG_RAX,
+                IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
                 IARG_END);
             RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
@@ -634,7 +634,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             // Trace returned address
             RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
-                IARG_REG_VALUE, REG_RAX,
+                IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
                 IARG_END);
             RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
