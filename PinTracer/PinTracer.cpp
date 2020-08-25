@@ -542,128 +542,132 @@ VOID InstrumentImage(IMG img, VOID* v)
         std::cerr << "    RtlFreeHeap() instrumented." << std::endl;
     }
 #else
-    RTN mallocRtn = RTN_FindByName(img, "malloc");
-    if(RTN_Valid(mallocRtn))
+    // Only instrument allocation methods from libc
+    if(imageName.find("libc.so") != std::string::npos)
     {
-        // Trace size parameter
-        RTN_Open(mallocRtn);
-        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
+        RTN mallocRtn = RTN_FindByName(img, "malloc");
+        if(RTN_Valid(mallocRtn))
+        {
+            // Trace size parameter
+            RTN_Open(mallocRtn);
+            RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
 
-        // Trace returned address
-        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, REG_RAX,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_Close(mallocRtn);
+            // Trace returned address
+            RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, REG_RAX,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_Close(mallocRtn);
 
-        std::cerr << "    malloc() instrumented." << std::endl;
-    }
+            std::cerr << "    malloc() instrumented." << std::endl;
+        }
 
-    RTN callocRtn = RTN_FindByName(img, "calloc");
-    if(RTN_Valid(callocRtn))
-    {
-        // Trace size parameter
-        RTN_Open(callocRtn);
-        RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertCallocSizeParameterEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
+        RTN callocRtn = RTN_FindByName(img, "calloc");
+        if(RTN_Valid(callocRtn))
+        {
+            // Trace size parameter
+            RTN_Open(callocRtn);
+            RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertCallocSizeParameterEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
 
-        // Trace returned address
-        RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, REG_RAX,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_Close(callocRtn);
+            // Trace returned address
+            RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, REG_RAX,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_Close(callocRtn);
 
-        std::cerr << "    calloc() instrumented." << std::endl;
-    }
+            std::cerr << "    calloc() instrumented." << std::endl;
+        }
 
-    RTN reallocRtn = RTN_FindByName(img, "realloc");
-    if(RTN_Valid(reallocRtn))
-    {
-        // Trace size parameter
-        RTN_Open(reallocRtn);
-        RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
+        RTN reallocRtn = RTN_FindByName(img, "realloc");
+        if(RTN_Valid(reallocRtn))
+        {
+            // Trace size parameter
+            RTN_Open(reallocRtn);
+            RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
 
-        // Trace returned address
-        RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, REG_RAX,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_Close(reallocRtn);
+            // Trace returned address
+            RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, REG_RAX,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_Close(reallocRtn);
 
-        std::cerr << "    realloc() instrumented." << std::endl;
-    }
+            std::cerr << "    realloc() instrumented." << std::endl;
+        }
 
-    RTN freeRtn = RTN_FindByName(img, "free");
-    if(RTN_Valid(freeRtn))
-    {
-        // Trace address parameter
-        RTN_Open(freeRtn);
-        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertFreeAddressParameterEntry),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_Close(freeRtn);
+        RTN freeRtn = RTN_FindByName(img, "free");
+        if(RTN_Valid(freeRtn))
+        {
+            // Trace address parameter
+            RTN_Open(freeRtn);
+            RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertFreeAddressParameterEntry),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+                IARG_REG_VALUE, _nextBufferEntryReg,
+                IARG_REG_VALUE, _entryBufferEndReg,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS, _nextBufferEntryReg,
+                IARG_END);
+            RTN_Close(freeRtn);
 
-        std::cerr << "    free() instrumented." << std::endl;
+            std::cerr << "    free() instrumented." << std::endl;
+        }
     }
 #endif
 }
