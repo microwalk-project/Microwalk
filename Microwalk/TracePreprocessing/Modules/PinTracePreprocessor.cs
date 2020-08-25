@@ -458,7 +458,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// One trace entry, as present in the trace files.
         /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
-        private readonly ref struct RawTraceEntry
+        internal readonly ref struct RawTraceEntry
         {
             /// <summary>
             /// The type of this entry.
@@ -497,7 +497,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// <summary>
         /// The different types of trace entries, as used in the raw trace files.
         /// </summary>
-        private enum RawTraceEntryTypes : uint
+        internal enum RawTraceEntryTypes : uint
         {
             /// <summary>
             /// A memory read access.
@@ -539,7 +539,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// Flags assigned to a branch entry in the raw trace.
         /// </summary>
         [Flags]
-        private enum RawTraceBranchEntryFlags : byte
+        internal enum RawTraceBranchEntryFlags : byte
         {
             /// <summary>
             /// Indicates that the branch was taken.

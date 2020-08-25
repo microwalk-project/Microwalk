@@ -10,7 +10,7 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
 {
-    [FrameworkModule("dump", "Provides functionality to dump trace files in a human-readable form.")]
+    [FrameworkModule("dump", "Dumps preprocessed trace files in a human-readable form.")]
     internal class TraceDumper : AnalysisStage
     {
         /// <summary>

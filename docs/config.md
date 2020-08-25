@@ -187,6 +187,14 @@ Options:
 - `input-directory`<br>
   Input directory containing preprocessed trace files.
 
+### Module: `pin-dump`
+
+Dumps raw Pin trace files in a human-readable form. Primarily intended for debugging.
+
+Options:
+- `output-directory`<br>
+  Output directory for trace text files.
+
 ### Module: `pin`
 
 Preprocesses traces generated with the Pin tool.
@@ -220,7 +228,7 @@ General options:
 
 ### Module: `dump`
 
-Provides functionality to dump trace files in a human-readable form.
+Dumps preprocessed trace files in a human-readable form.
 
 Options:
 - `output-directory`<br>
@@ -270,3 +278,7 @@ Options:
     - wrapper.exe.map
     - mylibrary.dll.map
   ```
+
+### Module: `passthrough`
+
+Ignores all passed traces. Primarily intended for debugging.
