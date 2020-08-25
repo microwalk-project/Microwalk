@@ -265,7 +265,7 @@ namespace Microwalk.Analysis.Modules
                 await using var csvWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "memory-access-trace-leakage.csv")));
 
                 // Header
-                string listSeparator = CultureInfo.CurrentCulture.TextInfo.ListSeparator;
+                string listSeparator = ";"; // TextInfo.ListSeparator is unreliable
                 await csvWriter.WriteLineAsync("Instruction" +
                                                listSeparator +
                                                "Mutual Information" +

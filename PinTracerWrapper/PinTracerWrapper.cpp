@@ -126,7 +126,7 @@ extern "C" _EXPORT _NOINLINE int PinNotifyStackPointer(uint64_t spMin, uint64_t 
 // Reads the stack pointer base value and transmits it to Pin.
 _EXPORT void ReadAndSendStackPointer()
 {
-#if defined(_WIN32)
+#if !defined(_WIN32)
     // Read stack pointer
     _TEB* threadEnvironmentBlock = NtCurrentTeb();
     PinNotifyStackPointer(reinterpret_cast<uint64_t>(threadEnvironmentBlock->tib.StackLimit), reinterpret_cast<uint64_t>(threadEnvironmentBlock->tib.StackBase));
@@ -147,7 +147,7 @@ _EXPORT void ReadAndSendStackPointer()
         fprintf(stderr, "Error reading stack limit: [%d] %s\n", errno, errBuffer);
     }
     
-    PinNotifyStackPointer(reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_max));
+    PinNotifyStackPointer(reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_cur));
 #endif
 }
 

@@ -409,7 +409,6 @@ VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
 }
 
 // [Callback] Instruments the memory allocation/deallocation functions.
-// TODO instrument malloc() and free() non Windows-specific
 VOID InstrumentImage(IMG img, VOID* v)
 {
     // Retrieve image name
