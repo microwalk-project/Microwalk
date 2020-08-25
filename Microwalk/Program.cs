@@ -43,14 +43,16 @@ namespace Microwalk
             TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
             // Trace generation
             TraceStage.Factory.Register<TraceLoader>();
-            TraceStage.Factory.Register<Passthrough>();
+            TraceStage.Factory.Register<TraceGeneration.Modules.Passthrough>();
             TraceStage.Factory.Register<PinTraceGenerator>();
             // Trace preprocessing
             PreprocessorStage.Factory.Register<PreprocessedTraceLoader>();
             PreprocessorStage.Factory.Register<PinTracePreprocessor>();
+            PreprocessorStage.Factory.Register<PinTraceDumper>();
             // Analysis
             AnalysisStage.Factory.Register<TraceDumper>();
             AnalysisStage.Factory.Register<MemoryAccessTraceLeakage>();
+            AnalysisStage.Factory.Register<Analysis.Modules.Passthrough>();
 
             // Parse command line and execute framework using these options
             Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
