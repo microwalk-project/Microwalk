@@ -338,8 +338,15 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
-/pin-sdk/
+
+# PinTracer binaries
 /PinTracer/obj-intel64/
-/Microwalk/Properties/launchSettings.json
+
+# Don't track files and directories used for local testing
+/config/*.yaml
+/pin-sdk/
 /tmp/
+
+# Private debugging settings
+/Microwalk/Properties/launchSettings.json
 /Tools/MapFileConverter/Properties/launchSettings.json
