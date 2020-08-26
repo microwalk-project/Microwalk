@@ -9,6 +9,10 @@ Some functions have _EXPORT annotations, even though they are not used externall
 which helps reading the resulting call tree.
 */
 
+// Switch for benchmarking code.
+// Uncommenting this enables a target which is designed to generate large traces, which take a long preprocessing and analysis time.
+#define BENCHMARK
+
 /* INCLUDES */
 
 // OS-specific imports and helper macros
@@ -32,9 +36,13 @@ which helps reading the resulting call tree.
 #endif
 
 // *** TODO REFERENCE INVESTIGATED LIBRARY [
-#if defined(_WIN32)
+#if defined(BENCHMARK)
+
+#elif defined(_WIN32)
     #pragma comment(lib, "bcrypt.lib")
     #include <bcrypt.h>
+#else
+    #include <openssl/evp.h>
 #endif
 // ] ***
 
@@ -67,10 +75,15 @@ _EXPORT _NOINLINE void InitTarget()
 {
 	// *** TODO INSERT THE TARGET INITIALIZATION CODE HERE [
 	
-#if defined(_WIN32)
+    // Simple targets for testing
+#if defined(BENCHMARK)
+
+#elif defined(_WIN32)
 	BCRYPT_ALG_HANDLE dummy;
 	BCryptOpenAlgorithmProvider(&dummy, BCRYPT_AES_ALGORITHM, nullptr, 0);
 	BCryptCloseAlgorithmProvider(dummy, 0);
+#else
+
 #endif
 	
     // ] ***
@@ -83,7 +96,11 @@ _EXPORT _NOINLINE void RunTarget(FILE* input)
 {
     // *** TODO INSERT THE LIBRARY CALLING CODE HERE [
     
-#if defined(_WIN32)
+#if defined(BENCHMARK)
+
+
+
+#elif defined(_WIN32)
 	BYTE secret_key[16];
 	if(fread(secret_key, 1, 16, input) != 16)
 		return;
@@ -109,6 +126,25 @@ _EXPORT _NOINLINE void RunTarget(FILE* input)
 	BCryptEncrypt(aesKey, plain, sizeof(plain), nullptr, nullptr, 0, nullptr, 0, &cipherTextSize, 0);
 	BYTE* cipherText = static_cast<BYTE*>(malloc(cipherTextSize));
 	BCryptEncrypt(aesKey, plain, sizeof(plain), nullptr, nullptr, 0, cipherText, cipherTextSize, &data, 0);
+#else
+    uint8_t secret_key[16];
+    if(fread(secret_key, 1, 16, input) != 16)
+        return;
+
+    uint8_t plain[16];
+    if(fread(plain, 1, 16, input) != 16)
+        return;
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr, secret_key, nullptr);
+
+    uint8_t cipher[16];
+    int len;
+    EVP_EncryptUpdate(ctx, cipher, &len, plain, 16);
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    //BIO_dump_fp(stderr, reinterpret_cast<const char *>(cipher), 16);
 #endif
 	
     // ] ***
