@@ -96,9 +96,16 @@ _EXPORT _NOINLINE void RunTarget(FILE* input)
 {
     // *** TODO INSERT THE LIBRARY CALLING CODE HERE [
     
+    // Simple targets for testing
 #if defined(BENCHMARK)
 
+    uint8_t data[32];
+    if(fread(data, 1, 32, input) != 32)
+        return;
 
+    int* buffer = static_cast<int *>(calloc(256, sizeof(int)));
+    for(int i = 0; i < 1024 * 256; ++i)
+        buffer[data[i % 32]] = i;
 
 #elif defined(_WIN32)
 	BYTE secret_key[16];
