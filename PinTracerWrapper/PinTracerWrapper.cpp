@@ -133,11 +133,11 @@ _EXPORT void ReadAndSendStackPointer()
 #else
     // There does not seem to be a reliable way to get the stack size, so we use an estimation
     // Compiling with -fno-split-stack may be desired, to avoid surprises during analysis
-    
+
     // Take the current stack pointer as base value
     uintptr_t stackBase;
     asm("mov %%rsp, %0" : "=r"(stackBase));
-    
+
     // Get full stack size
     struct rlimit stackLimit;
     if(getrlimit(RLIMIT_STACK, &stackLimit) != 0)
@@ -146,8 +146,10 @@ _EXPORT void ReadAndSendStackPointer()
         strerror_r(errno, errBuffer, sizeof(errBuffer));
         fprintf(stderr, "Error reading stack limit: [%d] %s\n", errno, errBuffer);
     }
-    
-    PinNotifyStackPointer(reinterpret_cast<uint64_t>(stackBase), reinterpret_cast<uint64_t>(stackLimit.rlim_cur));
+
+    uint64_t stackMin = reinterpret_cast<uint64_t>(stackBase) - reinterpret_cast<uint64_t>(stackLimit.rlim_cur);
+    uint64_t stackMax = (reinterpret_cast<uint64_t>(stackBase) + 0x10000) & ~0x10000ull; // Round to next higher multiple of 64 kB (should be safe on x86 systems)
+    PinNotifyStackPointer(stackMin, stackMax);
 #endif
 }
 
