@@ -5,17 +5,18 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// A memory free.
     /// </summary>
-    public class Free : TraceEntry
+    public class Free : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.Free;
+        public TraceEntryTypes EntryType => TraceEntryTypes.Free;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             Id = reader.ReadInt32();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.Free);
             writer.Write(Id);
         }
 

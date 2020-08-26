@@ -1,14 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Microwalk.TraceEntryTypes;
 
 namespace Microwalk
 {
     /// <summary>
-    /// Provides functions to read and write trace files, which mainly consist of a list of <see cref="TraceEntry"/> objects and some associated metadata.
-    /// TODO Allow asynchronous load/save
+    /// Provides functions to read trace files.
     /// </summary>
-    public class TraceFile
+    public class TraceFile : IEnumerable<ITraceEntry>
     {
         /// <summary>
         /// The associated trace prefix.
@@ -16,9 +18,9 @@ namespace Microwalk
         public TracePrefixFile Prefix { get; }
 
         /// <summary>
-        /// The entries stored in this trace file.
+        /// Contains the entry data stored in this trace file.
         /// </summary>
-        public List<TraceEntry> Entries { get; }
+        protected Memory<byte> _buffer;
 
         /// <summary>
         /// The allocations, indexed by their IDs.
@@ -26,63 +28,79 @@ namespace Microwalk
         public Dictionary<int, Allocation> Allocations { get; }
 
         /// <summary>
-        /// Reads trace data.
+        /// Initializes a new trace file from the given byte buffer, using a previously initialized prefix.
         /// </summary>
         /// <param name="prefix">The previously loaded prefix file.</param>
-        /// <param name="reader">Binary reader containing the trace data.</param>
-        public TraceFile(TracePrefixFile prefix, FastBinaryReader reader)
-            : this(reader)
+        /// <param name="buffer">Buffer containing the trace data.</param>
+        /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
+        public TraceFile(TracePrefixFile prefix, Memory<byte> buffer, Dictionary<int, Allocation> allocations = null)
+            : this(allocations)
         {
-            // Set prefix
             Prefix = prefix;
+            _buffer = buffer;
         }
 
         /// <summary>
-        /// Reads trace data.
+        /// Initializes a new empty trace file. Intended for derived types.
         /// </summary>
-        /// <param name="reader">Binary reader containing the trace data.</param>
-        protected TraceFile(FastBinaryReader reader)
+        /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
+        protected TraceFile(Dictionary<int, Allocation> allocations = null)
         {
-            Allocations = new Dictionary<int, Allocation>();
+            Allocations = allocations ?? new Dictionary<int, Allocation>();
+        }
 
-            // Read entries
-            int entryCount = reader.ReadInt32();
-            List<TraceEntry> entries = new List<TraceEntry>(entryCount);
-            for(int i = 0; i < entryCount; ++i)
+        public IEnumerator<ITraceEntry> GetEnumerator() => new TraceFileEnumerator(_buffer);
+        IEnumerator IEnumerable.GetEnumerator() => new TraceFileEnumerator(_buffer);
+    }
+
+    /// <summary>
+    /// Enumerator for the <see cref="TraceFile"/> class.
+    /// </summary>
+    public class TraceFileEnumerator : IEnumerator<ITraceEntry>
+    {
+        private readonly FastBinaryReader _reader;
+
+        public ITraceEntry Current { get; private set; }
+        object IEnumerator.Current => Current;
+
+        public TraceFileEnumerator(Memory<byte> buffer)
+        {
+            _reader = new FastBinaryReader(buffer);
+            Reset();
+        }
+
+        public bool MoveNext()
+        {
+            // Done?
+            if(_reader.Position >= _reader.Buffer.Length)
+                return false;
+
+            // Read type of next trace entry
+            var entryType = (TraceEntryTypes.TraceEntryTypes)_reader.ReadByte();
+
+            // Deserialize trace entry
+            Current = entryType switch
             {
-                var entry = TraceEntry.DeserializeNextEntry(reader);
-                if(entry.EntryType == TraceEntry.TraceEntryTypes.Allocation)
-                    Allocations.Add(((Allocation)entry).Id, (Allocation)entry);
-                entries.Add(entry);
-            }
-
-            Entries = entries;
+                TraceEntryTypes.TraceEntryTypes.Allocation => new Allocation(),
+                TraceEntryTypes.TraceEntryTypes.Branch => new Branch(),
+                TraceEntryTypes.TraceEntryTypes.Free => new Free(),
+                TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess => new HeapMemoryAccess(),
+                TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess => new ImageMemoryAccess(),
+                TraceEntryTypes.TraceEntryTypes.StackMemoryAccess => new StackMemoryAccess(),
+                _ => throw new TraceFormatException("Illegal trace entry type.")
+            };
+            Current.FromReader(_reader);
+            return true;
         }
 
-        /// <summary>
-        /// Creates a new trace file object from the given prefix and trace entries.
-        /// </summary>
-        /// <param name="prefix">The associated prefix file.</param>
-        /// <param name="entries">The trace entries.</param>
-        /// <param name="allocations">The allocations, indexed by their IDs.</param>
-        internal TraceFile(TracePrefixFile prefix, List<TraceEntry> entries, Dictionary<int, Allocation> allocations)
+        public void Reset()
         {
-            // Store arguments
-            Prefix = prefix;
-            Entries = entries;
-            Allocations = allocations;
+            _reader.Position = 0;
         }
 
-        /// <summary>
-        /// Saves the trace file into the given stream.
-        /// </summary>
-        /// <param name="writer">Stream writer.</param>
-        public virtual void Save(BinaryWriter writer)
+        public void Dispose()
         {
-            // Store entries
-            writer.Write(Entries.Count);
-            foreach(var entry in Entries)
-                entry.SerializeEntry(writer);
+            // Nothing to do here
         }
     }
 }

@@ -28,8 +28,8 @@ namespace Microwalk.TracePreprocessing.Modules
                 throw new FileNotFoundException("Could not find preprocessed trace prefix file.", preprocessedPrefixFilePath);
             }
 
-            using var reader = new FastBinaryReader(preprocessedPrefixFilePath);
-            _tracePrefix = new TracePrefixFile(reader);
+            var bytes = await File.ReadAllBytesAsync(preprocessedPrefixFilePath);
+            _tracePrefix = new TracePrefixFile(bytes);
         }
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
@@ -45,8 +45,8 @@ namespace Microwalk.TracePreprocessing.Modules
             traceEntity.PreprocessedTraceFilePath = preprocessedTraceFilePath;
 
             // Load trace
-            using var reader = new FastBinaryReader(preprocessedTraceFilePath);
-            traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, reader);
+            var bytes = await File.ReadAllBytesAsync(preprocessedTraceFilePath);
+            traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, bytes);
         }
     }
 }

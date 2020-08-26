@@ -5,11 +5,11 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// A code branch.
     /// </summary>
-    public class Branch : TraceEntry
+    public class Branch : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.Branch;
+        public TraceEntryTypes EntryType => TraceEntryTypes.Branch;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             SourceImageId = reader.ReadInt32();
             SourceInstructionRelativeAddress = reader.ReadUInt32();
@@ -19,8 +19,9 @@ namespace Microwalk.TraceEntryTypes
             BranchType = (BranchTypes)reader.ReadByte();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.Branch);
             writer.Write(SourceImageId);
             writer.Write(SourceInstructionRelativeAddress);
             writer.Write(DestinationImageId);

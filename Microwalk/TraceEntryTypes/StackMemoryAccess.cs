@@ -5,11 +5,11 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// An access to memory allocated on the stack.
     /// </summary>
-    public class StackMemoryAccess : TraceEntry
+    public class StackMemoryAccess : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.StackMemoryAccess;
+        public TraceEntryTypes EntryType => TraceEntryTypes.StackMemoryAccess;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             IsWrite = reader.ReadBoolean();
             InstructionImageId = reader.ReadInt32();
@@ -17,8 +17,9 @@ namespace Microwalk.TraceEntryTypes
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.StackMemoryAccess);
             writer.Write(IsWrite);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);

@@ -5,19 +5,20 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// A memory allocation.
     /// </summary>
-    public class Allocation : TraceEntry
+    public struct Allocation : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.Allocation;
+        public TraceEntryTypes EntryType => TraceEntryTypes.Allocation;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             Id = reader.ReadInt32();
             Size = reader.ReadUInt32();
             Address = reader.ReadUInt64();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.Allocation);
             writer.Write(Id);
             writer.Write(Size);
             writer.Write(Address);

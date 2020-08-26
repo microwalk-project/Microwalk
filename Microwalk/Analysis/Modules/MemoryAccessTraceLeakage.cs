@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;
 using Microwalk.Utilities;
-using SauceControl.Blake2Fast;
+using Standart.Hash.xxHash;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
@@ -52,17 +52,17 @@ namespace Microwalk.Analysis.Modules
         public override Task AddTraceAsync(TraceEntity traceEntity)
         {
             // Allocate dictionary for mapping instruction addresses to memory access hashes
-            Dictionary<ulong, byte[]> instructionHashes = new Dictionary<ulong, byte[]>();
+            var instructionHashes = new Dictionary<ulong, byte[]>();
 
             // Hash all memory access instructions
-            foreach(var traceEntry in traceEntity.PreprocessedTraceFile.Entries)
+            foreach(var traceEntry in traceEntity.PreprocessedTraceFile)
             {
                 // Extract instruction and memory address IDs (some kind of hash consisting of image ID and relative address)
                 ulong instructionId;
                 ulong memoryAddressId;
                 switch(traceEntry.EntryType)
                 {
-                    case TraceEntry.TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess:
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
                         instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
@@ -74,7 +74,7 @@ namespace Microwalk.Analysis.Modules
                             heapMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntry.TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess:
                     {
                         var imageMemoryAccess = (ImageMemoryAccess)traceEntry;
                         instructionId = ((ulong)imageMemoryAccess.InstructionImageId << 32) | imageMemoryAccess.InstructionRelativeAddress;
@@ -86,7 +86,7 @@ namespace Microwalk.Analysis.Modules
                             imageMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntry.TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.StackMemoryAccess:
                     {
                         var stackMemoryAccess = (StackMemoryAccess)traceEntry;
                         instructionId = ((ulong)stackMemoryAccess.InstructionImageId << 32) | stackMemoryAccess.InstructionRelativeAddress;
@@ -102,16 +102,19 @@ namespace Microwalk.Analysis.Modules
                         continue;
                 }
 
-                // Update hash
+                // Retrieve old hash
                 if(!instructionHashes.TryGetValue(instructionId, out var hash))
                 {
-                    hash = new byte[32];
+                    hash = new byte[16];
                     instructionHashes.Add(instructionId, hash);
                 }
 
-                var hashSpan = hash.AsSpan();
-                BinaryPrimitives.WriteUInt64LittleEndian(hashSpan, memoryAddressId); // Will overwrite first 8 bytes of hash
-                Blake2s.ComputeAndWriteHash(hashSpan, hashSpan);
+                // Update hash:
+                // newHash = hash(oldHash || address)
+                var hashLeft = hash.AsSpan(0);
+                var hashRight = hash.AsSpan(8);
+                BinaryPrimitives.WriteUInt64LittleEndian(hashRight, memoryAddressId);
+                BinaryPrimitives.WriteUInt64LittleEndian(hashLeft, xxHash64.ComputeHash(hash, 16));
             }
 
             // Store instruction hashes

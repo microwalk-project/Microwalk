@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;
@@ -42,7 +43,7 @@ namespace Microwalk.TracePreprocessing.Modules
         /// <summary>
         /// Metadata about loaded images (is also assigned to the prefix file), sorted by image start address.
         /// </summary>
-        private readonly SortedList<ulong, TracePrefixFile.ImageFileInfo> _imageFiles = new SortedList<ulong, TracePrefixFile.ImageFileInfo>();
+        private TracePrefixFile.ImageFileInfo[] _imageFiles;
 
         /// <summary>
         /// The minimum stack pointer value (set when reading the prefix).
@@ -72,11 +73,15 @@ namespace Microwalk.TracePreprocessing.Modules
             // First test case?
             if(_firstTestcase)
             {
-                // Read image data
+                // Paths
                 string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath);
                 string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
+                string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
+
+                // Read image data
                 string[] imageDataLines = await File.ReadAllLinesAsync(prefixDataFilePath);
                 int nextImageFileId = 0;
+                List<TracePrefixFile.ImageFileInfo> imageFiles = new List<TracePrefixFile.ImageFileInfo>();
                 foreach(string line in imageDataLines)
                 {
                     string[] imageData = line.Split('\t');
@@ -88,12 +93,27 @@ namespace Microwalk.TracePreprocessing.Modules
                         EndAddress = ulong.Parse(imageData[3], NumberStyles.HexNumber),
                         Name = Path.GetFileName(imageData[4])
                     };
-                    _imageFiles.Add(imageFile.StartAddress, imageFile);
+                    imageFiles.Add(imageFile);
+                }
+                _imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
+
+                // Prepare writer for serializing trace data
+                Dictionary<int, Allocation> tracePrefixAllocations;
+                using var tracePrefixFileStream = new MemoryStream();
+                using(var tracePrefixFileWriter = new BinaryWriter(tracePrefixFileStream, Encoding.ASCII, true))
+                {
+                    // Write image files
+                    tracePrefixFileWriter.Write(_imageFiles.Length);
+                    foreach(var imageFile in _imageFiles)
+                        imageFile.Store(tracePrefixFileWriter);
+
+                    // Load and parse trace prefix data
+                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out tracePrefixAllocations);
                 }
 
-                // Handle trace prefix file
-                string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
-                _tracePrefix = (TracePrefixFile)PreprocessFile(tracePrefixFilePath, true);
+                // Create trace prefix object
+                var preprocessedTracePrefixData = tracePrefixFileStream.GetBuffer().AsMemory(0, (int)tracePrefixFileStream.Length);
+                _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData, tracePrefixAllocations);
                 _firstTestcase = false;
 
                 // Keep raw trace data?
@@ -108,7 +128,7 @@ namespace Microwalk.TracePreprocessing.Modules
                 {
                     string outputPath = Path.Combine(_outputDirectory.FullName, "prefix.trace.preprocessed");
                     await using var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None));
-                    _tracePrefix.Save(writer);
+                    writer.Write(preprocessedTracePrefixData.Span);
                 }
             }
 
@@ -116,9 +136,16 @@ namespace Microwalk.TracePreprocessing.Modules
             while(_tracePrefix == null)
                 await Task.Delay(10);
 
-            // Preprocess trace
+            // Preprocess trace data
             string rawTraceFilePath = traceEntity.RawTraceFilePath;
-            var preprocessedTraceFile = PreprocessFile(rawTraceFilePath, false);
+            Dictionary<int, Allocation> allocations;
+            using var traceFileStream = new MemoryStream();
+            using(var traceFileWriter = new BinaryWriter(traceFileStream, Encoding.ASCII, true))
+                PreprocessFile(rawTraceFilePath, false, traceFileWriter, out allocations);
+
+            // Create trace file object
+            var preprocessedTraceData = traceFileStream.GetBuffer().AsMemory(0, (int)traceFileStream.Length);
+            var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
 
             // Keep raw trace?
             if(!_keepRawTraces)
@@ -132,7 +159,7 @@ namespace Microwalk.TracePreprocessing.Modules
             {
                 traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory.FullName, Path.GetFileName(rawTraceFilePath) + ".preprocessed");
                 await using var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None));
-                preprocessedTraceFile.Save(writer);
+                writer.Write(preprocessedTraceData.Span);
             }
 
             // Keep trace data in memory for the analysis stages
@@ -144,242 +171,241 @@ namespace Microwalk.TracePreprocessing.Modules
         /// </summary>
         /// <param name="inputFileName">Input file.</param>
         /// <param name="isPrefix">Determines whether the prefix file is handled.</param>
+        /// <param name="traceFileWriter">Binary writer for storing the preprocessed trace data.</param>
+        /// <param name="allocations">Allocation lookup table, indexed by IDs.</param>
         /// <remarks>
-        /// This function as not designed as asynchronous, to allow usage of fast stack allocations (<see cref="Span{T}"/>).
+        /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe TraceFile PreprocessFile(string inputFileName, bool isPrefix)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, BinaryWriter traceFileWriter, out Dictionary<int, Allocation> allocations)
         {
             // Read entire trace file into memory, since these files should not get too big
-            // TODO does reading chunks provide the same performance?
             byte[] inputFile = File.ReadAllBytes(inputFileName);
             int inputFileLength = inputFile.Length;
             int rawTraceEntrySize = Marshal.SizeOf(typeof(RawTraceEntry));
 
-            // TODO: Suffix handling???
+            // TODO: Suffix handling?
 
             // Parse trace entries
-            var traceEntries = new List<TraceEntry>();
             var lastAllocationSizes = new Stack<uint>();
             ulong lastAllocReturnAddress = 0;
             bool encounteredSizeSinceLastAlloc = false;
             var allocationLookup = new SortedList<ulong, Allocation>();
             var allocationData = new List<Allocation>();
             int nextAllocationId = isPrefix ? 0 : _tracePrefixLastAllocationId + 1;
-            fixed(byte* inputFilePtr = inputFile)
-                for(long pos = 0; pos < inputFileLength; pos += rawTraceEntrySize)
+                fixed(byte* inputFilePtr = inputFile)
                 {
-                    // Read entry
-                    RawTraceEntry rawTraceEntry = *(RawTraceEntry*)&inputFilePtr[pos];
-                    switch(rawTraceEntry.Type)
+                    for(long pos = 0; pos < inputFileLength; pos += rawTraceEntrySize)
                     {
-                        case RawTraceEntryTypes.AllocSizeParameter:
+                        // Read entry
+                        RawTraceEntry rawTraceEntry = *(RawTraceEntry*)&inputFilePtr[pos];
+                        switch(rawTraceEntry.Type)
                         {
-                            // Remember size parameter until the address return
-                            lastAllocationSizes.Push((uint)rawTraceEntry.Param1);
-                            encounteredSizeSinceLastAlloc = true;
-
-                            break;
-                        }
-
-                        case RawTraceEntryTypes.AllocAddressReturn:
-                        {
-                            // Catch double returns of the same allocated address (happens for some allocator implementations)
-                            if(rawTraceEntry.Param2 == lastAllocReturnAddress && !encounteredSizeSinceLastAlloc)
+                            case RawTraceEntryTypes.AllocSizeParameter:
                             {
-                                Logger.LogDebugAsync("Skipped double return of allocated address").Wait();
+                                // Remember size parameter until the address return
+                                lastAllocationSizes.Push((uint)rawTraceEntry.Param1);
+                                encounteredSizeSinceLastAlloc = true;
+
                                 break;
                             }
 
-                            // Allocation stack empty?
-                            if(lastAllocationSizes.Count == 0)
+                            case RawTraceEntryTypes.AllocAddressReturn:
                             {
-                                Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty").Wait();
-                                break;
-                            }
-
-                            uint size = lastAllocationSizes.Pop();
-
-                            // Create entry
-                            var entry = new Allocation
-                            {
-                                Id = nextAllocationId++,
-                                Size = size,
-                                Address = rawTraceEntry.Param2
-                            };
-                            traceEntries.Add(entry);
-
-                            // Store allocation information
-                            allocationLookup[entry.Address] = entry;
-                            allocationData.Add(entry);
-
-                            // Update state
-                            lastAllocReturnAddress = entry.Address;
-                            encounteredSizeSinceLastAlloc = false;
-
-                            break;
-                        }
-
-                        case RawTraceEntryTypes.FreeAddressParameter:
-                        {
-                            // Skip nonsense frees
-                            if(rawTraceEntry.Param2 == 0)
-                                break;
-                            if(!allocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
-                            {
-                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any allocation, skipping").Wait();
-                                break;
-                            }
-
-                            // Create entry
-                            var entry = new Free
-                            {
-                                Id = allocationEntry.Id
-                            };
-                            traceEntries.Add(entry);
-
-                            // Remove entry from allocation list
-                            allocationLookup.Remove(allocationEntry.Address);
-
-                            break;
-                        }
-
-                        case RawTraceEntryTypes.StackPointerInfo:
-                        {
-                            // Save stack pointer data
-                            _stackPointerMin = rawTraceEntry.Param1;
-                            _stackPointerMax = rawTraceEntry.Param2;
-
-                            break;
-                        }
-
-                        case RawTraceEntryTypes.Branch when !isPrefix:
-                        {
-                            // Find image of source and destination instruction
-                            var (sourceImageId, sourceImage) = FindImage(rawTraceEntry.Param1);
-                            var (destinationImageId, destinationImage) = FindImage(rawTraceEntry.Param2);
-                            if(sourceImageId < 0 || destinationImageId < 0)
-                            {
-                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
-                                break;
-                            }
-
-                            // Interesting?
-                            if(!sourceImage.Interesting && !destinationImage.Interesting)
-                                break;
-
-                            // Create entry
-                            var flags = (RawTraceBranchEntryFlags)rawTraceEntry.Flag;
-                            var entry = new Branch
-                            {
-                                SourceImageId = sourceImageId,
-                                SourceInstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - sourceImage.StartAddress),
-                                DestinationImageId = destinationImageId,
-                                DestinationInstructionRelativeAddress = (uint)(rawTraceEntry.Param2 - destinationImage.StartAddress),
-                                Taken = flags.HasFlag(RawTraceBranchEntryFlags.Taken)
-                            };
-                            if(flags.HasFlag(RawTraceBranchEntryFlags.Jump))
-                                entry.BranchType = Branch.BranchTypes.Jump;
-                            else if(flags.HasFlag(RawTraceBranchEntryFlags.Call))
-                                entry.BranchType = Branch.BranchTypes.Call;
-                            else if(flags.HasFlag(RawTraceBranchEntryFlags.Return))
-                                entry.BranchType = Branch.BranchTypes.Return;
-                            else
-                            {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
-                                break;
-                            }
-
-                            traceEntries.Add(entry);
-
-                            break;
-                        }
-
-                        case RawTraceEntryTypes.MemoryRead when !isPrefix:
-                        case RawTraceEntryTypes.MemoryWrite when !isPrefix:
-                        {
-                            // Find image of instruction
-                            var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
-                            if(instructionImageId < 0)
-                            {
-                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
-                                break;
-                            }
-
-                            // Interesting?
-                            if(!instructionImage.Interesting)
-                                break;
-
-                            // Resolve access location: Image, stack or heap?
-                            bool isWrite = rawTraceEntry.Type == RawTraceEntryTypes.MemoryWrite;
-                            if(_stackPointerMin <= rawTraceEntry.Param2 && rawTraceEntry.Param2 <= _stackPointerMax)
-                            {
-                                // Stack
-                                var entry = new StackMemoryAccess
+                                // Catch double returns of the same allocated address (happens for some allocator implementations)
+                                if(rawTraceEntry.Param2 == lastAllocReturnAddress && !encounteredSizeSinceLastAlloc)
                                 {
-                                    IsWrite = isWrite,
-                                    InstructionImageId = instructionImageId,
-                                    InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
-                                    MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - _stackPointerMin)
+                                    Logger.LogDebugAsync("Skipped double return of allocated address").Wait();
+                                    break;
+                                }
+
+                                // Allocation stack empty?
+                                if(lastAllocationSizes.Count == 0)
+                                {
+                                    Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty").Wait();
+                                    break;
+                                }
+
+                                uint size = lastAllocationSizes.Pop();
+
+                                // Create entry
+                                var entry = new Allocation
+                                {
+                                    Id = nextAllocationId++,
+                                    Size = size,
+                                    Address = rawTraceEntry.Param2
                                 };
-                                traceEntries.Add(entry);
+                                entry.Store(traceFileWriter);
+
+                                // Store allocation information
+                                allocationLookup[entry.Address] = entry;
+                                allocationData.Add(entry);
+
+                                // Update state
+                                lastAllocReturnAddress = entry.Address;
+                                encounteredSizeSinceLastAlloc = false;
+
+                                break;
                             }
-                            else
+
+                            case RawTraceEntryTypes.FreeAddressParameter:
                             {
-                                // Image
-                                var (accessedImageId, accessedImage) = FindImage(rawTraceEntry.Param2);
-                                if(accessedImageId >= 0)
+                                // Skip nonsense frees
+                                if(rawTraceEntry.Param2 == 0)
+                                    break;
+                                if(!allocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                                 {
-                                    var entry = new ImageMemoryAccess
+                                    Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any allocation, skipping").Wait();
+                                    break;
+                                }
+
+                                // Create entry
+                                var entry = new Free
+                                {
+                                    Id = allocationEntry.Id
+                                };
+                                entry.Store(traceFileWriter);
+
+                                // Remove entry from allocation list
+                                allocationLookup.Remove(allocationEntry.Address);
+
+                                break;
+                            }
+
+                            case RawTraceEntryTypes.StackPointerInfo:
+                            {
+                                // Save stack pointer data
+                                _stackPointerMin = rawTraceEntry.Param1;
+                                _stackPointerMax = rawTraceEntry.Param2;
+
+                                break;
+                            }
+
+                            case RawTraceEntryTypes.Branch when !isPrefix:
+                            {
+                                // Find image of source and destination instruction
+                                var (sourceImageId, sourceImage) = FindImage(rawTraceEntry.Param1);
+                                var (destinationImageId, destinationImage) = FindImage(rawTraceEntry.Param2);
+                                if(sourceImageId < 0 || destinationImageId < 0)
+                                {
+                                    Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
+                                    break;
+                                }
+
+                                // Interesting?
+                                if(!sourceImage.Interesting && !destinationImage.Interesting)
+                                    break;
+
+                                // Create entry
+                                var flags = (RawTraceBranchEntryFlags)rawTraceEntry.Flag;
+                                var entry = new Branch
+                                {
+                                    SourceImageId = sourceImageId,
+                                    SourceInstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - sourceImage.StartAddress),
+                                    DestinationImageId = destinationImageId,
+                                    DestinationInstructionRelativeAddress = (uint)(rawTraceEntry.Param2 - destinationImage.StartAddress),
+                                    Taken = flags.HasFlag(RawTraceBranchEntryFlags.Taken)
+                                };
+                                if(flags.HasFlag(RawTraceBranchEntryFlags.Jump))
+                                    entry.BranchType = Branch.BranchTypes.Jump;
+                                else if(flags.HasFlag(RawTraceBranchEntryFlags.Call))
+                                    entry.BranchType = Branch.BranchTypes.Call;
+                                else if(flags.HasFlag(RawTraceBranchEntryFlags.Return))
+                                    entry.BranchType = Branch.BranchTypes.Return;
+                                else
+                                {
+                                    Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
+                                    break;
+                                }
+
+                                entry.Store(traceFileWriter);
+
+                                break;
+                            }
+
+                            case RawTraceEntryTypes.MemoryRead when !isPrefix:
+                            case RawTraceEntryTypes.MemoryWrite when !isPrefix:
+                            {
+                                // Find image of instruction
+                                var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
+                                if(instructionImageId < 0)
+                                {
+                                    Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
+                                    break;
+                                }
+
+                                // Interesting?
+                                if(!instructionImage.Interesting)
+                                    break;
+
+                                // Resolve access location: Image, stack or heap?
+                                bool isWrite = rawTraceEntry.Type == RawTraceEntryTypes.MemoryWrite;
+                                if(_stackPointerMin <= rawTraceEntry.Param2 && rawTraceEntry.Param2 <= _stackPointerMax)
+                                {
+                                    // Stack
+                                    var entry = new StackMemoryAccess
                                     {
                                         IsWrite = isWrite,
                                         InstructionImageId = instructionImageId,
                                         InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
-                                        MemoryImageId = accessedImageId,
-                                        MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - accessedImage.StartAddress)
+                                        MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - _stackPointerMin)
                                     };
-                                    traceEntries.Add(entry);
+                                    entry.Store(traceFileWriter);
                                 }
                                 else
                                 {
-                                    // Heap
-                                    var (allocationBlockId, allocationBlock) = FindAllocation(allocationLookup, rawTraceEntry.Param2);
-                                    if(allocationBlockId < 0)
-                                        (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixAllocationLookup, rawTraceEntry.Param2);
-                                    if(allocationBlockId < 0)
+                                    // Image
+                                    var (accessedImageId, accessedImage) = FindImage(rawTraceEntry.Param2);
+                                    if(accessedImageId >= 0)
                                     {
-                                        Logger.LogWarningAsync(
-                                                $"Could not resolve target of memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
-                                            .Wait();
-                                        break;
+                                        var entry = new ImageMemoryAccess
+                                        {
+                                            IsWrite = isWrite,
+                                            InstructionImageId = instructionImageId,
+                                            InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
+                                            MemoryImageId = accessedImageId,
+                                            MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - accessedImage.StartAddress)
+                                        };
+                                        entry.Store(traceFileWriter);
                                     }
-
-                                    var entry = new HeapMemoryAccess
+                                    else
                                     {
-                                        IsWrite = isWrite,
-                                        InstructionImageId = instructionImageId,
-                                        InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
-                                        MemoryAllocationBlockId = allocationBlockId,
-                                        MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - allocationBlock.Address)
-                                    };
-                                    traceEntries.Add(entry);
-                                }
-                            }
+                                        // Heap
+                                        var (allocationBlockId, allocationBlock) = FindAllocation(allocationLookup, rawTraceEntry.Param2);
+                                        if(allocationBlockId < 0)
+                                            (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixAllocationLookup, rawTraceEntry.Param2);
+                                        if(allocationBlockId < 0)
+                                        {
+                                            Logger.LogWarningAsync(
+                                                    $"Could not resolve target of memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
+                                                .Wait();
+                                            break;
+                                        }
 
-                            break;
+                                        var entry = new HeapMemoryAccess
+                                        {
+                                            IsWrite = isWrite,
+                                            InstructionImageId = instructionImageId,
+                                            InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
+                                            MemoryAllocationBlockId = allocationBlockId,
+                                            MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - allocationBlock.Address)
+                                        };
+                                        entry.Store(traceFileWriter);
+                                    }
+                                }
+
+                                break;
+                            }
                         }
                     }
-                }
-
+            }
+            
             // Create trace file object
-            var allocationDataDictionary = allocationData.ToDictionary(ad => ad.Id);
+            allocations = allocationData.ToDictionary(ad => ad.Id);
             if(isPrefix)
             {
                 _tracePrefixAllocationLookup = allocationLookup;
-                _tracePrefixLastAllocationId = nextAllocationId - 1;
-                return new TracePrefixFile(traceEntries, _imageFiles.Select(i => i.Value).ToDictionary(i => i.Id), allocationDataDictionary);
+                _tracePrefixLastAllocationId = nextAllocationId - 1; 
             }
-            else
-                return new TraceFile(_tracePrefix, traceEntries, allocationDataDictionary);
         }
 
         /// <summary>
@@ -392,14 +418,14 @@ namespace Microwalk.TracePreprocessing.Modules
             // Find by start address
             // The images are sorted by start address, so the first hit should be the right one - else the correct image does not exist
             // Linearity of search does not matter here, since the image count is expected to be rather small
-            for(int i = _imageFiles.Count - 1; i >= 0; --i)
+            for(int i = _imageFiles.Length - 1; i >= 0; --i)
             {
-                var img = _imageFiles.ElementAt(i);
-                if(img.Key <= address)
+                var img = _imageFiles[i];
+                if(img.StartAddress <= address)
                 {
                     // Check end address
-                    if(img.Value.EndAddress >= address)
-                        return (img.Value.Id, img.Value);
+                    if(img.EndAddress >= address)
+                        return (img.Id, img);
                     return (-1, null);
                 }
             }
@@ -410,29 +436,41 @@ namespace Microwalk.TracePreprocessing.Modules
         /// <summary>
         /// Finds the allocation block that contains the given address and returns its ID, or -1 if the block is not found.
         /// </summary>
-        /// <param name="allocationData">List containing all allocations.</param>
+        /// <param name="allocationLookup">List containing all allocations, sorted by start address in ascending order.</param>
         /// <param name="address">The address to be searched.</param>
         /// <returns></returns>
-        private (int, Allocation) FindAllocation(SortedList<ulong, Allocation> allocationData, ulong address)
+        private (int, Allocation) FindAllocation(SortedList<ulong, Allocation> allocationLookup, ulong address)
         {
-            // Find by start address
-            // Reverse search order:
-            // - The allocation blocks are sorted by start address, so the first hit should be the right one - else the correct image does not exist
-            // - Since free's are not applied to the allocation data list, al
-            // TODO: Might become a bottleneck
-            for(int i = allocationData.Count - 1; i >= 0; --i)
+            // Use binary search to find allocation block with start address <= address
+            var startAddresses = allocationLookup.Keys;
+            int left = 0;
+            int right = startAddresses.Count - 1;
+            int index = -1;
+            bool found = false;
+            while(left <= right)
             {
-                var block = allocationData.ElementAt(i);
-                if(block.Key <= address)
+                index = left + ((right - left) / 2);
+                ulong startAddress = startAddresses[index];
+                if(startAddress == address)
                 {
-                    // Check end address
-                    if((block.Value.Address + block.Value.Size) >= address)
-                        return (block.Value.Id, block.Value);
-                    return (-1, null);
+                    found = true;
+                    break;
                 }
+                else if(startAddress < address)
+                    left = index + 1;
+                else
+                    right = index - 1;
             }
+            if(!found)
+                index = left - 1;
+            if(index < 0)
+                return (-1, default);
 
-            return (-1, null);
+            // Check end address
+            var block = allocationLookup[startAddresses[index]];
+            if(address <= (block.Address + block.Size))
+                return (block.Id, block);
+            return (-1, default);
         }
 
         internal override Task InitAsync(YamlMappingNode moduleOptions)

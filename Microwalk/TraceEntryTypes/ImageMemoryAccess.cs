@@ -5,11 +5,11 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// An access to image file memory (usually .data or .r[o]data sections).
     /// </summary>
-    public class ImageMemoryAccess : TraceEntry
+    public class ImageMemoryAccess : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryAccess;
+        public TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryAccess;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             IsWrite = reader.ReadBoolean();
             InstructionImageId = reader.ReadInt32();
@@ -18,8 +18,9 @@ namespace Microwalk.TraceEntryTypes
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.ImageMemoryAccess);
             writer.Write(IsWrite);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);

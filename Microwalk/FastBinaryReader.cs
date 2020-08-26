@@ -18,7 +18,7 @@ namespace Microwalk
         /// <summary>
         /// The byte buffer this object reads from.
         /// </summary>
-        public byte[] Buffer { get; }
+        public Memory<byte> Buffer { get; }
 
         /// <summary>
         /// Loads the given file into the internal buffer.
@@ -26,8 +26,16 @@ namespace Microwalk
         /// <param name="filename">The file to be loaded.</param>
         public FastBinaryReader(string filename)
         {
-            // Read file
             Buffer = File.ReadAllBytes(filename);
+        }
+
+        /// <summary>
+        /// Creates a new reader for the given byte buffer.
+        /// </summary>
+        /// <param name="buffer">Buffer containing the data to be read.</param>
+        public FastBinaryReader(Memory<byte> buffer)
+        {
+            Buffer = buffer;
         }
 
         /// <summary>
@@ -37,7 +45,7 @@ namespace Microwalk
         public byte ReadByte()
         {
             // Read and increase position
-            return Buffer[Position++];
+            return Buffer.Span[Position++];
         }
 
         /// <summary>
@@ -47,7 +55,7 @@ namespace Microwalk
         public bool ReadBoolean()
         {
             // Read and increase position
-            return Buffer[Position++] != 0;
+            return Buffer.Span[Position++] != 0;
         }
 
         /// <summary>
@@ -58,8 +66,8 @@ namespace Microwalk
         {
             // Read and increase position
             string str;
-            fixed(byte* buf = &Buffer[Position])
-                str = new string((sbyte*)buf, 0, length, Encoding.Default);
+            fixed(byte* buf = &Buffer.Span[Position])
+                str = new string((sbyte*)buf, 0, length, Encoding.ASCII);
             Position += length;
             return str;
         }
@@ -72,7 +80,7 @@ namespace Microwalk
         {
             // Read and increase position
             int val;
-            fixed(byte* buf = &Buffer[Position])
+            fixed(byte* buf = &Buffer.Span[Position])
                 if((Position & 0b11) == 0) // If the alignment is right, direct conversion is possible
                     val = *((int*)buf);
                 else
@@ -99,7 +107,7 @@ namespace Microwalk
         {
             // Read and increase position
             long val;
-            fixed(byte* buf = &Buffer[Position])
+            fixed(byte* buf = &Buffer.Span[Position])
                 if((Position & 0b111) == 0) // If the alignment is right, direct conversion is possible
                     val = *((long*)buf);
                 else

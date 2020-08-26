@@ -5,11 +5,11 @@ namespace Microwalk.TraceEntryTypes
     /// <summary>
     /// An access to memory allocated on the heap.
     /// </summary>
-    public class HeapMemoryAccess : TraceEntry
+    public class HeapMemoryAccess : ITraceEntry
     {
-        public override TraceEntryTypes EntryType => TraceEntryTypes.HeapMemoryAccess;
+        public TraceEntryTypes EntryType => TraceEntryTypes.HeapMemoryAccess;
 
-        protected override void Init(FastBinaryReader reader)
+        public void FromReader(FastBinaryReader reader)
         {
             IsWrite = reader.ReadBoolean();
             InstructionImageId = reader.ReadInt32();
@@ -18,8 +18,9 @@ namespace Microwalk.TraceEntryTypes
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
-        protected override void Store(BinaryWriter writer)
+        public void Store(BinaryWriter writer)
         {
+            writer.Write((byte)TraceEntryTypes.HeapMemoryAccess);
             writer.Write(IsWrite);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);

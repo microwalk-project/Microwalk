@@ -43,33 +43,26 @@ namespace Microwalk.Analysis.Modules
             await using var writer = new StreamWriter(File.Open(outputFilePath, FileMode.Create));
 
             // Compose entry sequence
-            int entryCount;
-            IEnumerable<TraceEntry> entries;
+            IEnumerable<ITraceEntry> entries;
             if(_includePrefix)
-            {
-                entries = traceEntity.PreprocessedTraceFile.Prefix.Entries.Concat(traceEntity.PreprocessedTraceFile.Entries);
-                entryCount = traceEntity.PreprocessedTraceFile.Prefix.Entries.Count + traceEntity.PreprocessedTraceFile.Entries.Count;
-            }
+                entries = traceEntity.PreprocessedTraceFile.Prefix.Concat(traceEntity.PreprocessedTraceFile);
             else
-            {
-                entries = traceEntity.PreprocessedTraceFile.Entries;
-                entryCount = traceEntity.PreprocessedTraceFile.Entries.Count;
-            }
+                entries = traceEntity.PreprocessedTraceFile;
 
             // Run through entries
             Stack<string> callStack = new Stack<string>();
             int callLevel = 0;
-            int entryIndexWidth = (int)Math.Ceiling(Math.Log10(entryCount));
+            const int entryIndexMinWidth = 5; // Prevent too much misalignment
             int i = 0;
             foreach(var entry in entries)
             {
                 // Print entry index and proper identation based on call level
-                await writer.WriteAsync($"[{i.ToString().PadLeft(entryIndexWidth, ' ')}] {new string(' ', 2 * callLevel)}");
+                await writer.WriteAsync($"[{i,entryIndexMinWidth}] {new string(' ', 2 * callLevel)}");
 
                 // Print entry depending on type
                 switch(entry.EntryType)
                 {
-                    case TraceEntry.TraceEntryTypes.Allocation:
+                    case TraceEntryTypes.TraceEntryTypes.Allocation:
                     {
                         // Print entry
                         var allocationEntry = (Allocation)entry;
@@ -79,7 +72,7 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntry.TraceEntryTypes.Free:
+                    case TraceEntryTypes.TraceEntryTypes.Free:
                     {
                         // Find matching allocation data
                         var freeEntry = (Free)entry;
@@ -95,7 +88,7 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntry.TraceEntryTypes.Branch:
+                    case TraceEntryTypes.TraceEntryTypes.Branch:
                     {
                         // Retrieve function names of instructions
                         var branchEntry = (Branch)entry;
@@ -133,7 +126,7 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntry.TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
@@ -157,7 +150,7 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntry.TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.StackMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (StackMemoryAccess)entry;
@@ -173,7 +166,7 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntry.TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (ImageMemoryAccess)entry;

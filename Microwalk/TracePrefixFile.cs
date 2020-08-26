@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Microwalk.TraceEntryTypes;
+using System;
+using System.Collections.Generic;
 using System.IO;
-using Microwalk.TraceEntryTypes;
 
 namespace Microwalk
 {
@@ -15,13 +16,15 @@ namespace Microwalk
         public Dictionary<int, ImageFileInfo> ImageFiles { get; }
 
         /// <summary>
-        /// Loads a trace prefix file.
+        /// Loads a trace prefix file from the given byte buffer.
         /// </summary>
-        /// <param name="reader">Binary reader to read the trace prefix.</param>
-        public TracePrefixFile(FastBinaryReader reader)
-            : base(reader)
+        /// <param name="buffer">Buffer containing the trace data.</param>
+        /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
+        public TracePrefixFile(Memory<byte> buffer, Dictionary<int, Allocation> allocations = null)
+            : base(allocations)
         {
             // Read image file information
+            var reader = new FastBinaryReader(buffer);
             int imageFileCount = reader.ReadInt32();
             ImageFiles = new Dictionary<int, ImageFileInfo>();
             for(int i = 0; i < imageFileCount; ++i)
@@ -29,34 +32,9 @@ namespace Microwalk
                 var imageFile = new ImageFileInfo(reader);
                 ImageFiles.Add(imageFile.Id, imageFile);
             }
-        }
 
-        /// <summary>
-        /// Creates a new trace prefix file object from the given trace entries and image file data.
-        /// </summary>
-        /// <param name="entries">The trace entries.</param>
-        /// <param name="imageFiles">The loaded images, indexed by their IDs.</param>
-        /// <param name="allocations">The allocations, indexed by their IDs.</param>
-        internal TracePrefixFile(List<TraceEntry> entries, Dictionary<int, ImageFileInfo> imageFiles, Dictionary<int, Allocation> allocations)
-            : base(null, entries, allocations)
-        {
-            // Store arguments
-            ImageFiles = imageFiles;
-        }
-
-        /// <summary>
-        /// Saves the trace prefix into the given stream.
-        /// </summary>
-        /// <param name="writer">Stream writer.</param>
-        public override void Save(BinaryWriter writer)
-        {
-            // Write common trace data
-            base.Save(writer);
-
-            // Write image file information
-            writer.Write(ImageFiles.Count);
-            foreach(var imageFile in ImageFiles)
-                imageFile.Value.Store(writer);
+            // Set internal buffer
+            _buffer = buffer.Slice(reader.Position);
         }
 
         /// <summary>
