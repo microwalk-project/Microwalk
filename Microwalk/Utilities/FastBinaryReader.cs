@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace Microwalk
+namespace Microwalk.Utilities
 {
     /// <summary>
     /// Provides functions for fast reading from binary data.

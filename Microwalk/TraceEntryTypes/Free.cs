@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Microwalk.Utilities;
 
 namespace Microwalk.TraceEntryTypes
 {

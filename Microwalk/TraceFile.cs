@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Microwalk.TraceEntryTypes;
+using Microwalk.Utilities;
 
 namespace Microwalk
 {
