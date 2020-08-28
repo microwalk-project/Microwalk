@@ -60,13 +60,15 @@ namespace Microwalk.TestcaseGeneration.Modules
                 Arguments = args,
                 FileName = _commandFilePath,
                 WorkingDirectory = _outputDirectory.FullName,
-                UseShellExecute = true,
-                RedirectStandardInput = false,
-                RedirectStandardOutput = false,
-                RedirectStandardError = false,
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 CreateNoWindow = true
             };
             var process = Process.Start(processStartInfo);
+            await process.StandardOutput.ReadToEndAsync();
+            await process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
             // Create trace entity object
