@@ -41,6 +41,7 @@ namespace Microwalk
             // Testcase generation
             TestcaseStage.Factory.Register<TestcaseLoader>();
             TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
+            TestcaseStage.Factory.Register<ExternalCommand>();
             // Trace generation
             TraceStage.Factory.Register<TraceLoader>();
             TraceStage.Factory.Register<TraceGeneration.Modules.Passthrough>();

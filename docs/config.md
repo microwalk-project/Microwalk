@@ -88,6 +88,35 @@ Options:
 - `output-directory`<br>
   Output directory for generated test cases.
 
+### Module: `command`
+
+Calls an external application to generate test cases.
+The given command is executed for each test case.
+
+The working directory is set to `output-directory`.
+
+Options:
+- `amount`<br>
+  Number of test cases.
+  
+- `output-directory`<br>
+  Output directory for generated test cases.
+
+- `exe`<br>
+  Path/name of the program to be called.
+
+  Example: `openssl`
+
+- `args`<br>
+  Format string for the program argument. The following placeholders are available:
+  - `{0}`: Integer test case ID
+  - `{1}`: Name of the test case file
+  - `{2}`: Full path and name of the test case file
+
+  Example: `genrsa -out {1} 2048`
+  
+  The above examples would yield the following command line:<br>
+  `openssl genrsa -out 0.testcase 2048`
 
 ## `trace`
 
