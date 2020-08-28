@@ -1,6 +1,0 @@
-[submodule "dtl"]
-	path = dtl
-	url = https://github.com/cubicdaiya/dtl.git
-[submodule "WpfPlus"]
-	path = WpfPlus
-	url = https://github.com/MarcusWichelmann/WpfPlus.git
