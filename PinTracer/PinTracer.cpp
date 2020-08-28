@@ -152,13 +152,19 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                 img = i;
                 break;
             }
+        bool interesting;
         if(img == nullptr)
         {
-            // Should not happen
-            std::cerr << "Error: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << std::endl;
-            continue;
+            // Should not happen, since images should have been loaded before they can be instrumented...
+            std::cerr << "Error: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << " (instrumenting as 'interesting')" << std::endl;
+            
+            // If it _does_ happen for some weird reason, we err on the side of caution here, and don't want to lose potential valuable data
+            interesting = true;
         }
-        bool interesting = img->IsInteresting();
+        else
+        {
+            interesting = img->IsInteresting();
+        }
 
         // Run through instructions
         for(INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins))
@@ -176,6 +182,11 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             if(opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
                 continue;
             if(opc == XED_ICLASS_LEA)
+                continue;
+
+            // Ignore TSX instructions
+            // TODO Can these be instrumented meaningfully? Maybe as another branch type?
+            if(opc == XED_ICLASS_XBEGIN || opc == XED_ICLASS_XEND)
                 continue;
 
             // Change CPUID instruction
@@ -216,7 +227,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             }
 
             // Trace branch instructions (conditional and unconditional)
-            if(INS_IsCall(ins))
+            if(INS_IsCall(ins) && INS_IsControlFlow(ins))
             {
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(CheckNextTraceEntryPointerValid),
                     IARG_REG_VALUE, _nextBufferEntryReg,
@@ -241,7 +252,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_END);
                 continue;
             }
-            if(INS_IsBranch(ins))
+            if(INS_IsBranch(ins) && INS_IsControlFlow(ins))
             {
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(CheckNextTraceEntryPointerValid),
                     IARG_REG_VALUE, _nextBufferEntryReg,
@@ -266,7 +277,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_END);
                 continue;
             }
-            if(INS_IsRet(ins))
+            if(INS_IsRet(ins) && INS_IsControlFlow(ins))
             {
                 // ret instructions cannot be instrumented with IPOINT_AFTER, since they do have no fallthrough
                 INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
