@@ -115,8 +115,7 @@ Options:
 
   Example: `genrsa -out {1} 2048`
   
-  The above examples would yield the following command line:<br>
-  `openssl genrsa -out 0.testcase 2048`
+  The above examples would yield the following command line: `openssl genrsa -out 0.testcase 2048`
 
 ## `trace`
 

@@ -89,14 +89,14 @@ namespace Microwalk.TestcaseGeneration.Modules
             _commandFilePath = moduleOptions.GetChildNodeWithKey("exe").GetNodeString();
             _argumentTemplate = moduleOptions.GetChildNodeWithKey("args").GetNodeString();
 
-            // Print example command for debugging
-            await Logger.LogDebugAsync("Loaded command based testcase generator. Example command: \n> "
-                + _commandFilePath + " " + FormatCommand(0, "0.testcase", Path.Combine(_outputDirectory.FullName, "0.testcase")));
-
             // Make sure output directory exists
             _outputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("output-directory").GetNodeString());
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
+
+            // Print example command for debugging
+            await Logger.LogDebugAsync("Loaded command based testcase generator. Example command: \n> "
+                + _commandFilePath + " " + FormatCommand(0, "0.testcase", Path.Combine(_outputDirectory.FullName, "0.testcase")));
         }
     }
 }

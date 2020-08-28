@@ -82,7 +82,7 @@ namespace Microwalk
                     {
                         // Parse log level
                         if(!(optionNode.Value is YamlScalarNode valueNode) || !Enum.TryParse(valueNode.Value, true, out _logLevel))
-                            throw new ConfigurationException($"Invalid value node for \"{keyNode.Value}\"");
+                            throw new ConfigurationException($"Invalid node value for \"{keyNode.Value}\"");
                         break;
                     }
 
@@ -90,7 +90,7 @@ namespace Microwalk
                     {
                         // Parse file name
                         if(!(optionNode.Value is YamlScalarNode valueNode))
-                            throw new ConfigurationException($"Invalid value node for \"{keyNode.Value}\"");
+                            throw new ConfigurationException($"Invalid node value for \"{keyNode.Value}\"");
 
                         // Initialize file stream
                         // Exceptions will be handled by caller
