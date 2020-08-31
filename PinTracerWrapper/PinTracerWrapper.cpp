@@ -70,7 +70,8 @@ which helps reading the resulting call tree.
 /* FUNCTIONS */
 
 // Performs target initialization steps.
-// This function is called once in the very beginning, to make sure that the target is entirely loaded, and incorporated into the trace prefix.
+// This function is called once in the very beginning, to make sure that the target is entirely loaded.
+// The call is included into the trace prefix.
 _EXPORT _NOINLINE void InitTarget()
 {
 	// *** TODO INSERT THE TARGET INITIALIZATION CODE HERE [

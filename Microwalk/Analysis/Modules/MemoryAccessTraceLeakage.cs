@@ -323,8 +323,50 @@ namespace Microwalk.Analysis.Modules
                         await writer.WriteAsync($"  {string.Concat(hashCount.Key.Select(b => b.ToString("X2")))}: [{hashCount.Value}]");
 
                         // Write testcases yielding this hash
+                        // Try to merge consecutive test case IDs: "1 3 4 5 7" -> "1 3-5 7"
+                        int consecutiveStart = -1;
+                        int consecutiveCurrent = -1;
+                        const int consecutiveThreshold = 2;
                         foreach(var testcaseId in instruction.Value.HashTestcases[hashCount.Key])
-                            await writer.WriteAsync($" {testcaseId}");
+                        {
+                            if(consecutiveStart == -1)
+                            {
+                                // Initialize first sequence
+                                consecutiveStart = testcaseId;
+                                consecutiveCurrent = testcaseId;
+                            }
+                            else if(testcaseId == consecutiveCurrent + 1)
+                            {
+                                // We are in a sequence
+                                consecutiveCurrent = testcaseId;
+                                continue;
+                            }
+                            else
+                            {
+                                // We left the previous sequence
+                                // Did it reach the threshold? -> write it in the appropriate format
+                                if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
+                                    await writer.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
+                                else
+                                {
+                                    for(int t = consecutiveStart; t <= consecutiveCurrent; ++t)
+                                        await writer.WriteAsync($" {t}");
+                                }
+
+                                // New sequence
+                                consecutiveStart = testcaseId;
+                                consecutiveCurrent = testcaseId;
+                            }
+                        }
+
+                        // Write remaining test case IDs of last sequence
+                        if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
+                            await writer.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
+                        else
+                        {
+                            for(int t = consecutiveStart; t <= consecutiveCurrent; ++t)
+                                await writer.WriteAsync($" {t}");
+                        }
 
                         // End line
                         await writer.WriteLineAsync();
