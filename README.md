@@ -1,5 +1,3 @@
-Note: Microwalk is currently being reimplemented to achieve better portability (up to now it worked on Windows only). The former (paper) version can be found in the [old/ sub directory](old/).
-
 # Microwalk
 
 Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to identify and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
