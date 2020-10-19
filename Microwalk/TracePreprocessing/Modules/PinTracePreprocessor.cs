@@ -183,8 +183,6 @@ namespace Microwalk.TracePreprocessing.Modules
             int inputFileLength = inputFile.Length;
             int rawTraceEntrySize = Marshal.SizeOf(typeof(RawTraceEntry));
 
-            // TODO: Suffix handling?
-
             // Parse trace entries
             var lastAllocationSizes = new Stack<uint>();
             ulong lastAllocReturnAddress = 0;

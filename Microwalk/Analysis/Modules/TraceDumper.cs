@@ -54,9 +54,10 @@ namespace Microwalk.Analysis.Modules
             int callLevel = 0;
             const int entryIndexMinWidth = 5; // Prevent too much misalignment
             int i = 0;
+            bool firstReturn = !_includePrefix; // Skip return of "trace begin" marker, if there is no prefix -> suppress false warning
             foreach(var entry in entries)
             {
-                // Print entry index and proper identation based on call level
+                // Print entry index and proper indentation based on call level
                 await writer.WriteAsync($"[{i,entryIndexMinWidth}] {new string(' ', 2 * callLevel)}");
 
                 // Print entry depending on type
@@ -102,6 +103,8 @@ namespace Microwalk.Analysis.Modules
                             await writer.WriteLineAsync(line);
                             callStack.Push(line);
                             ++callLevel;
+
+                            firstReturn = false;
                         }
                         else if(branchEntry.BranchType == Branch.BranchTypes.Return)
                         {
@@ -111,12 +114,16 @@ namespace Microwalk.Analysis.Modules
                             --callLevel;
 
                             // Check indentation
-                            if(callLevel < 0)
+                            // Ignore the very first return statement if it is not preceded by a call: This is a part of the "begin" marker of a trace.
+                            // If the prefix is omitted, the preceding "call" is not encountered by this loop.
+                            if(callLevel < 0 && !firstReturn)
                             {
                                 // Just output a warning, this was probably caused by trampoline functions and similar constructions
                                 callLevel = 0;
                                 await Logger.LogWarningAsync($"Encountered return entry {i}, but call stack is empty; indentation might break here.");
                             }
+
+                            firstReturn = false;
                         }
                         else if(branchEntry.BranchType == Branch.BranchTypes.Jump)
                         {
