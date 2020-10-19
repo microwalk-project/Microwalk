@@ -277,7 +277,7 @@ Options:
     - mylibrary.dll.map
   ```
 
-### Module: `memory-access-trace-leakage`
+### Module: `instruction-memory-access-trace-leakage`
 
 Calculates several trace leakage measures for each memory accessing instruction.
 

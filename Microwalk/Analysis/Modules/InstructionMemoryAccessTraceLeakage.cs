@@ -14,8 +14,8 @@ using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
 {
-    [FrameworkModule("memory-access-trace-leakage", "Calculates several trace leakage measures for each memory accessing instruction.")]
-    internal class MemoryAccessTraceLeakage : AnalysisStage
+    [FrameworkModule("instruction-memory-access-trace-leakage", "Calculates several trace leakage measures for each memory accessing instruction.")]
+    internal class InstructionMemoryAccessTraceLeakage : AnalysisStage
     {
         /// <summary>
         /// Maps testcase IDs to lists of instruction hashes (testcase ID => instruction ID => hash).
@@ -46,7 +46,7 @@ namespace Microwalk.Analysis.Modules
         /// MAP file collection for resolving symbol names.
         /// </summary>
         private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
-
+        
         public override bool SupportsParallelism => true;
 
         public override Task AddTraceAsync(TraceEntity traceEntity)
@@ -339,7 +339,6 @@ namespace Microwalk.Analysis.Modules
                             {
                                 // We are in a sequence
                                 consecutiveCurrent = testcaseId;
-                                continue;
                             }
                             else
                             {
@@ -422,7 +421,7 @@ namespace Microwalk.Analysis.Modules
             /// <summary>
             /// This is only filled and used when a data dump is requested.
             /// </summary>
-            public Dictionary<byte[], List<int>> HashTestcases { get; set; }
+            public Dictionary<byte[], List<int>> HashTestcases { get; }
 
             public InstructionData()
             {
