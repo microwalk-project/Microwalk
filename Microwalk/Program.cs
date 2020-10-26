@@ -57,6 +57,7 @@ namespace Microwalk
             // Analysis
             AnalysisStage.Factory.Register<TraceDumper>();
             AnalysisStage.Factory.Register<InstructionMemoryAccessTraceLeakage>();
+            AnalysisStage.Factory.Register<CallStackMemoryAccessTraceLeakage>();
             AnalysisStage.Factory.Register<Analysis.Modules.Passthrough>();
 
             // Parse command line and execute framework using these options
