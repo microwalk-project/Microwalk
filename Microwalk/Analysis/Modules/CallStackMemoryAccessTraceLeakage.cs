@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;
@@ -197,7 +198,7 @@ namespace Microwalk.Analysis.Modules
         {
             // Keep track of call stacks: Call stack ID -> [instruction ID 1, instruction ID 2, ...]
             // Note that the instruction order is reversed: Leaf, ..., Root
-            var callStacks = new Dictionary<ulong, List<ulong>>();
+            var callStacks = new Dictionary<ulong, CallStackData>();
 
             // Instruction data by (call stack ID, instruction ID)
             var instructions = new Dictionary<(ulong, ulong), InstructionData>();
@@ -212,18 +213,29 @@ namespace Microwalk.Analysis.Modules
                 while(pendingCallTreeNodes.TryDequeue(out var currentNode))
                 {
                     // If this call stack is still unknown, store it
-                    if(!callStacks.ContainsKey(currentNode.CallStackId))
+                    if(!callStacks.TryGetValue(currentNode.CallStackId, out var callStackData))
                     {
+                        // Create object
+                        callStackData = new CallStackData
+                        {
+                            InstructionIds = new List<ulong>(),
+                            HitCounts = _dumpFullData ? new Dictionary<int, int>() : null
+                        };
+                        
+                        // Fill call chain info
                         var currentParent = currentNode;
-                        var callStack = new List<ulong>();
                         while(currentParent != null)
                         {
-                            callStack.Add(currentParent.InstructionId);
+                            callStackData.InstructionIds.Add(currentParent.InstructionId);
                             currentParent = currentParent.Parent;
                         }
 
-                        callStacks.Add(currentNode.CallStackId, callStack);
+                        callStacks.Add(currentNode.CallStackId, callStackData);
                     }
+                    
+                    // Remember hit counts?
+                    if(_dumpFullData)
+                        callStackData.HitCounts.Add(testcase.Key, testcase.Value.Hits);
 
                     // Enqueue all children
                     foreach(var childNode in currentNode.Children)
@@ -339,6 +351,7 @@ namespace Microwalk.Analysis.Modules
             // Store results
             await Logger.LogInfoAsync("Call stack memory access trace leakage analysis completed, writing results");
             string FormatCallStackId(ulong callStackId) => "CS-" + callStackId.ToString("X16");
+            string csvListSeparator = ";"; // TextInfo.ListSeparator is unreliable
             if(_outputFormat == OutputFormat.Txt)
             {
                 // Store each measure in an own text file
@@ -370,19 +383,18 @@ namespace Microwalk.Analysis.Modules
                 await using var csvWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "memory-access-trace-leakage.csv")));
 
                 // Header
-                string listSeparator = ";"; // TextInfo.ListSeparator is unreliable
                 await csvWriter.WriteLineAsync("Call Stack ID" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Instruction" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Mutual Information" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Minimum Entropy" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Conditional Guessing Entropy" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Minimum Conditional Guessing Entropy" +
-                                               listSeparator +
+                                               csvListSeparator +
                                                "Minimum Conditional Guessing Entropy Hash");
 
                 // Write leakage data
@@ -390,17 +402,17 @@ namespace Microwalk.Analysis.Modules
                 {
                     var leakageData = instructionData.Value;
                     await csvWriter.WriteLineAsync(FormatCallStackId(instructionData.Key.Item1) +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    _formattedInstructions[instructionData.Key.Item2] +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    leakageData.MutualInformation.ToString("N3") +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    leakageData.MinEntropy.ToString("N3") +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    leakageData.ConditionalGuessingEntropy.ToString("N3") +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    leakageData.MinConditionalGuessingEntropy.ToString("N3") +
-                                                   listSeparator +
+                                                   csvListSeparator +
                                                    "IN-" + string.Concat(leakageData.MinConditionalGuessingEntropyHash.Take(8).Select(b => b.ToString("X2"))));
                 }
             }
@@ -410,18 +422,14 @@ namespace Microwalk.Analysis.Modules
             foreach(var callStack in callStacks)
             {
                 await callStackWriter.WriteAsync($"CS-{callStack.Key:X16}: ");
-                await WriteCallStackAsync(callStackWriter, ((IEnumerable<ulong>)callStack.Value).Reverse());
+                await WriteCallStackAsync(callStackWriter, ((IEnumerable<ulong>)callStack.Value.InstructionIds).Reverse());
                 await callStackWriter.WriteLineAsync();
             }
             
-            // TODO make some use of hit counters?
-
             // Write entire state into file?
             if(_dumpFullData)
             {
-                // Put everything into one big text file
-                await using var fullDataWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "trace-hash-dump.txt")));
-
+                // Write trace hashes
                 // Structure:
                 // callStack1
                 //    instruction1:
@@ -429,24 +437,25 @@ namespace Microwalk.Analysis.Modules
                 //       hash2: testcaseId3, ...
                 //    instruction2
                 // ...
+                await using var traceHashDumpWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "trace-hash-dump.txt")));
                 foreach(var callStack in instructions.GroupBy(ins => ins.Key.Item1))
                 {
                     // Call stack name
-                    await fullDataWriter.WriteAsync($"CS-{callStack.Key:X16}: ");
-                    await WriteCallStackAsync(fullDataWriter, ((IEnumerable<ulong>)callStacks[callStack.Key]).Reverse());
-                    await fullDataWriter.WriteLineAsync();
+                    await traceHashDumpWriter.WriteAsync($"CS-{callStack.Key:X16}: ");
+                    await WriteCallStackAsync(traceHashDumpWriter, ((IEnumerable<ulong>)callStacks[callStack.Key].InstructionIds).Reverse());
+                    await traceHashDumpWriter.WriteLineAsync();
 
                     // Write instructions
                     foreach(var instruction in callStack)
                     {
                         // Instruction name
-                        await fullDataWriter.WriteLineAsync("   " + _formattedInstructions[instruction.Key.Item2]);
+                        await traceHashDumpWriter.WriteLineAsync("   " + _formattedInstructions[instruction.Key.Item2]);
 
                         // Hashes
                         foreach(var hashCount in instruction.Value.HashCounts)
                         {
                             // Write hash and number of hits
-                            await fullDataWriter.WriteAsync($"      IN-{string.Concat(hashCount.Key.Take(8).Select(b => b.ToString("X2")))}: [{hashCount.Value}]");
+                            await traceHashDumpWriter.WriteAsync($"      IN-{string.Concat(hashCount.Key.Take(8).Select(b => b.ToString("X2")))}: [{hashCount.Value}]");
 
                             // Write testcases yielding this hash
                             // Try to merge consecutive test case IDs: "1 3 4 5 7" -> "1 3-5 7"
@@ -471,11 +480,11 @@ namespace Microwalk.Analysis.Modules
                                     // We left the previous sequence
                                     // Did it reach the threshold? -> write it in the appropriate format
                                     if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
-                                        await fullDataWriter.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
+                                        await traceHashDumpWriter.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
                                     else
                                     {
                                         for(int t = consecutiveStart; t <= consecutiveCurrent; ++t)
-                                            await fullDataWriter.WriteAsync($" {t}");
+                                            await traceHashDumpWriter.WriteAsync($" {t}");
                                     }
 
                                     // New sequence
@@ -486,17 +495,37 @@ namespace Microwalk.Analysis.Modules
 
                             // Write remaining test case IDs of last sequence
                             if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
-                                await fullDataWriter.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
+                                await traceHashDumpWriter.WriteAsync($" {consecutiveStart}-{consecutiveCurrent}");
                             else
                             {
                                 for(int t = consecutiveStart; t <= consecutiveCurrent; ++t)
-                                    await fullDataWriter.WriteAsync($" {t}");
+                                    await traceHashDumpWriter.WriteAsync($" {t}");
                             }
 
                             // End line
-                            await fullDataWriter.WriteLineAsync();
+                            await traceHashDumpWriter.WriteLineAsync();
                         }
                     }
+                }
+                
+                // Write call stack hit counts
+                await using var callStackInfoWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stack-hit-counts.csv")));
+                await callStackInfoWriter.WriteAsync("Test Case ID");
+                var callStacksFixedOrder = callStacks.ToList();
+                foreach(var callStack in callStacksFixedOrder)
+                    await callStackInfoWriter.WriteAsync($"{csvListSeparator}CS-{callStack.Key:X16}");
+                await callStackInfoWriter.WriteLineAsync();
+                foreach(var testcase in _testcaseCallTrees.Keys.ToList())
+                {
+                    await callStackInfoWriter.WriteAsync(testcase.ToString());
+                    foreach(var callStack in callStacksFixedOrder)
+                    {
+                        if(callStack.Value.HitCounts.TryGetValue(testcase, out int hits))
+                            await callStackInfoWriter.WriteAsync($"{csvListSeparator}{hits}");
+                        else
+                            await callStackInfoWriter.WriteAsync(csvListSeparator);
+                    }
+                    await callStackInfoWriter.WriteLineAsync();
                 }
             }
         }
@@ -591,6 +620,22 @@ namespace Microwalk.Analysis.Modules
             /// Memory address hashes of read/write instructions. Instruction ID -> hash.
             /// </summary>
             public Dictionary<ulong, byte[]> InstructionHashes { get; set; }
+        }
+
+        /// <summary>
+        /// Utility class to store info about a call stack, merged over all test cases.
+        /// </summary>
+        private class CallStackData
+        {
+            /// <summary>
+            /// Instructions making up the call chain of this call stack, in reverse order: Leaf, ..., Root.
+            /// </summary>
+            public List<ulong> InstructionIds { get; set; }
+            
+            /// <summary>
+            /// Hit counts per test case ID.
+            /// </summary>
+            public Dictionary<int, int> HitCounts { get; set; }
         }
 
         /// <summary>
