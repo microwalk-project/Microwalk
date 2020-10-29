@@ -50,6 +50,7 @@ namespace Microwalk
             TraceStage.Factory.Register<PinTraceGenerator>();
             
             // Trace preprocessing
+            PreprocessorStage.Factory.Register<TracePreprocessing.Modules.Passthrough>();
             PreprocessorStage.Factory.Register<PreprocessedTraceLoader>();
             PreprocessorStage.Factory.Register<PinTracePreprocessor>();
             PreprocessorStage.Factory.Register<PinTraceDumper>();
