@@ -241,6 +241,10 @@ Options:
   
   Default: `false`
 
+### Module: `passthrough`
+
+Passes through the test cases and raw traces without preprocessing. This module should only be used with an empty (`passthrough`) analysis stage, since no preprocessed traces are inserted into the pipeline.
+
 ## `analysis`
 
 General options:
@@ -306,6 +310,17 @@ Options:
     - wrapper.exe.map
     - mylibrary.dll.map
   ```
+
+### Module: `call-stack-memory-access-trace-leakage`
+
+Calculates several trace leakage measures for each memory accessing instruction and call stack.
+
+This module yields more accurate results than the `instruction-memory-access-trace-leakage` module:
+The leakage measures are computed over each unique combination of instruction and call stack, instead of only considering instructions.
+
+Additionally, the `dump-full-data` mode outputs detailed information over the encountered call stacks and their respective hit counts.
+
+Options: *See `instruction-memory-access-trace-leakage` module`
 
 ### Module: `passthrough`
 

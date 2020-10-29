@@ -13,16 +13,16 @@ The following guide is mostly for Linux systems and command line builds on Windo
 
 The main application is based on [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1), so the .NET Core 3.1 SDK is required for compiling.
 
-Compile command:
+Compile command (optional):
 ```
 cd Microwalk
 dotnet build -c Release
 ```
 
-Run command:
+Run command (compiles and executes; suppress compiliation with `--no-build`):
 ```
 cd Microwalk
-dotnet run <args>
+dotnet run -c Release <args>
 ```
 
 The command line arguments `<args>` are documented in Section "[Configuration](#configuration)"
