@@ -38,30 +38,36 @@ namespace Microwalk
         public static void Main(string[] args)
         {
             // Register modules
+            
             // Testcase generation
             TestcaseStage.Factory.Register<TestcaseLoader>();
             TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
             TestcaseStage.Factory.Register<ExternalCommand>();
+            
             // Trace generation
             TraceStage.Factory.Register<TraceLoader>();
             TraceStage.Factory.Register<TraceGeneration.Modules.Passthrough>();
             TraceStage.Factory.Register<PinTraceGenerator>();
+            
             // Trace preprocessing
+            PreprocessorStage.Factory.Register<TracePreprocessing.Modules.Passthrough>();
             PreprocessorStage.Factory.Register<PreprocessedTraceLoader>();
             PreprocessorStage.Factory.Register<PinTracePreprocessor>();
             PreprocessorStage.Factory.Register<PinTraceDumper>();
+            
             // Analysis
             AnalysisStage.Factory.Register<TraceDumper>();
             AnalysisStage.Factory.Register<InstructionMemoryAccessTraceLeakage>();
+            AnalysisStage.Factory.Register<CallStackMemoryAccessTraceLeakage>();
             AnalysisStage.Factory.Register<Analysis.Modules.Passthrough>();
 
             // Parse command line and execute framework using these options
             Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
                 opts => RunAsync(opts)
-                    .ContinueWith((t) =>
+                    .ContinueWith(t =>
                     {
-                        if(t.IsFaulted)
-                            Console.WriteLine(t.Exception?.ToString());
+                        if(t.IsFaulted && t.Exception != null)
+                            Console.WriteLine(t.Exception.ToString());
                     })
                     .Wait()
             );

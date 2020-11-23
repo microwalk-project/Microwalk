@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.Extensions;
 using Microwalk.TraceEntryTypes;
@@ -34,6 +35,11 @@ namespace Microwalk.TracePreprocessing.Modules
         /// Determines whether the next incoming test case is the first one.
         /// </summary>
         private bool _firstTestcase = true;
+        
+        /// <summary>
+        /// Protects the first test case variable.
+        /// </summary>
+        private SemaphoreSlim _firstTestcaseSemaphore= new SemaphoreSlim(1,1);
 
         /// <summary>
         /// Trace prefix data.
@@ -65,76 +71,80 @@ namespace Microwalk.TracePreprocessing.Modules
         /// </summary>
         private int _tracePrefixLastAllocationId;
 
-        // TODO This can be enabled after resolving a potential race condition with the _firstTestcase variable
-        public override bool SupportsParallelism => false;
+        public override bool SupportsParallelism => true;
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
         {
             // First test case?
-            if(_firstTestcase)
+            await _firstTestcaseSemaphore.WaitAsync();
+            try
             {
-                // Paths
-                string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath);
-                string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
-                string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
-
-                // Read image data
-                string[] imageDataLines = await File.ReadAllLinesAsync(prefixDataFilePath);
-                int nextImageFileId = 0;
-                List<TracePrefixFile.ImageFileInfo> imageFiles = new List<TracePrefixFile.ImageFileInfo>();
-                foreach(string line in imageDataLines)
+                if(_firstTestcase)
                 {
-                    string[] imageData = line.Split('\t');
-                    var imageFile = new TracePrefixFile.ImageFileInfo
+                    // Paths
+                    string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath);
+                    string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
+                    string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
+
+                    // Read image data
+                    string[] imageDataLines = await File.ReadAllLinesAsync(prefixDataFilePath);
+                    int nextImageFileId = 0;
+                    List<TracePrefixFile.ImageFileInfo> imageFiles = new List<TracePrefixFile.ImageFileInfo>();
+                    foreach(string line in imageDataLines)
                     {
-                        Id = nextImageFileId++,
-                        Interesting = byte.Parse(imageData[1]) != 0,
-                        StartAddress = ulong.Parse(imageData[2], NumberStyles.HexNumber),
-                        EndAddress = ulong.Parse(imageData[3], NumberStyles.HexNumber),
-                        Name = Path.GetFileName(imageData[4])
-                    };
-                    imageFiles.Add(imageFile);
-                }
-                _imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
+                        string[] imageData = line.Split('\t');
+                        var imageFile = new TracePrefixFile.ImageFileInfo
+                        {
+                            Id = nextImageFileId++,
+                            Interesting = byte.Parse(imageData[1]) != 0,
+                            StartAddress = ulong.Parse(imageData[2], NumberStyles.HexNumber),
+                            EndAddress = ulong.Parse(imageData[3], NumberStyles.HexNumber),
+                            Name = Path.GetFileName(imageData[4])
+                        };
+                        imageFiles.Add(imageFile);
+                    }
 
-                // Prepare writer for serializing trace data
-                Dictionary<int, Allocation> tracePrefixAllocations;
-                using var tracePrefixFileStream = new MemoryStream();
-                using(var tracePrefixFileWriter = new BinaryWriter(tracePrefixFileStream, Encoding.ASCII, true))
-                {
-                    // Write image files
-                    tracePrefixFileWriter.Write(_imageFiles.Length);
-                    foreach(var imageFile in _imageFiles)
-                        imageFile.Store(tracePrefixFileWriter);
+                    _imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
 
-                    // Load and parse trace prefix data
-                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out tracePrefixAllocations);
-                }
+                    // Prepare writer for serializing trace data
+                    Dictionary<int, Allocation> tracePrefixAllocations;
+                    using var tracePrefixFileStream = new MemoryStream();
+                    using(var tracePrefixFileWriter = new BinaryWriter(tracePrefixFileStream, Encoding.ASCII, true))
+                    {
+                        // Write image files
+                        tracePrefixFileWriter.Write(_imageFiles.Length);
+                        foreach(var imageFile in _imageFiles)
+                            imageFile.Store(tracePrefixFileWriter);
 
-                // Create trace prefix object
-                var preprocessedTracePrefixData = tracePrefixFileStream.GetBuffer().AsMemory(0, (int)tracePrefixFileStream.Length);
-                _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData, tracePrefixAllocations);
-                _firstTestcase = false;
+                        // Load and parse trace prefix data
+                        PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out tracePrefixAllocations);
+                    }
 
-                // Keep raw trace data?
-                if(!_keepRawTraces)
-                {
-                    File.Delete(prefixDataFilePath);
-                    File.Delete(tracePrefixFilePath);
-                }
+                    // Create trace prefix object
+                    var preprocessedTracePrefixData = tracePrefixFileStream.GetBuffer().AsMemory(0, (int)tracePrefixFileStream.Length);
+                    _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData, tracePrefixAllocations);
+                    _firstTestcase = false;
 
-                // Store to disk?
-                if(_storeTraces)
-                {
-                    string outputPath = Path.Combine(_outputDirectory.FullName, "prefix.trace.preprocessed");
-                    await using var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None));
-                    writer.Write(preprocessedTracePrefixData.Span);
+                    // Keep raw trace data?
+                    if(!_keepRawTraces)
+                    {
+                        File.Delete(prefixDataFilePath);
+                        File.Delete(tracePrefixFilePath);
+                    }
+
+                    // Store to disk?
+                    if(_storeTraces)
+                    {
+                        string outputPath = Path.Combine(_outputDirectory.FullName, "prefix.trace.preprocessed");
+                        await using var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None));
+                        writer.Write(preprocessedTracePrefixData.Span);
+                    }
                 }
             }
-
-            // Wait for trace prefix to be fully created (might happen in different thread)
-            while(_tracePrefix == null)
-                await Task.Delay(10);
+            finally
+            {
+                _firstTestcaseSemaphore.Release();
+            }
 
             // Preprocess trace data
             string rawTraceFilePath = traceEntity.RawTraceFilePath;
