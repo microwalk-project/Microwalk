@@ -11,6 +11,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PinTracerWrapper", "PinTrac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFileConverter", "Tools\MapFileConverter\MapFileConverter.csproj", "{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.FrameworkBase", "Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj", "{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.PinTracer", "Microwalk.Plugins.PinTracer\Microwalk.Plugins.PinTracer.csproj", "{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +73,30 @@ Global
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Release|x64.Build.0 = Release|Any CPU
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Release|x86.ActiveCfg = Release|Any CPU
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Release|x86.Build.0 = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|x64.Build.0 = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Debug|x86.Build.0 = Debug|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|x64.ActiveCfg = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|x64.Build.0 = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|x86.ActiveCfg = Release|Any CPU
+		{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}.Release|x86.Build.0 = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|x64.Build.0 = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Debug|x86.Build.0 = Debug|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x64.ActiveCfg = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x64.Build.0 = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.ActiveCfg = Release|Any CPU
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.Build.0 = Release|Any CPUMicrowalk/TracePreprocessing/Modules/PinTraceDumper.cs
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microwalk.FrameworkBase.Exceptions;
 using Nito.AsyncEx;
 using YamlDotNet.RepresentationModel;
 
@@ -11,18 +12,13 @@ namespace Microwalk
     /// Provides functionality to write log messages to console and file system.
     /// The static logging functions are thread safe.
     /// </summary>
-    internal class Logger : IDisposable
+    internal class Logger : ILogger
     {
-        /// <summary>
-        /// Logger instance.
-        /// </summary>
-        private static Logger _instance;
-
         /// <summary>
         /// Data assigned with each log level.
         /// </summary>
         private static readonly Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background, string String)> _logLevelData =
-            new Dictionary<LogLevel, (ConsoleColor Foreground, ConsoleColor Background, string String)>
+            new()
             {
                 [LogLevel.Debug] = (ConsoleColor.Gray, ConsoleColor.Black, "dbug"),
                 [LogLevel.Info] = (ConsoleColor.Cyan, ConsoleColor.Black, "info"),
@@ -49,18 +45,18 @@ namespace Microwalk
         /// <summary>
         /// Stream writer for the log output file ("null" if unused).
         /// </summary>
-        private readonly StreamWriter _outputFileWriter = null;
+        private readonly StreamWriter? _outputFileWriter = null;
 
         /// <summary>
         /// Lock for coordinated access to the console.
         /// </summary>
-        private readonly AsyncLock _lock = new AsyncLock();
+        private readonly AsyncLock _lock = new();
 
         /// <summary>
         /// Initializes the logger.
         /// </summary>
         /// <param name="loggerOptions">The logger options, as specified in the configuration file.</param>
-        private Logger(YamlMappingNode loggerOptions)
+        internal Logger(YamlMappingNode? loggerOptions)
         {
             // Setup internal state
             _defaultConsoleColor = (Console.ForegroundColor, Console.BackgroundColor);
@@ -94,7 +90,7 @@ namespace Microwalk
 
                         // Initialize file stream
                         // Exceptions will be handled by caller
-                        _outputFileWriter = new StreamWriter(File.Open(valueNode.Value, FileMode.Create, FileAccess.Write, FileShare.Read));
+                        _outputFileWriter = new StreamWriter(File.Open(valueNode.Value!, FileMode.Create, FileAccess.Write, FileShare.Read));
                         break;
                     }
 
@@ -111,7 +107,7 @@ namespace Microwalk
         /// </summary>
         /// <param name="foreground">Foreground color.</param>
         /// <param name="background">Background color.</param>
-        private void SetConsoleColor(ConsoleColor foreground, ConsoleColor background)
+        private static void SetConsoleColor(ConsoleColor foreground, ConsoleColor background)
         {
             Console.ForegroundColor = foreground;
             Console.BackgroundColor = background;
@@ -170,32 +166,7 @@ namespace Microwalk
         public void Dispose()
         {
             // Close file stream
-            _outputFileWriter.Dispose();
-        }
-
-        /// <summary>
-        /// Initializes the logger singleton.
-        /// </summary>
-        /// <param name="loggerOptions">The logger options, as specified in the configuration file.</param>
-        internal static void Initialize(YamlMappingNode loggerOptions)
-        {
-            // Initialize singleton
-            _instance = new Logger(loggerOptions);
-        }
-
-        /// <summary>
-        /// Returns whether the logger has been initialized yet.
-        /// </summary>
-        /// <returns></returns>
-        internal static bool IsInitialized() => _instance != null;
-
-        /// <summary>
-        /// Performs some cleanup, like closing the output file handle.
-        /// </summary>
-        internal static void Deinitialize()
-        {
-            // Clean up
-            _instance.Dispose();
+            _outputFileWriter?.Dispose();
         }
 
         /// <summary>
@@ -207,7 +178,7 @@ namespace Microwalk
         /// <returns></returns>
         public static string IndentString(string str, int indentation, int skipLines = 0)
         {
-            string indentString = new string(' ', indentation);
+            string indentString = new(' ', indentation);
 
             string[] lines = str.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             for(int i = skipLines; i < lines.Length; ++i)
@@ -220,32 +191,32 @@ namespace Microwalk
         /// Logs the given debug message.
         /// </summary>
         /// <param name="message">Message.</param>
-        public static async Task LogDebugAsync(string message) => await _instance.LogAsync(LogLevel.Debug, message);
+        public async Task LogDebugAsync(string message) => await LogAsync(LogLevel.Debug, message);
 
         /// <summary>
         /// Logs the given warning.
         /// </summary>
         /// <param name="message">Message.</param>
-        public static async Task LogWarningAsync(string message) => await _instance.LogAsync(LogLevel.Warning, message);
+        public async Task LogWarningAsync(string message) => await LogAsync(LogLevel.Warning, message);
 
         /// <summary>
         /// Logs the given error.
         /// </summary>
         /// <param name="message">Message.</param>
-        public static async Task LogErrorAsync(string message) => await _instance.LogAsync(LogLevel.Error, message);
+        public async Task LogErrorAsync(string message) => await LogAsync(LogLevel.Error, message);
 
         /// <summary>
         /// Logs the given result.
         /// </summary>
         /// <param name="message">Message.</param>
-        public static async Task LogResultAsync(string message) => await _instance.LogAsync(LogLevel.Result, message);
+        public async Task LogResultAsync(string message) => await LogAsync(LogLevel.Result, message);
 
         /// <summary>
         /// Logs the given info message.
         /// Use this for status messages, which should always be displayed.
         /// </summary>
         /// <param name="message">Message.</param>
-        public static async Task LogInfoAsync(string message) => await _instance.LogAsync(LogLevel.Info, message);
+        public async Task LogInfoAsync(string message) => await LogAsync(LogLevel.Info, message);
     }
 
     /// <summary>

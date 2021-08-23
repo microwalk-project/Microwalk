@@ -6,9 +6,13 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
-using Microwalk.TraceEntryTypes;
-using Microwalk.Utilities;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
+using Microwalk.FrameworkBase.TraceFormat;
+using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
+using Microwalk.FrameworkBase.Utilities;
 using Standart.Hash.xxHash;
 using YamlDotNet.RepresentationModel;
 
@@ -20,17 +24,17 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// Maps testcase IDs to lists of instruction hashes (testcase ID => instruction ID => hash).
         /// </summary>
-        private readonly ConcurrentDictionary<int, Dictionary<ulong, byte[]>> _testcaseInstructionHashes = new ConcurrentDictionary<int, Dictionary<ulong, byte[]>>();
+        private readonly ConcurrentDictionary<int, Dictionary<ulong, byte[]>> _testcaseInstructionHashes = new();
 
         /// <summary>
         /// Maps instruction addresses to formatted instructions.
         /// </summary>
-        private readonly ConcurrentDictionary<ulong, string> _formattedInstructions = new ConcurrentDictionary<ulong, string>();
+        private readonly ConcurrentDictionary<ulong, string> _formattedInstructions = new();
 
         /// <summary>
         /// The output directory for analysis results.
         /// </summary>
-        private DirectoryInfo _outputDirectory;
+        private DirectoryInfo _outputDirectory = null!;
 
         /// <summary>
         /// Output format.
@@ -45,12 +49,16 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// MAP file collection for resolving symbol names.
         /// </summary>
-        private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
-        
+        private MapFileCollection _mapFileCollection = null!;
+
         public override bool SupportsParallelism => true;
 
         public override Task AddTraceAsync(TraceEntity traceEntity)
         {
+            // Input check
+            if(traceEntity.PreprocessedTraceFile == null)
+                throw new Exception("Preprocessed trace is null. Is the preprocessor stage missing?");
+            
             // Allocate dictionary for mapping instruction addresses to memory access hashes
             var instructionHashes = new Dictionary<ulong, byte[]>();
 
@@ -62,7 +70,7 @@ namespace Microwalk.Analysis.Modules
                 ulong memoryAddressId;
                 switch(traceEntry.EntryType)
                 {
-                    case TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.HeapMemoryAccess:
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
                         instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
@@ -70,11 +78,11 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[heapMemoryAccess.InstructionImageId],
-                            heapMemoryAccess.InstructionRelativeAddress);
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[heapMemoryAccess.InstructionImageId],
+                                                  heapMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.ImageMemoryAccess:
                     {
                         var imageMemoryAccess = (ImageMemoryAccess)traceEntry;
                         instructionId = ((ulong)imageMemoryAccess.InstructionImageId << 32) | imageMemoryAccess.InstructionRelativeAddress;
@@ -82,11 +90,11 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[imageMemoryAccess.InstructionImageId],
-                            imageMemoryAccess.InstructionRelativeAddress);
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[imageMemoryAccess.InstructionImageId],
+                                                  imageMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntryTypes.TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.StackMemoryAccess:
                     {
                         var stackMemoryAccess = (StackMemoryAccess)traceEntry;
                         instructionId = ((ulong)stackMemoryAccess.InstructionImageId << 32) | stackMemoryAccess.InstructionRelativeAddress;
@@ -94,8 +102,8 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                            traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[stackMemoryAccess.InstructionImageId],
-                            stackMemoryAccess.InstructionRelativeAddress);
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[stackMemoryAccess.InstructionImageId],
+                                                  stackMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
                     default:
@@ -118,7 +126,7 @@ namespace Microwalk.Analysis.Modules
             }
 
             // Store instruction hashes
-            _testcaseInstructionHashes.AddOrUpdate(traceEntity.Id, instructionHashes, (t, h) => h);
+            _testcaseInstructionHashes.AddOrUpdate(traceEntity.Id, instructionHashes, (_, h) => h);
 
             // Done
             return Task.CompletedTask;
@@ -213,7 +221,7 @@ namespace Microwalk.Analysis.Modules
                     // Find minimum guessing entropy of each trace, weighting is not needed here
                     // Also store the hash value which has the lowest guessing entropy value
                     double minConditionalGuessingEntropy = double.MaxValue;
-                    byte[] minConditionalGuessingEntropyHash = null;
+                    byte[] minConditionalGuessingEntropyHash = Array.Empty<byte>();
                     foreach(var hashCount in instruction.Value.HashCounts)
                     {
                         double traceConditionalGuessingEntropy = (hashCount.Value + 1.0) / 2;
@@ -374,24 +382,23 @@ namespace Microwalk.Analysis.Modules
             }
         }
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Extract output path
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
-            if(outputDirectoryPath == null)
-                throw new ConfigurationException("Missing output directory for analysis results.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory for analysis results.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Load MAP files
+            _mapFileCollection = new MapFileCollection(Logger);
             var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
-            if(mapFilesNode != null && mapFilesNode is YamlSequenceNode mapFileListNode)
+            if(mapFilesNode is YamlSequenceNode mapFileListNode)
                 foreach(var mapFileNode in mapFileListNode.Children)
-                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString());
-
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+       
             // Check output format
-            string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString();
+            string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString() ?? throw new ConfigurationException("Missing output format.");
             if(outputFormat != null && !Enum.TryParse(outputFormat, true, out _outputFormat))
                 throw new ConfigurationException("Invalid output format.");
 
@@ -399,6 +406,10 @@ namespace Microwalk.Analysis.Modules
             _dumpFullData = moduleOptions.GetChildNodeWithKey("dump-full-data")?.GetNodeBoolean() ?? false;
         }
 
+        public override Task UnInitAsync()
+        {
+            return Task.CompletedTask;
+        }
 
         private void StoreFormattedInstruction(ulong instructionKey, TracePrefixFile.ImageFileInfo imageFileInfo, uint instructionAddress)
         {
@@ -440,7 +451,7 @@ namespace Microwalk.Analysis.Modules
             public double MinEntropy { get; set; }
             public double ConditionalGuessingEntropy { get; set; }
             public double MinConditionalGuessingEntropy { get; set; }
-            public byte[] MinConditionalGuessingEntropyHash { get; set; }
+            public byte[] MinConditionalGuessingEntropyHash { get; set; } = null!;
         }
 
         /// <summary>

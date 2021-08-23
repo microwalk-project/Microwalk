@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
-using Microwalk.TraceEntryTypes;
-using Microwalk.Utilities;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
+using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
+using Microwalk.FrameworkBase.Utilities;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
@@ -16,7 +19,7 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// The trace dump output directory.
         /// </summary>
-        private DirectoryInfo _outputDirectory;
+        private DirectoryInfo _outputDirectory = null!;
 
         /// <summary>
         /// Determines whether to include the trace prefix.
@@ -26,12 +29,16 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// MAP file collection for resolving symbol names.
         /// </summary>
-        private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
+        private MapFileCollection _mapFileCollection = null!;
 
         public override bool SupportsParallelism => true;
 
         public override async Task AddTraceAsync(TraceEntity traceEntity)
         {
+            // Input check
+            if(traceEntity.PreprocessedTraceFile == null)
+                throw new Exception("Preprocessed trace is null. Is the preprocessor stage missing?");
+
             // Open output file for writing
             string outputFilePath;
             if(traceEntity.PreprocessedTraceFilePath != null)
@@ -43,14 +50,12 @@ namespace Microwalk.Analysis.Modules
             await using var writer = new StreamWriter(File.Open(outputFilePath, FileMode.Create));
 
             // Compose entry sequence
-            IEnumerable<ITraceEntry> entries;
-            if(_includePrefix)
-                entries = traceEntity.PreprocessedTraceFile.Prefix.Concat(traceEntity.PreprocessedTraceFile);
-            else
-                entries = traceEntity.PreprocessedTraceFile;
+            IEnumerable<ITraceEntry> entries = _includePrefix
+                ? traceEntity.PreprocessedTraceFile.Prefix!.Concat(traceEntity.PreprocessedTraceFile)
+                : traceEntity.PreprocessedTraceFile;
 
             // Run through entries
-            Stack<string> callStack = new Stack<string>();
+            Stack<string> callStack = new();
             int callLevel = 0;
             const int entryIndexMinWidth = 5; // Prevent too much misalignment
             int i = 0;
@@ -63,7 +68,7 @@ namespace Microwalk.Analysis.Modules
                 // Print entry depending on type
                 switch(entry.EntryType)
                 {
-                    case TraceEntryTypes.TraceEntryTypes.Allocation:
+                    case TraceEntryTypes.Allocation:
                     {
                         // Print entry
                         var allocationEntry = (Allocation)entry;
@@ -73,12 +78,12 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.TraceEntryTypes.Free:
+                    case TraceEntryTypes.Free:
                     {
                         // Find matching allocation data
                         var freeEntry = (Free)entry;
                         if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(freeEntry.Id, out Allocation allocationEntry)
-                           && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(freeEntry.Id, out allocationEntry))
+                           && !traceEntity.PreprocessedTraceFile.Prefix!.Allocations.TryGetValue(freeEntry.Id, out allocationEntry))
                             await Logger.LogWarningAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
                         else
                         {
@@ -89,12 +94,14 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.TraceEntryTypes.Branch:
+                    case TraceEntryTypes.Branch:
                     {
                         // Retrieve function names of instructions
                         var branchEntry = (Branch)entry;
-                        string formattedSource = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
-                        string formattedDestination = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
+                        string formattedSource = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
+                        string formattedDestination = branchEntry.Taken
+                            ? _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress)
+                            : "?";
 
                         // Output entry and update call level
                         if(branchEntry.BranchType == Branch.BranchTypes.Call)
@@ -114,13 +121,15 @@ namespace Microwalk.Analysis.Modules
                             --callLevel;
 
                             // Check indentation
-                            // Ignore the very first return statement if it is not preceded by a call: This is a part of the "begin" marker of a trace.
-                            // If the prefix is omitted, the preceding "call" is not encountered by this loop.
-                            if(callLevel < 0 && !firstReturn)
+                            if(callLevel < 0)
                             {
-                                // Just output a warning, this was probably caused by trampoline functions and similar constructions
                                 callLevel = 0;
-                                await Logger.LogWarningAsync($"Encountered return entry {i}, but call stack is empty; indentation might break here.");
+
+                                // Just output a warning, this was probably caused by trampoline functions and similar constructions
+                                // Ignore the very first return statement if it is not preceded by a call: This is a part of the "begin" marker of a trace.
+                                // If the prefix is omitted, the preceding "call" is not encountered by this loop.
+                                if(!firstReturn)
+                                    await Logger.LogWarningAsync($"Encountered return entry {i}, but call stack is empty; indentation might break here.");
                             }
 
                             firstReturn = false;
@@ -133,11 +142,11 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.HeapMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Find allocation block
                         if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.MemoryAllocationBlockId, out Allocation allocationEntry)
@@ -157,11 +166,11 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.StackMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (StackMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
                         string formattedMemoryAddress = $"$+{accessEntry.MemoryRelativeAddress:X8}";
@@ -173,11 +182,11 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.ImageMemoryAccess:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (ImageMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
                         string formattedMemoryAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.MemoryImageId], accessEntry.MemoryRelativeAddress);
@@ -200,12 +209,10 @@ namespace Microwalk.Analysis.Modules
             return Task.CompletedTask;
         }
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
-            if(outputDirectoryPath == null)
-                throw new ConfigurationException("No output directory specified.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("No output directory specified.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
@@ -214,10 +221,16 @@ namespace Microwalk.Analysis.Modules
             _includePrefix = moduleOptions.GetChildNodeWithKey("include-prefix")?.GetNodeBoolean() ?? false;
 
             // Load MAP files
+            _mapFileCollection = new MapFileCollection(Logger);
             var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
-            if(mapFilesNode != null && mapFilesNode is YamlSequenceNode mapFileListNode)
+            if(mapFilesNode is YamlSequenceNode mapFileListNode)
                 foreach(var mapFileNode in mapFileListNode.Children)
-                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString());
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+        }
+
+        public override Task UnInitAsync()
+        {
+            return Task.CompletedTask;
         }
     }
 }

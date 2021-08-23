@@ -4,8 +4,11 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
-using Microwalk.Utilities;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
+using Microwalk.FrameworkBase.Utilities;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
@@ -26,7 +29,7 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// <summary>
         /// The test case output directory.
         /// </summary>
-        private DirectoryInfo _outputDirectory;
+        private DirectoryInfo _outputDirectory = null!;
 
         /// <summary>
         /// The number of the next test case.
@@ -36,19 +39,18 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// <summary>
         /// The used random number generator.
         /// </summary>
-        private RandomNumberGenerator _rng;
+        private readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
         /// <summary>
         /// Already generated test cases.
         /// </summary>
-        private readonly HashSet<byte[]> _knownTestcases = new HashSet<byte[]>(new ByteArrayComparer());
+        private readonly HashSet<byte[]> _knownTestcases = new(new ByteArrayComparer());
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Parse options
-            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount").GetNodeInteger();
-            _testcaseLength = moduleOptions.GetChildNodeWithKey("length").GetNodeInteger();
-            _outputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("output-directory").GetNodeString());
+            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount")?.GetNodeInteger() ?? throw new ConfigurationException("Missing test case count.");
+            _testcaseLength = moduleOptions.GetChildNodeWithKey("length")?.GetNodeInteger() ?? throw new ConfigurationException("Missing test case length.");
 
             // Sanity check
             const double warnPercentage = 0.95;
@@ -57,11 +59,10 @@ namespace Microwalk.TestcaseGeneration.Modules
                                              "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.");
 
             // Make sure output directory exists
+            var outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
-
-            // Initialize RNG
-            _rng = RandomNumberGenerator.Create();
         }
 
         public override async Task<TraceEntity> NextTestcaseAsync(CancellationToken token)
@@ -97,7 +98,7 @@ namespace Microwalk.TestcaseGeneration.Modules
             return Task.FromResult(_nextTestcaseNumber >= _testcaseCount);
         }
 
-        public override Task UninitAsync()
+        public override Task UnInitAsync()
         {
             // Cleanup
             _rng.Dispose();

@@ -1,4 +1,6 @@
 ﻿using System.Threading.Tasks;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Stages;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TraceGeneration.Modules
@@ -7,7 +9,12 @@ namespace Microwalk.TraceGeneration.Modules
     internal class Passthrough : TraceStage
     {
         public override bool SupportsParallelism { get; } = true;
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        protected override Task InitAsync(YamlMappingNode? moduleOptions)
+        {
+            return Task.CompletedTask;
+        }
+
+        public override Task UnInitAsync()
         {
             return Task.CompletedTask;
         }

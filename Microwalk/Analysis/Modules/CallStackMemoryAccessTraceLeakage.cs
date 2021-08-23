@@ -5,14 +5,16 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
-using Microwalk.TraceEntryTypes;
-using Microwalk.Utilities;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
+using Microwalk.FrameworkBase.TraceFormat;
+using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
+using Microwalk.FrameworkBase.Utilities;
 using Standart.Hash.xxHash;
 using YamlDotNet.RepresentationModel;
-using YamlDotNet.Serialization.TypeInspectors;
 
 namespace Microwalk.Analysis.Modules
 {
@@ -22,17 +24,17 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// Maps testcase IDs to call trees.
         /// </summary>
-        private readonly ConcurrentDictionary<int, CallTreeNode> _testcaseCallTrees = new ConcurrentDictionary<int, CallTreeNode>();
+        private readonly ConcurrentDictionary<int, CallTreeNode> _testcaseCallTrees = new();
 
         /// <summary>
         /// Maps instruction addresses to formatted instructions.
         /// </summary>
-        private readonly ConcurrentDictionary<ulong, string> _formattedInstructions = new ConcurrentDictionary<ulong, string>();
+        private readonly ConcurrentDictionary<ulong, string> _formattedInstructions = new();
 
         /// <summary>
         /// The output directory for analysis results.
         /// </summary>
-        private DirectoryInfo _outputDirectory;
+        private DirectoryInfo _outputDirectory = null!;
 
         /// <summary>
         /// Output format.
@@ -47,12 +49,16 @@ namespace Microwalk.Analysis.Modules
         /// <summary>
         /// MAP file collection for resolving symbol names.
         /// </summary>
-        private readonly MapFileCollection _mapFileCollection = new MapFileCollection();
+        private MapFileCollection _mapFileCollection = null!;
 
         public override bool SupportsParallelism => true;
 
         public override async Task AddTraceAsync(TraceEntity traceEntity)
         {
+            // Input check
+            if(traceEntity.PreprocessedTraceFile == null)
+                throw new Exception("Preprocessed trace is null. Is the preprocessor stage missing?");
+            
             // Trace call tree
             var currentCallTree = new Stack<CallTreeNode>();
             var rootNode = new CallTreeNode
@@ -75,7 +81,7 @@ namespace Microwalk.Analysis.Modules
                 BinaryPrimitives.WriteUInt64LittleEndian(callStackHashBuffer, currentNode.CallStackId);
 
                 // Handle branch instructions
-                if(traceEntry.EntryType == TraceEntryTypes.TraceEntryTypes.Branch)
+                if(traceEntry.EntryType == TraceEntryTypes.Branch)
                 {
                     var branch = (Branch)traceEntry;
 
@@ -108,7 +114,7 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(targetInstructionId,
-                                                  traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branch.DestinationImageId],
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branch.DestinationImageId],
                                                   branch.DestinationInstructionRelativeAddress);
 
                         // This will be the next node
@@ -137,7 +143,7 @@ namespace Microwalk.Analysis.Modules
                 ulong memoryAddressId;
                 switch(traceEntry.EntryType)
                 {
-                    case TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.HeapMemoryAccess:
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
                         instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
@@ -145,11 +151,11 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                                                  traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[heapMemoryAccess.InstructionImageId],
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[heapMemoryAccess.InstructionImageId],
                                                   heapMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.ImageMemoryAccess:
                     {
                         var imageMemoryAccess = (ImageMemoryAccess)traceEntry;
                         instructionId = ((ulong)imageMemoryAccess.InstructionImageId << 32) | imageMemoryAccess.InstructionRelativeAddress;
@@ -157,11 +163,11 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                                                  traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[imageMemoryAccess.InstructionImageId],
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[imageMemoryAccess.InstructionImageId],
                                                   imageMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
-                    case TraceEntryTypes.TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.StackMemoryAccess:
                     {
                         var stackMemoryAccess = (StackMemoryAccess)traceEntry;
                         instructionId = ((ulong)stackMemoryAccess.InstructionImageId << 32) | stackMemoryAccess.InstructionRelativeAddress;
@@ -169,7 +175,7 @@ namespace Microwalk.Analysis.Modules
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
-                                                  traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[stackMemoryAccess.InstructionImageId],
+                                                  traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[stackMemoryAccess.InstructionImageId],
                                                   stackMemoryAccess.InstructionRelativeAddress);
                         break;
                     }
@@ -191,7 +197,7 @@ namespace Microwalk.Analysis.Modules
             }
 
             // Store call tree
-            _testcaseCallTrees.AddOrUpdate(traceEntity.Id, rootNode, (t, n) => n);
+            _testcaseCallTrees.AddOrUpdate(traceEntity.Id, rootNode, (_, n) => n);
         }
 
         public override async Task FinishAsync()
@@ -208,7 +214,7 @@ namespace Microwalk.Analysis.Modules
             foreach(var testcase in _testcaseCallTrees)
             {
                 // Iterate call tree using BFS
-                Queue<CallTreeNode> pendingCallTreeNodes = new Queue<CallTreeNode>();
+                Queue<CallTreeNode> pendingCallTreeNodes = new();
                 pendingCallTreeNodes.Enqueue(testcase.Value);
                 while(pendingCallTreeNodes.TryDequeue(out var currentNode))
                 {
@@ -221,7 +227,7 @@ namespace Microwalk.Analysis.Modules
                             InstructionIds = new List<ulong>(),
                             HitCounts = _dumpFullData ? new Dictionary<int, int>() : null
                         };
-                        
+
                         // Fill call chain info
                         var currentParent = currentNode;
                         while(currentParent != null)
@@ -232,10 +238,10 @@ namespace Microwalk.Analysis.Modules
 
                         callStacks.Add(currentNode.CallStackId, callStackData);
                     }
-                    
+
                     // Remember hit counts?
                     if(_dumpFullData)
-                        callStackData.HitCounts.Add(testcase.Key, testcase.Value.Hits);
+                        callStackData.HitCounts!.Add(testcase.Key, testcase.Value.Hits);
 
                     // Enqueue all children
                     foreach(var childNode in currentNode.Children)
@@ -326,7 +332,7 @@ namespace Microwalk.Analysis.Modules
                     // Find minimum guessing entropy of each trace, weighting is not needed here
                     // Also store the hash value which has the lowest guessing entropy value
                     double minConditionalGuessingEntropy = double.MaxValue;
-                    byte[] minConditionalGuessingEntropyHash = null;
+                    byte[] minConditionalGuessingEntropyHash = Array.Empty<byte>();
                     foreach(var hashCount in instruction.Value.HashCounts)
                     {
                         double traceConditionalGuessingEntropy = (hashCount.Value + 1.0) / 2;
@@ -425,7 +431,7 @@ namespace Microwalk.Analysis.Modules
                 await WriteCallStackAsync(callStackWriter, ((IEnumerable<ulong>)callStack.Value.InstructionIds).Reverse());
                 await callStackWriter.WriteLineAsync();
             }
-            
+
             // Write entire state into file?
             if(_dumpFullData)
             {
@@ -507,7 +513,7 @@ namespace Microwalk.Analysis.Modules
                         }
                     }
                 }
-                
+
                 // Write call stack hit counts
                 await using var callStackInfoWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stack-hit-counts.csv")));
                 await callStackInfoWriter.WriteAsync("Test Case ID");
@@ -520,16 +526,17 @@ namespace Microwalk.Analysis.Modules
                     await callStackInfoWriter.WriteAsync(testcase.ToString());
                     foreach(var callStack in callStacksFixedOrder)
                     {
-                        if(callStack.Value.HitCounts.TryGetValue(testcase, out int hits))
+                        if(callStack.Value.HitCounts!.TryGetValue(testcase, out int hits))
                             await callStackInfoWriter.WriteAsync($"{csvListSeparator}{hits}");
                         else
                             await callStackInfoWriter.WriteAsync(csvListSeparator);
                     }
+
                     await callStackInfoWriter.WriteLineAsync();
                 }
             }
         }
-        
+
         /// <summary>
         /// Utility function. Writes the given call stack in text format, as a single line without a line break at the end.
         /// </summary>
@@ -553,29 +560,33 @@ namespace Microwalk.Analysis.Modules
             }
         }
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Extract output path
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
-            if(outputDirectoryPath == null)
-                throw new ConfigurationException("Missing output directory for analysis results.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory for analysis results.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Load MAP files
+            _mapFileCollection = new MapFileCollection(Logger);
             var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
-            if(mapFilesNode != null && mapFilesNode is YamlSequenceNode mapFileListNode)
+            if(mapFilesNode is YamlSequenceNode mapFileListNode)
                 foreach(var mapFileNode in mapFileListNode.Children)
-                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString());
-
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+       
             // Check output format
-            string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString();
+            string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString() ?? throw new ConfigurationException("Missing output format.");
             if(outputFormat != null && !Enum.TryParse(outputFormat, true, out _outputFormat))
                 throw new ConfigurationException("Invalid output format.");
 
             // Dump internal data?
             _dumpFullData = moduleOptions.GetChildNodeWithKey("dump-full-data")?.GetNodeBoolean() ?? false;
+        }
+
+        public override Task UnInitAsync()
+        {
+            return Task.CompletedTask;
         }
 
         private void StoreFormattedInstruction(ulong instructionKey, TracePrefixFile.ImageFileInfo imageFileInfo, uint instructionAddress)
@@ -593,7 +604,7 @@ namespace Microwalk.Analysis.Modules
             /// <summary>
             /// Identifier for the associated call instruction.
             /// </summary>
-            public ulong InstructionId { get; set; }
+            public ulong InstructionId { get; init; }
 
             /// <summary>
             /// Identifier for the call stack until this node.
@@ -609,17 +620,17 @@ namespace Microwalk.Analysis.Modules
             /// <summary>
             /// Parent node.
             /// </summary>
-            public CallTreeNode Parent { get; set; }
+            public CallTreeNode? Parent { get; init; }
 
             /// <summary>
             /// Child nodes, indexed by target instruction ID.
             /// </summary>
-            public Dictionary<ulong, CallTreeNode> Children { get; set; }
+            public Dictionary<ulong, CallTreeNode> Children { get; init; } = null!;
 
             /// <summary>
             /// Memory address hashes of read/write instructions. Instruction ID -> hash.
             /// </summary>
-            public Dictionary<ulong, byte[]> InstructionHashes { get; set; }
+            public Dictionary<ulong, byte[]> InstructionHashes { get; init; } = null!;
         }
 
         /// <summary>
@@ -630,12 +641,12 @@ namespace Microwalk.Analysis.Modules
             /// <summary>
             /// Instructions making up the call chain of this call stack, in reverse order: Leaf, ..., Root.
             /// </summary>
-            public List<ulong> InstructionIds { get; set; }
-            
+            public List<ulong> InstructionIds { get; init; } = null!;
+
             /// <summary>
             /// Hit counts per test case ID.
             /// </summary>
-            public Dictionary<int, int> HitCounts { get; set; }
+            public Dictionary<int, int>? HitCounts { get; init; }
         }
 
         /// <summary>
@@ -668,7 +679,7 @@ namespace Microwalk.Analysis.Modules
             public double MinEntropy { get; set; }
             public double ConditionalGuessingEntropy { get; set; }
             public double MinConditionalGuessingEntropy { get; set; }
-            public byte[] MinConditionalGuessingEntropyHash { get; set; }
+            public byte[] MinConditionalGuessingEntropyHash { get; set; } = null!;
         }
 
         /// <summary>

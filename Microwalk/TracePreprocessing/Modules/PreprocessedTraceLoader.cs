@@ -1,6 +1,10 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
+using Microwalk.FrameworkBase.TraceFormat;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TracePreprocessing.Modules
@@ -10,18 +14,19 @@ namespace Microwalk.TracePreprocessing.Modules
     {
         public override bool SupportsParallelism { get; } = false;
 
-        private DirectoryInfo _inputDirectory;
-        private TracePrefixFile _tracePrefix;
+        private DirectoryInfo _inputDirectory = null!;
+        private TracePrefixFile _tracePrefix = null!;
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Check input directory
-            _inputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("input-directory").GetNodeString());
+            var inputDirectoryPath = moduleOptions.GetChildNodeWithKey("input-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing input directory.");
+            _inputDirectory = new DirectoryInfo(inputDirectoryPath);
             if(!_inputDirectory.Exists)
                 throw new ConfigurationException("Could not find input directory.");
 
             // Try to load prefix file
-            string preprocessedPrefixFilePath = Path.Combine(_inputDirectory.FullName, $"prefix.trace.preprocessed");
+            string preprocessedPrefixFilePath = Path.Combine(_inputDirectory.FullName, "prefix.trace.preprocessed");
             if(!File.Exists(preprocessedPrefixFilePath))
             {
                 await Logger.LogErrorAsync($"Could not find preprocessed trace prefix file.");
@@ -30,6 +35,11 @@ namespace Microwalk.TracePreprocessing.Modules
 
             var bytes = await File.ReadAllBytesAsync(preprocessedPrefixFilePath);
             _tracePrefix = new TracePrefixFile(bytes);
+        }
+
+        public override Task UnInitAsync()
+        {
+            return Task.CompletedTask;
         }
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)

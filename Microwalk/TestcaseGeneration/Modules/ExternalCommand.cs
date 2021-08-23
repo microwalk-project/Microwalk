@@ -1,12 +1,12 @@
-﻿using Microsoft.VisualBasic;
-using Microwalk.Extensions;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
@@ -22,17 +22,17 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// <summary>
         /// The test case output directory.
         /// </summary>
-        private DirectoryInfo _outputDirectory;
+        private DirectoryInfo _outputDirectory = null!;
 
         /// <summary>
         /// Path to target executable.
         /// </summary>
-        private string _commandFilePath;
+        private string _commandFilePath = null!;
 
         /// <summary>
         /// The command argument format string.
         /// </summary>
-        private string _argumentTemplate;
+        private string _argumentTemplate = null!;
 
         /// <summary>
         /// The number of the next test case.
@@ -55,7 +55,7 @@ namespace Microwalk.TestcaseGeneration.Modules
             string args = FormatCommand(_nextTestcaseNumber, testcaseFileName, testcaseFilePath);
 
             // Generate testcase
-            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            ProcessStartInfo processStartInfo = new()
             {
                 Arguments = args,
                 FileName = _commandFilePath,
@@ -67,9 +67,11 @@ namespace Microwalk.TestcaseGeneration.Modules
                 CreateNoWindow = true
             };
             var process = Process.Start(processStartInfo);
+            if(process == null)
+                throw new Exception("Could not start external command process.");
             await process.StandardOutput.ReadToEndAsync();
             await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(token);
 
             // Create trace entity object
             var traceEntity = new TraceEntity
@@ -84,21 +86,27 @@ namespace Microwalk.TestcaseGeneration.Modules
             return traceEntity;
         }
 
-        internal override async Task InitAsync(YamlMappingNode moduleOptions)
+        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Parse options
-            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount").GetNodeInteger();
-            _commandFilePath = moduleOptions.GetChildNodeWithKey("exe").GetNodeString();
-            _argumentTemplate = moduleOptions.GetChildNodeWithKey("args").GetNodeString();
+            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount")?.GetNodeInteger() ?? throw new ConfigurationException("Missing testcase count.");
+            _commandFilePath = moduleOptions.GetChildNodeWithKey("exe")?.GetNodeString() ?? throw  new ConfigurationException("Missing external command executable.");
+            _argumentTemplate = moduleOptions.GetChildNodeWithKey("args")?.GetNodeString() ?? "";
 
             // Make sure output directory exists
-            _outputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("output-directory").GetNodeString());
+            var outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Print example command for debugging
             await Logger.LogDebugAsync("Loaded command based testcase generator. Example command: \n> "
                 + _commandFilePath + " " + FormatCommand(0, "0.testcase", Path.Combine(_outputDirectory.FullName, "0.testcase")));
+        }
+
+        public override Task UnInitAsync()
+        {
+            return Task.CompletedTask;
         }
     }
 }

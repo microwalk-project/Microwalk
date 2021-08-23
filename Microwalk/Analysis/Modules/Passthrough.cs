@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Stages;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
@@ -21,7 +20,12 @@ namespace Microwalk.Analysis.Modules
             return Logger.LogResultAsync("Passthrough analysis module completed.");
         }
 
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        protected override Task InitAsync(YamlMappingNode? moduleOptions)
+        {
+            return Task.CompletedTask;
+        }
+       
+        public override Task UnInitAsync()
         {
             return Task.CompletedTask;
         }

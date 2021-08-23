@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Threading.Tasks;
-using Microwalk.Extensions;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Exceptions;
+using Microwalk.FrameworkBase.Extensions;
+using Microwalk.FrameworkBase.Stages;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TraceGeneration.Modules
@@ -12,16 +13,21 @@ namespace Microwalk.TraceGeneration.Modules
     {
         public override bool SupportsParallelism { get; } = false;
         
-        private DirectoryInfo _inputDirectory;
-        
+        private DirectoryInfo _inputDirectory = null!;
 
-        internal override Task InitAsync(YamlMappingNode moduleOptions)
+        protected override Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Check input directory
-            _inputDirectory = new DirectoryInfo(moduleOptions.GetChildNodeWithKey("input-directory").GetNodeString());
+            var inputDirectoryPath = moduleOptions.GetChildNodeWithKey("input-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing input directory.");
+            _inputDirectory = new DirectoryInfo(inputDirectoryPath);
             if(!_inputDirectory.Exists)
                 throw new ConfigurationException("Could not find input directory.");
 
+            return Task.CompletedTask;
+        }
+
+        public override Task UnInitAsync()
+        {
             return Task.CompletedTask;
         }
 
