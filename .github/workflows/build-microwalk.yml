@@ -18,11 +18,8 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
-      - name: Install dependencies
-        run: |
-          cd Microwalk
-          dotnet restore
       - name: Build
         run: |
           cd Microwalk
-          dotnet build --configuration Release --no-restore
+          dotnet build Microwalk/Microwalk.csproj --configuration Release
+          dotnet build Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj --configuration Release

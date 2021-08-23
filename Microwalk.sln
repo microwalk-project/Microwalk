@@ -96,7 +96,7 @@ Global
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x64.ActiveCfg = Release|Any CPU
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x64.Build.0 = Release|Any CPU
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.ActiveCfg = Release|Any CPU
-		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.Build.0 = Release|Any CPUMicrowalk/TracePreprocessing/Modules/PinTraceDumper.cs
+		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
