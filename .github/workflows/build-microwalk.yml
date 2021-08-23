@@ -3,10 +3,10 @@ name: Build Microwalk
 on:
   push:
     paths:
-      - 'Microwalk/*'
+      - 'Microwalk*'
   pull_request:
     paths:
-      - 'Microwalk/*'
+      - 'Microwalk*'
   workflow_dispatch:
 
 jobs:
@@ -20,6 +20,5 @@ jobs:
           dotnet-version: 5.0.x
       - name: Build
         run: |
-          cd Microwalk
           dotnet build Microwalk/Microwalk.csproj --configuration Release
           dotnet build Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj --configuration Release

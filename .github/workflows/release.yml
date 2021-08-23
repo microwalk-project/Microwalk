@@ -30,7 +30,6 @@ jobs:
           dotnet-version: 5.0.x
       - name: Build & Pack
         run: |
-          cd Microwalk
           dotnet publish Microwalk/Microwalk.csproj --configuration Release --output publish --no-self-contained
           dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj --configuration Release --output publish --no-self-contained
           cd publish
@@ -41,7 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Microwalk/publish/Microwalk.zip
+          asset_path: ./publish/Microwalk.zip
           asset_name: Microwalk.zip
           asset_content_type: application/zip
 
