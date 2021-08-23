@@ -24,10 +24,10 @@ jobs:
           prerelease: false
       
       # Build Microwalk
-      - name: Setup .NET Core
+      - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.101
+          dotnet-version: 5.0.x
       - name: Install dependencies
         run: |
           cd Microwalk
