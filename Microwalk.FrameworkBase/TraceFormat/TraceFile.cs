@@ -8,6 +8,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
 {
     /// <summary>
     /// Provides functions to read trace files.
+    /// TODO The allocation lookup table is not guaranteed to be initialized, can be generated on-the-fly and is only rarely used. Drop it altogether?
     /// </summary>
     public class TraceFile : IEnumerable<ITraceEntry>
     {
