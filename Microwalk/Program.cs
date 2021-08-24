@@ -140,6 +140,8 @@ namespace Microwalk
             }
 
             // Load configuration file
+            // TODO delay the module initialization until the configuration load is complete, _or_ ensure that already active modules are properly cancelled
+            //      -> The Pin process loves to stay alive and generate HUGE traces
             try
             {
                 // Open file and read YAML
@@ -170,7 +172,8 @@ namespace Microwalk
                             string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing testcase module name.");
 
                             // Check for options
-                            var optionNode = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("module-options");
+                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
+                                throw new ConfigurationException("Missing or invalid module options in 'testcase' stage configuration.");
 
                             // Create module, if possible
                             _moduleConfiguration.TestcaseStageModule = await TestcaseStage.Factory.CreateAsync(moduleName, _logger, optionNode);
@@ -189,7 +192,8 @@ namespace Microwalk
                             string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing trace module name.");
 
                             // Check for options
-                            var optionNode = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("module-options");
+                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
+                                throw new ConfigurationException("Missing or invalid module options in 'trace' stage configuration.");
 
                             // Create module, if possible
                             _moduleConfiguration.TraceStageModule = await TraceStage.Factory.CreateAsync(moduleName, _logger, optionNode);
@@ -208,7 +212,8 @@ namespace Microwalk
                             string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing preprocessor module name.");
 
                             // Check for options
-                            var optionNode = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("module-options");
+                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
+                                throw new ConfigurationException("Missing or invalid module options in 'preprocess' stage configuration.");
 
                             // Create module, if possible
                             _moduleConfiguration.PreprocessorStageModule = await PreprocessorStage.Factory.CreateAsync(moduleName, _logger, optionNode);
@@ -233,10 +238,11 @@ namespace Microwalk
                                 var moduleEntryNode = (YamlMappingNode)yamlNode;
 
                                 // There must be a module name node
-                                string moduleName = moduleEntryNode.GetChildNodeWithKey("module")?.GetNodeString()?? throw new ConfigurationException("Missing analysis module name.");
+                                string moduleName = moduleEntryNode.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing analysis module name.");
 
                                 // Check for options
-                                var optionNode = (YamlMappingNode?)moduleEntryNode.GetChildNodeWithKey("module-options");
+                                if(moduleEntryNode.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
+                                    throw new ConfigurationException($"Missing or invalid options for module '{moduleName}' in 'analysis' stage configuration.");
 
                                 // Create module, if possible
                                 _moduleConfiguration.AnalysesStageModules.Add(await AnalysisStage.Factory.CreateAsync(moduleName, _logger, optionNode));
@@ -516,6 +522,7 @@ namespace Microwalk
             public TraceStage? TraceStageModule { get; set; }
             public PreprocessorStage? PreprocessorStageModule { get; set; }
             public List<AnalysisStage>? AnalysesStageModules { get; set; }
+
             // ReSharper disable once UnusedAutoPropertyAccessor.Local
             public YamlMappingNode? TestcaseStageOptions { get; set; }
             public YamlMappingNode? TraceStageOptions { get; set; }
