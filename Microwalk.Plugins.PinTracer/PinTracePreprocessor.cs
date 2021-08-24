@@ -319,13 +319,14 @@ namespace Microwalk.Plugins.PinTracer
                                 SourceInstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - sourceImage.StartAddress),
                                 DestinationImageId = destinationImageId,
                                 DestinationInstructionRelativeAddress = (uint)(rawTraceEntry.Param2 - destinationImage!.StartAddress),
-                                Taken = flags.HasFlag(RawTraceBranchEntryFlags.Taken)
+                                Taken = (flags & RawTraceBranchEntryFlags.Taken) != 0
                             };
-                            if(flags.HasFlag(RawTraceBranchEntryFlags.Jump))
+                            var rawType = flags & RawTraceBranchEntryFlags.BranchEntryTypeMask;
+                            if(rawType == RawTraceBranchEntryFlags.Jump)
                                 entry.BranchType = Branch.BranchTypes.Jump;
-                            else if(flags.HasFlag(RawTraceBranchEntryFlags.Call))
+                            else if(rawType == RawTraceBranchEntryFlags.Call)
                                 entry.BranchType = Branch.BranchTypes.Call;
-                            else if(flags.HasFlag(RawTraceBranchEntryFlags.Return))
+                            else if(rawType == RawTraceBranchEntryFlags.Return)
                                 entry.BranchType = Branch.BranchTypes.Return;
                             else
                             {
@@ -604,22 +605,27 @@ namespace Microwalk.Plugins.PinTracer
             /// <summary>
             /// Indicates that the branch was taken.
             /// </summary>
-            Taken = 1,
+            Taken = 1 << 0,
 
             /// <summary>
             /// Indicates that this branch is implemented as a JMP instruction (includes conditional jumps).
             /// </summary>
-            Jump = 2,
+            Jump = 1 << 1,
 
             /// <summary>
             /// Indicates that this branch is implemented as a CALL instruction.
             /// </summary>
-            Call = 4,
+            Call = 2 << 1,
 
             /// <summary>
             /// Indicates that this branch is implemented as a RET instruction.
             /// </summary>
-            Return = 8
+            Return = 3 << 1,
+            
+            /// <summary>
+            /// The mask used to extract the branch entry type (<see cref="Jump"/>, <see cref="Call"/> or <see cref="Return"/>).
+            /// </summary>
+            BranchEntryTypeMask = 3 << 1
         }
     }
 }

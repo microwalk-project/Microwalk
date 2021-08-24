@@ -25,20 +25,26 @@ enum struct TraceEntryTypes : UINT32
     // A memory write access.
     MemoryWrite = 2,
 
-    // The size parameter of an allocation (typically malloc).
-    AllocSizeParameter = 3,
+    // The size parameter of a heap allocation ("malloc").
+    HeapAllocSizeParameter = 3,
 
-    // The return address of an allocation (typically malloc).
-    AllocAddressReturn = 4,
+    // The return address of a heap allocation ("malloc").
+    HeapAllocAddressReturn = 4,
 
-    // The address parameter of a deallocation (typically free).
-    FreeAddressParameter = 5,
+    // The address parameter of a heap deallocation ("malloc").
+    HeapFreeAddressParameter = 5,
 
     // A code branch.
     Branch = 6,
 
     // Stack pointer information.
-    StackPointerInfo = 7
+    StackPointerInfo = 7,
+
+    // A stack allocation.
+    StackAllocation = 8,
+
+    // A stack deallocation.
+    StackDeallocation = 9
 };
 
 // Represents one entry in a trace buffer.
@@ -49,22 +55,39 @@ struct TraceEntry
     TraceEntryTypes Type;
 
     // Flag.
-    // Used with: Branch.
+    // Used with: Branch, StackAllocation, StackDeallocation.
     UINT8 Flag;
 
     // (Padding for reliable parsing by analysis programs)
     UINT8 _padding[3];
 
     // The address of the instruction triggering the trace entry creation, or the size of an allocation.
-    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
+    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo, StackAllocation, StackDeallocation.
     UINT64 Param1;
 
     // The accessed/passed memory address.
-    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo.
+    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo, StackAllocation, StackDeallocation.
     UINT64 Param2;
 };
 #pragma pack(pop)
 static_assert(sizeof(TraceEntry) == 4 + 1 + 3 + 8 + 8, "Wrong size of TraceEntry struct");
+
+// Flags for various trace entries.
+enum struct TraceEntryFlags : UINT8
+{
+    // Branch taken: 1 Bit
+    BranchNotTaken = 0 << 0,
+    BranchTaken = 1 << 0,
+
+    // Branch type: 2 Bits
+    BranchTypeJump = 1 << 1,
+    BranchTypeCall = 2 << 1,
+    BranchTypeReturn = 3 << 1,
+
+    // Stack (de)allocations
+    StackIsPush = 1,
+    StackIsPop = 1,
+};
 
 // Provides functions to write trace buffer contents into a log file.
 // The prefix handling of this class is designed for single-threaded mode!
@@ -133,19 +156,24 @@ public:
     // Creates a new MemoryWrite entry.
     static TraceEntry* InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress);
 
-    // Creates a new AllocSizeParameter entry.
-    static TraceEntry* InsertAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size);
+    // Creates a new HeapAllocSizeParameter entry.
+    static TraceEntry* InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size);
     static TraceEntry* InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size);
 
-    // Creates a new AllocAddressReturn entry.
-    static TraceEntry* InsertAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
+    // Creates a new HeapAllocAddressReturn entry.
+    static TraceEntry* InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
 
-    // Creates a new FreeAddressParameter entry.
-    static TraceEntry* InsertFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
+    // Creates a new HeapFreeAddressParameter entry.
+    static TraceEntry* InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
+
+    // Creates a new HeapAllocAddressReturn entry.
+    static TraceEntry* InsertStackAllocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags);
+
+    // Creates a new HeapFreeAddressParameter entry.
+    static TraceEntry* InsertStackDeallocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags);
 
     // Creates a new Branch entry.
-    // type: 1 for jumps, 2 for call and 4 for ret.
-    static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, BOOL flag, UINT32 type);
+    static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type);
 
     // Creates a new "ret" Branch entry.
     static TraceEntry* InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, CONTEXT* contextAfterRet);

@@ -42,7 +42,7 @@ namespace Microwalk.Plugins.PinTracer
                 // Read Pin tool output
                 await Logger.LogDebugAsync("Read from Pin tool stdout...");
                 string pinToolOutput = await _pinToolProcess.StandardOutput.ReadLineAsync()
-                    ?? throw new IOException("Could not read from Pin tool standard output (null). Probably the process has exited early.");
+                                       ?? throw new IOException("Could not read from Pin tool standard output (null). Probably the process has exited early.");
 
                 // Parse output
                 await Logger.LogDebugAsync($"Pin tool output: {pinToolOutput}");
@@ -63,13 +63,13 @@ namespace Microwalk.Plugins.PinTracer
             // Extract mandatory configuration values
             string pinToolPath = moduleOptions.GetChildNodeWithKey("pin-tool-path")?.GetNodeString() ?? throw new ConfigurationException("Missing Pin tool path.");
             string wrapperPath = moduleOptions.GetChildNodeWithKey("wrapper-path")?.GetNodeString() ?? throw new ConfigurationException("Missing wrapper path.");
-            
+
             // Check output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString()?? throw new ConfigurationException("Missing output directory.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
-            
+
             // Load image list
             var imagesNode = moduleOptions.GetChildNodeWithKey("images");
             if(imagesNode is not YamlSequenceNode imagesListNode)
@@ -80,6 +80,7 @@ namespace Microwalk.Plugins.PinTracer
             string pinPath = moduleOptions.GetChildNodeWithKey("pin-path")?.GetNodeString() ?? "pin";
             ulong? fixedRdrand = moduleOptions.GetChildNodeWithKey("rdrand")?.GetNodeUnsignedLongHex();
             int cpuModelId = moduleOptions.GetChildNodeWithKey("cpu")?.GetNodeInteger() ?? 0;
+            bool enableStackTracking = moduleOptions.GetChildNodeWithKey("stack-tracking")?.GetNodeBoolean() ?? false;
 
             // Prepare argument list
             var pinArgs = new List<string>
@@ -89,10 +90,17 @@ namespace Microwalk.Plugins.PinTracer
                 $"{Path.GetFullPath(_outputDirectory.FullName) + Path.DirectorySeparatorChar} ", // The trailing space is required on Windows: Pin's command line parser else believes that the final backslash is an escape character
                 "-i", $"{imagesList}"
             };
+
             if(fixedRdrand != null)
             {
                 pinArgs.Add("-r");
                 pinArgs.Add($"{fixedRdrand.Value}");
+            }
+
+            if(enableStackTracking)
+            {
+                pinArgs.Add("-s");
+                pinArgs.Add("1");
             }
 
             pinArgs.Add("-c");

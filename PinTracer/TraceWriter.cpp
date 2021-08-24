@@ -157,54 +157,82 @@ TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT i
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size)
+TraceEntry* TraceWriter::InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == NULL)
         return nextEntry;
 
     // Create entry
-    nextEntry->Type = TraceEntryTypes::AllocSizeParameter;
+    nextEntry->Type = TraceEntryTypes::HeapAllocSizeParameter;
     nextEntry->Param1 = size;
     return ++nextEntry;
 }
 
 TraceEntry* TraceWriter::InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size)
 {
-    return InsertAllocSizeParameterEntry(nextEntry, count * size);
+    return InsertHeapAllocSizeParameterEntry(nextEntry, count * size);
 }
 
-TraceEntry* TraceWriter::InsertAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == NULL)
         return nextEntry;
 
     // Create entry
-    nextEntry->Type = TraceEntryTypes::AllocAddressReturn;
+    nextEntry->Type = TraceEntryTypes::HeapAllocAddressReturn;
     nextEntry->Param2 = memoryAddress;
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == NULL)
         return nextEntry;
 
     // Create entry
-    nextEntry->Type = TraceEntryTypes::FreeAddressParameter;
+    nextEntry->Type = TraceEntryTypes::HeapFreeAddressParameter;
     nextEntry->Param2 = memoryAddress;
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, BOOL flag, UINT32 type)
+TraceEntry* TraceWriter::InsertStackAllocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags)
+{
+    // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
+    if(nextEntry == NULL)
+        return nextEntry;
+
+    // Create entry
+    nextEntry->Type = TraceEntryTypes::StackAllocation;
+    nextEntry->Flag = flags;
+    nextEntry->Param1 = size;
+    nextEntry->Param2 = memoryAddress;
+    return ++nextEntry;
+}
+
+TraceEntry* TraceWriter::InsertStackDeallocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags)
+{
+    // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
+    if(nextEntry == NULL)
+        return nextEntry;
+
+    // Create entry
+    nextEntry->Type = TraceEntryTypes::StackDeallocation;
+    nextEntry->Flag = flags;
+    nextEntry->Param1 = size;
+    nextEntry->Param2 = memoryAddress;
+    return ++nextEntry;
+}
+
+TraceEntry* TraceWriter::InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::Branch;
     nextEntry->Param1 = sourceAddress;
     nextEntry->Param2 = targetAddress;
-    nextEntry->Flag = static_cast<UINT8>((type << 1) | (flag == 0 ? 0 : 1));
+    nextEntry->Flag = static_cast<UINT8>(type) | static_cast<UINT8>(taken == 0 ? TraceEntryFlags::BranchNotTaken : TraceEntryFlags::BranchTaken);
     return ++nextEntry;
 }
 
@@ -213,7 +241,7 @@ TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sou
     // Create entry
     ADDRINT retAddress;
     PIN_GetContextRegval(contextAfterRet, REG_INST_PTR, reinterpret_cast<UINT8*>(&retAddress));
-    return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, 4);
+    return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, static_cast<UINT8>(TraceEntryFlags::BranchTypeReturn));
 }
 
 TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax)

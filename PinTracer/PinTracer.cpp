@@ -14,7 +14,7 @@ To get meaningful outputs, make sure that these functions are called with "call"
 /* GLOBAL VARIABLES */
 
 // The output file command line option.
-KNOB<std::string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "out", "specify file name/path prefix for LeakageDetectorTrace output");
+KNOB<std::string> KnobOutputFilePrefix(KNOB_MODE_WRITEONCE, "pintool", "o", "out", "specify file name/path prefix for trace output");
 
 // The names of interesting images, separated by semicolons.
 KNOB<std::string> KnobInterestingImageList(KNOB_MODE_WRITEONCE, "pintool", "i", ".exe", "specify list of interesting images, separated by semicolons");
@@ -25,6 +25,9 @@ KNOB<int> KnobCpuFeatureLevel(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "specify
 // Constant random number generator value.
 // Magic default value is 0xBADBADBADBADBAD (Pin does not provide an API to check whether parameter is actually in the command line).
 KNOB<UINT64> KnobFixedRandomNumbers(KNOB_MODE_WRITEONCE, "pintool", "r", "841534158063459245", "set constant output for RDRAND instruction");
+
+// Enable stack allocation tracking.
+KNOB<BOOL> KnobEnableStackAllocationTracking(KNOB_MODE_WRITEONCE, "pintool", "s", "1", "enable stack allocation tracking");
 
 // The names of interesting images, parsed from the command line option.
 std::vector<std::string> _interestingImages;
@@ -47,8 +50,11 @@ REG _cpuIdEcxInputReg;
 // Data of loaded images for lookup during trace instrumentation.
 std::vector<ImageData*> _images;
 
-// Determines whether RDRAND random numbers shall be replaced by fixed ones.
+// Controls whether RDRAND random numbers are replaced by fixed ones.
 bool _useFixedRandomNumber = false;
+
+// Controls whether stack allocation tracking is enabled.
+bool _enableStackAllocationTracking = false;
 
 // The fixed random number to be returned after each RDRAND instruction.
 UINT64 _fixedRandomNumber = 0;
@@ -112,6 +118,12 @@ int main(int argc, char* argv[])
         std::cerr << "Using fixed RDRAND output " << _fixedRandomNumber << std::endl;
     }
 
+    // Check if stack allocation tracking is enabled
+    if(KnobEnableStackAllocationTracking.Value() != 0)
+    {
+        _enableStackAllocationTracking = true;
+    }
+
     // Initialize prefix mode
     TraceWriter::InitPrefixMode(trim(KnobOutputFilePrefix.Value()));
 
@@ -144,7 +156,6 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
     for(BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
     {
         // Before instrumentation check first whether we are in an interesting image
-        // TODO this skips branches from uninteresting images to interesting images -> relevant?
         ImageData* img = nullptr;
         for(ImageData* i : _images)
             if(i->ContainsBasicBlock(bbl))
@@ -169,24 +180,23 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
         // Run through instructions
         for(INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins))
         {
-            // Ignore everything that uses segment registers (shouldn't be used by modern software, except in a few cases by operating systems)
+            // Ignore everything that uses segment registers (shouldn't be used by relevant software parts)
             // Windows e.g. uses GS for thread local storage
+            // We also don't support far jumps/call/returns, so tracing programs which make use of those may lead to interesting behavior 
             // TODO Hint that in documentation
             if(INS_SegmentPrefix(ins))
                 continue;
 
-            // Ignore some frequent and uninteresting instructions to reduce overhead
+            // Ignore frequent and uninteresting instructions to reduce instrumentation time
             OPCODE opc = INS_Opcode(ins);
-            if(opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ)
-                continue;
-            if(opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
-                continue;
+            if(!_enableStackAllocationTracking)
+            {
+                if(opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ)
+                    continue;
+                if(opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
+                    continue;
+            }
             if(opc == XED_ICLASS_LEA)
-                continue;
-
-            // Ignore TSX instructions
-            // TODO Can these be instrumented meaningfully? Maybe as another branch type?
-            if(opc == XED_ICLASS_XBEGIN || opc == XED_ICLASS_XEND)
                 continue;
 
             // Change CPUID instruction
@@ -213,18 +223,24 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_REG_REFERENCE, REG_ECX,
                     IARG_REG_REFERENCE, REG_EDX,
                     IARG_END);
+
                 continue;
             }
 
-            // Change RDRAND instruction
+            // Overwrite RDRAND instruction
             if(opc == XED_ICLASS_RDRAND && _useFixedRandomNumber)
             {
                 // Modify output register
                 INS_InsertCall(ins, IPOINT_AFTER, AFUNPTR(ChangeRandomNumber),
                     IARG_REG_REFERENCE, INS_RegW(ins, 0),
                     IARG_END);
+
                 continue;
             }
+
+            // TODO potential performance optimization:
+            //    The trace buffer should never be full when an instruction generates no new entry,
+            //    so the following CheckBuffer... if/then could be merged into the first then call
 
             // Trace branch instructions (conditional and unconditional)
             if(INS_IsCall(ins) && INS_IsControlFlow(ins))
@@ -237,7 +253,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_INST_PTR,
                     IARG_BRANCH_TARGET_ADDR,
                     IARG_BOOL, 1,
-                    IARG_UINT32, 2,
+                    IARG_UINT32, TraceEntryFlags::BranchTypeCall,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
@@ -250,6 +266,8 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_THREAD_ID,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
+
+                // Do not record stack allocation - this is deferred to the trace preprocessor, as a x64 call _always_ allocates 8 bytes for the return address
                 continue;
             }
             if(INS_IsBranch(ins) && INS_IsControlFlow(ins))
@@ -262,7 +280,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_INST_PTR,
                     IARG_BRANCH_TARGET_ADDR,
                     IARG_BRANCH_TAKEN,
-                    IARG_UINT32, 1,
+                    IARG_UINT32, TraceEntryFlags::BranchTypeJump,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
                 INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
@@ -275,6 +293,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_THREAD_ID,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
+
                 continue;
             }
             if(INS_IsRet(ins) && INS_IsControlFlow(ins))
@@ -299,11 +318,27 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_THREAD_ID,
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
+
+                // The preprocessor assumes that a ret instruction always pops 8 bytes, so only record this
+                // instruction's stack deallocation when more than the return address is popped from the stack
+                if(INS_OperandCount(ins) > 0)
+                {
+                    // TODO CONTINUE HERE
+                }
+
+                continue;
             }
 
             // Ignore everything else in uninteresting images
             if(!interesting)
                 continue;
+
+            // Stack allocation tracking
+            // ret is already tracked above
+            if(_enableStackAllocationTracking)
+            {
+                // TODO CONTINUE HERE
+            }
 
             // Trace instructions with memory read
             if(INS_IsMemoryRead(ins) && INS_IsStandardMemop(ins))
@@ -502,7 +537,7 @@ VOID InstrumentImage(IMG img, VOID* v)
     {
         // Trace size parameter
         RTN_Open(mallocRtn);
-        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
             IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -515,7 +550,7 @@ VOID InstrumentImage(IMG img, VOID* v)
             IARG_END);
 
         // Trace returned address
-        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+        RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_REG_VALUE, REG_RAX,
             IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -536,7 +571,7 @@ VOID InstrumentImage(IMG img, VOID* v)
     {
         // Trace address parameter
         RTN_Open(freeRtn);
-        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertFreeAddressParameterEntry),
+        RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapFreeAddressParameterEntry),
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
             IARG_RETURN_REGS, _nextBufferEntryReg,
