@@ -75,6 +75,13 @@ namespace Microwalk.Plugins.PinTracer
         /// </summary>
         private int _tracePrefixLastAllocationId;
 
+        /// <summary>
+        /// Initial size of the preprocessed trace writer buffer, to reduce number of allocations.
+        /// This number is updated when a trace requires a higher capacity.
+        /// We assume that all non-prefix traces have roughly the same size due to the uniform test cases, so outliers are not a problem here.
+        /// </summary>
+        private int _estimatedTraceBufferCapacity = 1 * 1024 * 1024;
+
         public override bool SupportsParallelism => true;
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
@@ -157,10 +164,14 @@ namespace Microwalk.Plugins.PinTracer
             // Preprocess trace data
             string rawTraceFilePath = traceEntity.RawTraceFilePath;
             Dictionary<int, Allocation> allocations;
-            await using var traceFileStream = new MemoryStream();
+            await using var traceFileStream = new MemoryStream(_estimatedTraceBufferCapacity);
             await using(var traceFileWriter = new BinaryWriter(traceFileStream, Encoding.ASCII, true))
                 PreprocessFile(rawTraceFilePath, false, traceFileWriter, out allocations);
 
+            // Remember new capacity
+            if (traceFileStream.Capacity > _estimatedTraceBufferCapacity)
+                _estimatedTraceBufferCapacity = traceFileStream.Capacity;
+            
             // Create trace file object
             var preprocessedTraceData = traceFileStream.GetBuffer().AsMemory(0, (int)traceFileStream.Length);
             var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
@@ -435,6 +446,10 @@ namespace Microwalk.Plugins.PinTracer
             // Find by start address
             // The images are sorted by start address, so the first hit should be the right one - else the correct image does not exist
             // Linearity of search does not matter here, since the image count is expected to be rather small
+            // TODO However, this method is called extremly often: The profiler shows that around 8% of preprocessing time is spent here.
+            //      The linear order of addresses is easy, but not efficient when some images with high addresses are used much more often than those with low addresses
+            //      Profiling idea: Run the benchmark again, but create a heatmap which tracks which image is found how often
+            //      Or: Check the least recent image before calling this method? Or the interesting ones first, since almost all accesses will be there!
             for(int i = _imageFiles.Length - 1; i >= 0; --i)
             {
                 var img = _imageFiles[i];
