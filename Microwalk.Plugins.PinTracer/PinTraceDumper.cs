@@ -25,7 +25,7 @@ namespace Microwalk.Plugins.PinTracer
             // Input check
             if(traceEntity.RawTraceFilePath == null)
                 throw new Exception("Raw trace file path is null. Is the trace stage missing?");
-            
+
             // Output file
             string outputFileName = Path.Combine(_outputDirectory.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".txt");
             await using var outputStream = File.OpenWrite(outputFileName);
@@ -71,19 +71,19 @@ namespace Microwalk.Plugins.PinTracer
                     // Write string representation
                     switch(rawTraceEntry.Type)
                     {
-                        case PinTracePreprocessor.RawTraceEntryTypes.AllocSizeParameter:
+                        case PinTracePreprocessor.RawTraceEntryTypes.HeapAllocSizeParameter:
                         {
                             outputWriter.WriteLine("AllocSize: " + ((uint)rawTraceEntry.Param1).ToString("X8"));
                             break;
                         }
 
-                        case PinTracePreprocessor.RawTraceEntryTypes.AllocAddressReturn:
+                        case PinTracePreprocessor.RawTraceEntryTypes.HeapAllocAddressReturn:
                         {
                             outputWriter.WriteLine("AllocReturn: " + rawTraceEntry.Param2.ToString("X16"));
                             break;
                         }
 
-                        case PinTracePreprocessor.RawTraceEntryTypes.FreeAddressParameter:
+                        case PinTracePreprocessor.RawTraceEntryTypes.HeapFreeAddressParameter:
                         {
                             outputWriter.WriteLine("Free: " + rawTraceEntry.Param2.ToString("X16"));
                             break;
@@ -98,16 +98,19 @@ namespace Microwalk.Plugins.PinTracer
                         case PinTracePreprocessor.RawTraceEntryTypes.Branch:
                         {
                             var flags = (PinTracePreprocessor.RawTraceBranchEntryFlags)rawTraceEntry.Flag;
-                            bool taken = flags.HasFlag(PinTracePreprocessor.RawTraceBranchEntryFlags.Taken);
-                            if(flags.HasFlag(PinTracePreprocessor.RawTraceBranchEntryFlags.Jump))
+                            
+                            bool taken = (flags & PinTracePreprocessor.RawTraceBranchEntryFlags.Taken) != 0;
+                            
+                            var rawBranchType = flags & PinTracePreprocessor.RawTraceBranchEntryFlags.BranchEntryTypeMask;
+                            if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Jump)
                                 outputWriter.WriteLine("Jump: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
-                            else if(flags.HasFlag(PinTracePreprocessor.RawTraceBranchEntryFlags.Call))
+                            else if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Call)
                                 outputWriter.WriteLine("Call: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
-                            else if(flags.HasFlag(PinTracePreprocessor.RawTraceBranchEntryFlags.Return))
+                            else if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Return)
                                 outputWriter.WriteLine("Return: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
                             else
                             {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait(); 
+                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
                             }
 
                             break;
@@ -124,6 +127,24 @@ namespace Microwalk.Plugins.PinTracer
                             outputWriter.WriteLine("MemoryWrite: " + rawTraceEntry.Param1.ToString("X16") + " writes " + rawTraceEntry.Param2.ToString("X16"));
                             break;
                         }
+
+                        case PinTracePreprocessor.RawTraceEntryTypes.StackPointerModification:
+                        {
+                            var flags = (PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags)rawTraceEntry.Flag;
+
+                            var instructionType = flags & PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.InstructionTypeMask;
+                            if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.PushOrPop)
+                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (push/pop)");
+                            else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Return)
+                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (ret)");
+                            else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Other)
+                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (other)");else
+                            {
+                                Logger.LogErrorAsync("Unspecified instruction type on stack pointer modification, skipping").Wait();
+                            }
+
+                            break;
+                        }
                     }
                 }
         }
@@ -131,7 +152,7 @@ namespace Microwalk.Plugins.PinTracer
         protected override Task InitAsync(YamlMappingNode? moduleOptions)
         {
             // Output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString()?? throw new ConfigurationException("Missing output directory.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();

@@ -359,8 +359,8 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             if(_enableStackAllocationTracking)
             {
                 // Trace all instructions which modify the stack pointer
-                if(opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ
-                    || opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
+                if((opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ)
+                    || (opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ))
                 {
                     INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(CheckNextTraceEntryPointerValid),
                         IARG_REG_VALUE, _nextBufferEntryReg,
@@ -664,7 +664,7 @@ VOID InstrumentImage(IMG img, VOID* v)
         {
             // Trace size parameter
             RTN_Open(mallocRtn);
-            RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+            RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -677,7 +677,7 @@ VOID InstrumentImage(IMG img, VOID* v)
                 IARG_END);
 
             // Trace returned address
-            RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -712,7 +712,7 @@ VOID InstrumentImage(IMG img, VOID* v)
                 IARG_END);
 
             // Trace returned address
-            RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -733,7 +733,7 @@ VOID InstrumentImage(IMG img, VOID* v)
         {
             // Trace size parameter
             RTN_Open(reallocRtn);
-            RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertAllocSizeParameterEntry),
+            RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -746,7 +746,7 @@ VOID InstrumentImage(IMG img, VOID* v)
                 IARG_END);
 
             // Trace returned address
-            RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertAllocAddressReturnEntry),
+            RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCRET_EXITPOINT_VALUE,
                 IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -767,7 +767,7 @@ VOID InstrumentImage(IMG img, VOID* v)
         {
             // Trace address parameter
             RTN_Open(freeRtn);
-            RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertFreeAddressParameterEntry),
+            RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapFreeAddressParameterEntry),
                 IARG_REG_VALUE, _nextBufferEntryReg,
                 IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
                 IARG_RETURN_REGS, _nextBufferEntryReg,

@@ -227,7 +227,7 @@ namespace Microwalk.Plugins.PinTracer
                     RawTraceEntry rawTraceEntry = *(RawTraceEntry*)&inputFilePtr[pos];
                     switch(rawTraceEntry.Type)
                     {
-                        case RawTraceEntryTypes.AllocSizeParameter:
+                        case RawTraceEntryTypes.HeapAllocSizeParameter:
                         {
                             // Remember size parameter until the address return
                             lastAllocationSizes.Push((uint)rawTraceEntry.Param1);
@@ -236,7 +236,7 @@ namespace Microwalk.Plugins.PinTracer
                             break;
                         }
 
-                        case RawTraceEntryTypes.AllocAddressReturn:
+                        case RawTraceEntryTypes.HeapAllocAddressReturn:
                         {
                             // Catch double returns of the same allocated address (happens for some allocator implementations)
                             if(rawTraceEntry.Param2 == lastAllocReturnAddress && !encounteredSizeSinceLastAlloc)
@@ -274,7 +274,7 @@ namespace Microwalk.Plugins.PinTracer
                             break;
                         }
 
-                        case RawTraceEntryTypes.FreeAddressParameter:
+                        case RawTraceEntryTypes.HeapFreeAddressParameter:
                         {
                             // Skip nonsense frees
                             if(rawTraceEntry.Param2 == 0)
@@ -332,12 +332,12 @@ namespace Microwalk.Plugins.PinTracer
                                 DestinationInstructionRelativeAddress = (uint)(rawTraceEntry.Param2 - destinationImage!.StartAddress),
                                 Taken = (flags & RawTraceBranchEntryFlags.Taken) != 0
                             };
-                            var rawType = flags & RawTraceBranchEntryFlags.BranchEntryTypeMask;
-                            if(rawType == RawTraceBranchEntryFlags.Jump)
+                            var rawBranchType = flags & RawTraceBranchEntryFlags.BranchEntryTypeMask;
+                            if(rawBranchType == RawTraceBranchEntryFlags.Jump)
                                 entry.BranchType = Branch.BranchTypes.Jump;
-                            else if(rawType == RawTraceBranchEntryFlags.Call)
+                            else if(rawBranchType == RawTraceBranchEntryFlags.Call)
                                 entry.BranchType = Branch.BranchTypes.Call;
-                            else if(rawType == RawTraceBranchEntryFlags.Return)
+                            else if(rawBranchType == RawTraceBranchEntryFlags.Return)
                                 entry.BranchType = Branch.BranchTypes.Return;
                             else
                             {
@@ -559,13 +559,13 @@ namespace Microwalk.Plugins.PinTracer
 
             /// <summary>
             /// The address of the instruction triggering the trace entry creation, or the size of an allocation.
-            /// Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
+            /// Used with: MemoryRead, MemoryWrite, Branch, HeapAllocSizeParameter, StackPointerInfo.
             /// </summary>
             public readonly ulong Param1;
 
             /// <summary>
             /// The accessed/passed memory address.
-            /// Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo.
+            /// Used with: MemoryRead, MemoryWrite, HeapAllocAddressReturn, HeapFreeAddressParameter, Branch, StackPointerInfo.
             /// </summary>
             public readonly ulong Param2;
         }
@@ -588,17 +588,17 @@ namespace Microwalk.Plugins.PinTracer
             /// <summary>
             /// The size parameter of an allocation (typically malloc).
             /// </summary>
-            AllocSizeParameter = 3,
+            HeapAllocSizeParameter = 3,
 
             /// <summary>
             /// The return address of an allocation (typically malloc).
             /// </summary>
-            AllocAddressReturn = 4,
+            HeapAllocAddressReturn = 4,
 
             /// <summary>
             /// The address parameter of a deallocation (typically free).
             /// </summary>
-            FreeAddressParameter = 5,
+            HeapFreeAddressParameter = 5,
 
             /// <summary>
             /// A code branch.
@@ -608,7 +608,12 @@ namespace Microwalk.Plugins.PinTracer
             /// <summary>
             /// Stack pointer information.
             /// </summary>
-            StackPointerInfo = 7
+            StackPointerInfo = 7,
+
+            /// <summary>
+            /// A modification of the stack pointer.
+            /// </summary>
+            StackPointerModification = 8
         }
 
         /// <summary>
@@ -641,6 +646,33 @@ namespace Microwalk.Plugins.PinTracer
             /// The mask used to extract the branch entry type (<see cref="Jump"/>, <see cref="Call"/> or <see cref="Return"/>).
             /// </summary>
             BranchEntryTypeMask = 3 << 1
+        }
+
+        /// <summary>
+        /// Flags assigned to a stack pointer modification in the raw trace.
+        /// </summary>
+        [Flags]
+        internal enum RawTraceStackPointerModificationEntryFlags : byte
+        {
+            /// <summary>
+            /// Indicates that the modification was caused by a push or pop instruction.
+            /// </summary>
+            PushOrPop = 1 << 0,
+            
+            /// <summary>
+            /// Indicates that the modification was caused by a ret instruction.
+            /// </summary>
+            Return = 2 << 0,
+            
+            /// <summary>
+            /// Indicates that the modification was caused by some other instruction.
+            /// </summary>
+            Other = 3 << 0,
+            
+            /// <summary>
+            /// The mask used to extract the instruction type (<see cref="PushOrPop"/>, <see cref="Return"/> or <see cref="Other"/>).
+            /// </summary>
+            InstructionTypeMask = 3 << 0
         }
     }
 }

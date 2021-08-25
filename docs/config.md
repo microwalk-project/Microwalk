@@ -173,6 +173,11 @@ Options:
   Path to the `pin` executable.
   
   Default: `pin`
+  
+- `stack-tracking` (optional)<br>
+  Enable tracking of stack allocations and deallocations. Enabling this setting allows the preprocessor to assign memory accesses to specific stack frames.
+
+  Default: `false`
 
 - `rdrand` (optional)<br>
   Constant value to use as output of the x86 `rdrand` instruction.
