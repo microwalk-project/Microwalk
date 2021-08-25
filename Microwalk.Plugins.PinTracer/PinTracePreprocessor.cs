@@ -119,7 +119,10 @@ namespace Microwalk.Plugins.PinTracer
                         imageFiles.Add(imageFile);
                     }
 
-                    _imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
+                    // Order image files
+                    // Interesting image files come first, since memory accesses almost always hit those
+                    _imageFiles = imageFiles.OrderByDescending(img => img.Interesting).ToArray();
+                    //_imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
 
                     // Prepare writer for serializing trace data
                     Dictionary<int, Allocation> tracePrefixAllocations;
@@ -443,22 +446,16 @@ namespace Microwalk.Plugins.PinTracer
         /// <returns></returns>
         private (int, TracePrefixFile.ImageFileInfo?) FindImage(ulong address)
         {
-            // Find by start address
-            // The images are sorted by start address, so the first hit should be the right one - else the correct image does not exist
-            // Linearity of search does not matter here, since the image count is expected to be rather small
-            // TODO However, this method is called extremly often: The profiler shows that around 8% of preprocessing time is spent here.
-            //      The linear order of addresses is easy, but not efficient when some images with high addresses are used much more often than those with low addresses
-            //      Profiling idea: Run the benchmark again, but create a heatmap which tracks which image is found how often
-            //      Or: Check the least recent image before calling this method? Or the interesting ones first, since almost all accesses will be there!
-            for(int i = _imageFiles.Length - 1; i >= 0; --i)
+            // Find image by linear search; the image count is expected to be rather small
+            // Images are sorted by "interesting" status, to reduce number of loop iterations
+            // TODO Improve this further - maybe by counting hits and then sorting during the first non-prefix trace?
+            foreach(var img in _imageFiles)
             {
-                var img = _imageFiles[i];
                 if(img.StartAddress <= address)
                 {
                     // Check end address
                     if(img.EndAddress >= address)
                         return (img.Id, img);
-                    return (-1, null);
                 }
             }
 
