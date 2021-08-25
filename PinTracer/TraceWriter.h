@@ -40,11 +40,8 @@ enum struct TraceEntryTypes : UINT32
     // Stack pointer information.
     StackPointerInfo = 7,
 
-    // A stack allocation.
-    StackAllocation = 8,
-
-    // A stack deallocation.
-    StackDeallocation = 9
+    // A modification of the stack pointer.
+    StackPointerModification = 8
 };
 
 // Represents one entry in a trace buffer.
@@ -62,11 +59,11 @@ struct TraceEntry
     UINT8 _padding[3];
 
     // The address of the instruction triggering the trace entry creation, or the size of an allocation.
-    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo, StackAllocation, StackDeallocation.
+    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
     UINT64 Param1;
 
     // The accessed/passed memory address.
-    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo, StackAllocation, StackDeallocation.
+    // Used with: MemoryRead, MemoryWrite, AllocAddressReturn, FreeAddressParameter, Branch, StackPointerInfo, StackPointerModification.
     UINT64 Param2;
 };
 #pragma pack(pop)
@@ -85,8 +82,9 @@ enum struct TraceEntryFlags : UINT8
     BranchTypeReturn = 3 << 1,
 
     // Stack (de)allocations
-    StackIsPush = 1,
-    StackIsPop = 1,
+    StackIsPushOrPop = 1 << 0,
+    StackIsReturn = 2 << 0,
+    StackIsOther = 3 << 0
 };
 
 // Provides functions to write trace buffer contents into a log file.
@@ -166,11 +164,8 @@ public:
     // Creates a new HeapFreeAddressParameter entry.
     static TraceEntry* InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
 
-    // Creates a new HeapAllocAddressReturn entry.
-    static TraceEntry* InsertStackAllocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags);
-
-    // Creates a new HeapFreeAddressParameter entry.
-    static TraceEntry* InsertStackDeallocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags);
+    // Creates a new StackPointerModification entry.
+    static TraceEntry* InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT newStackPointer, UINT8 flags);
 
     // Creates a new Branch entry.
     static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type);

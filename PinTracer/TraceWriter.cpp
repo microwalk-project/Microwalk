@@ -198,31 +198,16 @@ TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEnt
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertStackAllocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags)
+TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT newStackPointer, UINT8 flags)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == NULL)
         return nextEntry;
 
     // Create entry
-    nextEntry->Type = TraceEntryTypes::StackAllocation;
+    nextEntry->Type = TraceEntryTypes::StackPointerModification;
     nextEntry->Flag = flags;
-    nextEntry->Param1 = size;
-    nextEntry->Param2 = memoryAddress;
-    return ++nextEntry;
-}
-
-TraceEntry* TraceWriter::InsertStackDeallocationEntry(TraceEntry* nextEntry, ADDRINT memoryAddress, UINT64 size, UINT8 flags)
-{
-    // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == NULL)
-        return nextEntry;
-
-    // Create entry
-    nextEntry->Type = TraceEntryTypes::StackDeallocation;
-    nextEntry->Flag = flags;
-    nextEntry->Param1 = size;
-    nextEntry->Param2 = memoryAddress;
+    nextEntry->Param2 = newStackPointer;
     return ++nextEntry;
 }
 

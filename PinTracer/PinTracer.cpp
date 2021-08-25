@@ -27,7 +27,7 @@ KNOB<int> KnobCpuFeatureLevel(KNOB_MODE_WRITEONCE, "pintool", "c", "0", "specify
 KNOB<UINT64> KnobFixedRandomNumbers(KNOB_MODE_WRITEONCE, "pintool", "r", "841534158063459245", "set constant output for RDRAND instruction");
 
 // Enable stack allocation tracking.
-KNOB<BOOL> KnobEnableStackAllocationTracking(KNOB_MODE_WRITEONCE, "pintool", "s", "1", "enable stack allocation tracking");
+KNOB<int> KnobEnableStackAllocationTracking(KNOB_MODE_WRITEONCE, "pintool", "s", "0", "enable stack allocation tracking");
 
 // The names of interesting images, parsed from the command line option.
 std::vector<std::string> _interestingImages;
@@ -122,6 +122,7 @@ int main(int argc, char* argv[])
     if(KnobEnableStackAllocationTracking.Value() != 0)
     {
         _enableStackAllocationTracking = true;
+        std::cerr << "Stack allocation tracking is enabled" << std::endl;
     }
 
     // Initialize prefix mode
@@ -195,9 +196,11 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     continue;
                 if(opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
                     continue;
+
+                // Even LEA may change the stack pointer, although this is very unlikely
+                if(opc == XED_ICLASS_LEA)
+                    continue;
             }
-            if(opc == XED_ICLASS_LEA)
-                continue;
 
             // Change CPUID instruction
             if(opc == XED_ICLASS_CPUID)
@@ -298,6 +301,31 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             }
             if(INS_IsRet(ins) && INS_IsControlFlow(ins))
             {
+                // The preprocessor assumes that a ret instruction always pops 8 bytes, so only record this
+                // instruction's stack deallocation when more than the return address is popped from the stack
+                if(_enableStackAllocationTracking && INS_OperandCount(ins) > 0)
+                {
+                    INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, REG_RSP,
+                        IARG_UINT32, TraceEntryFlags::StackIsReturn,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::CheckBufferFull),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckBufferAndStore),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_THREAD_ID,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+                }
+
                 // ret instructions cannot be instrumented with IPOINT_AFTER, since they do have no fallthrough
                 INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
                     IARG_REG_VALUE, _nextBufferEntryReg,
@@ -319,13 +347,6 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                     IARG_RETURN_REGS, _nextBufferEntryReg,
                     IARG_END);
 
-                // The preprocessor assumes that a ret instruction always pops 8 bytes, so only record this
-                // instruction's stack deallocation when more than the return address is popped from the stack
-                if(INS_OperandCount(ins) > 0)
-                {
-                    // TODO CONTINUE HERE
-                }
-
                 continue;
             }
 
@@ -337,7 +358,55 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             // ret is already tracked above
             if(_enableStackAllocationTracking)
             {
-                // TODO CONTINUE HERE
+                // Trace all instructions which modify the stack pointer
+                if(opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ
+                    || opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ)
+                {
+                    INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(CheckNextTraceEntryPointerValid),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, REG_RSP,
+                        IARG_UINT32, TraceEntryFlags::StackIsPushOrPop,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::CheckBufferFull),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_THREAD_ID,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+
+                    // Ignore memory accesses of pushs and pops, as those only depend on the control flow/stack pointer and thus are not relevant for our analysis
+                    continue;
+                }
+                else if(INS_FullRegWContain(ins, REG_RSP))
+                {
+                    INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(CheckNextTraceEntryPointerValid),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, REG_RSP,
+                        IARG_UINT32, TraceEntryFlags::StackIsOther,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+                    INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::CheckBufferFull),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_END);
+                    INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
+                        IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_REG_VALUE, _entryBufferEndReg,
+                        IARG_THREAD_ID,
+                        IARG_RETURN_REGS, _nextBufferEntryReg,
+                        IARG_END);
+                }
             }
 
             // Trace instructions with memory read
