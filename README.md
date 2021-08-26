@@ -11,7 +11,7 @@ The following guide is mostly for Linux systems and command line builds on Windo
 
 ### Main application
 
-The main application is based on [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1), so the .NET Core 3.1 SDK is required for compiling.
+The main application is based on [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0), so the .NET 5.0 SDK is required for compiling.
 
 Compile command (optional):
 ```
@@ -19,7 +19,7 @@ cd Microwalk
 dotnet build -c Release
 ```
 
-Run command (compiles and executes; suppress compiliation with `--no-build`):
+Run command (compiles and executes; if you have compiled manually already, you can suppress compiliation with `--no-build`):
 ```
 cd Microwalk
 dotnet run -c Release <args>
@@ -66,22 +66,36 @@ The general steps for analyzing a library with Microwalk are:
 
 ### Configuration
 
-Microwalk takes a single command line argument, which is the path to a [YAML-based configuration file](docs/config.md).
+Microwalk takes the following command line arguments:
+
+- `-p <plugin directory>` (optional)<br>
+  A directory containing plugin binaries. This needs to be specified when the configuration references a plugin that is not in Microwalk's main build directory.
+  
+- `<configuration file>` (mandatory)<br>
+  The path to a [YAML-based configuration file](docs/config.md).
 
 ## Creating own framework modules
 
-Follow these steps to create a custom framework module:
-1. Create a new class in the respective `Modules` subfolder, which inherits from `XyzStage` and has a `[FrameworkModule]` attribute. `XyzStage` here corresponds to one of the framework's pipeline stages:
-    - `TestcaseStage` (`TestcaseGeneration` directory): Produces a new testcase on each call.
-    - `TraceStage` (`TraceGeneration` directory): Takes a testcases and generates raw trace data.
-    - `PreprocessorStage` (`TracePreprocessing` directory): Takes raw trace data and preprocesses it.
-    - `AnalysisStage` (`Analysis` directory): Takes preprocessed trace data and updates its internal state for each trace. Yields an analysis result once the finish function is called.
+Follow these steps to create a custom framework plugin with a new module:
+1. Create a new project `MyPlugin` and add a reference to the `Microwalk.FrameworkBase` project.
+
+2. Create a class `PluginMain` which derives from `Microwalk.FrameworkBase.PluginBase`. In this class, you need to override the `Register()` function (see step 5).
+
+3. Create a class `MyModule` for your new module, which inherits from `XXXStage` and has a `[FrameworkModule(<name>, <description>)]` attribute. `XXXStage` here corresponds to one of the framework's pipeline stages:
+    - `TestcaseStage`: Produces a new testcase on each call.
+    - `TraceStage`: Takes a testcases and generates raw trace data.
+    - `PreprocessorStage`: Takes raw trace data and preprocesses it.
+    - `AnalysisStage`: Takes preprocessed trace data and updates its internal state for each trace. Yields an analysis result once the finish function is called.
     
-2. Implement the module logic.
+4. Implement the module logic.
 
-3. Register the module, by calling the `XyzStage.Register<>` function in `Main` ([Program.cs](Microwalk/Program.cs)).
+5. Register the module by calling the `XXXStage.Factory.Register<MyModule>` function in `PluginMain`.
 
-4. Compile Microwalk.
+6. Compile the plugin project.
+
+7. Run Microwalk and pass the plugin's build folder via the `-p` command line switch.
+
+Look into the `Microwalk.Plugins.PinTracer` project for some examples.
 
 ## Contributing
 
