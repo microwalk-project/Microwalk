@@ -85,7 +85,7 @@ namespace Microwalk.Plugins.PinTracer
 
                         case PinTracePreprocessor.RawTraceEntryTypes.HeapFreeAddressParameter:
                         {
-                            outputWriter.WriteLine("Free: " + rawTraceEntry.Param2.ToString("X16"));
+                            outputWriter.WriteLine("HeapFree: " + rawTraceEntry.Param2.ToString("X16"));
                             break;
                         }
 

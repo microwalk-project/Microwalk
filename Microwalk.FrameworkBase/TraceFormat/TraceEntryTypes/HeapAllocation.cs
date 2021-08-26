@@ -6,9 +6,9 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     /// <summary>
     /// A memory allocation.
     /// </summary>
-    public struct Allocation : ITraceEntry
+    public struct HeapAllocation : ITraceEntry
     {
-        public TraceEntryTypes EntryType => TraceEntryTypes.Allocation;
+        public TraceEntryTypes EntryType => TraceEntryTypes.HeapAllocation;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -19,7 +19,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
 
         public void Store(BinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.Allocation);
+            writer.Write((byte)TraceEntryTypes.HeapAllocation);
             writer.Write(Id);
             writer.Write(Size);
             writer.Write(Address);

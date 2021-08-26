@@ -6,9 +6,9 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     /// <summary>
     /// A memory free.
     /// </summary>
-    public class Free : ITraceEntry
+    public class HeapFree : ITraceEntry
     {
-        public TraceEntryTypes EntryType => TraceEntryTypes.Free;
+        public TraceEntryTypes EntryType => TraceEntryTypes.HeapFree;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -17,7 +17,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
 
         public void Store(BinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.Free);
+            writer.Write((byte)TraceEntryTypes.HeapFree);
             writer.Write(Id);
         }
 

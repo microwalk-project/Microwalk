@@ -21,18 +21,23 @@
         StackMemoryAccess = 3,
 
         /// <summary>
-        /// A memory allocation.
+        /// A heap allocation.
         /// </summary>
-        Allocation = 4,
+        HeapAllocation = 4,
 
         /// <summary>
         /// A memory free.
         /// </summary>
-        Free = 5,
+        HeapFree = 5,
 
         /// <summary>
         /// A code branch.
         /// </summary>
-        Branch = 6
+        Branch = 6,
+        
+        /// <summary>
+        /// A stack allocation.
+        /// </summary>
+        StackAllocaton = 7
     };
 }

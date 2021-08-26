@@ -25,7 +25,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
         /// <summary>
         /// The allocations, indexed by their IDs.
         /// </summary>
-        public Dictionary<int, Allocation> Allocations { get; }
+        public Dictionary<int, HeapAllocation> Allocations { get; }
 
         /// <summary>
         /// Initializes a new trace file from the given byte buffer, using a previously initialized prefix.
@@ -33,7 +33,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
         /// <param name="prefix">The previously loaded prefix file.</param>
         /// <param name="buffer">Buffer containing the trace data.</param>
         /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
-        public TraceFile(TracePrefixFile prefix, Memory<byte> buffer, Dictionary<int, Allocation>? allocations = null)
+        public TraceFile(TracePrefixFile prefix, Memory<byte> buffer, Dictionary<int, HeapAllocation>? allocations = null)
             : this(allocations)
         {
             Prefix = prefix;
@@ -44,9 +44,9 @@ namespace Microwalk.FrameworkBase.TraceFormat
         /// Initializes a new empty trace file. Intended for derived types.
         /// </summary>
         /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
-        protected TraceFile(Dictionary<int, Allocation>? allocations = null)
+        protected TraceFile(Dictionary<int, HeapAllocation>? allocations = null)
         {
-            Allocations = allocations ?? new Dictionary<int, Allocation>();
+            Allocations = allocations ?? new Dictionary<int, HeapAllocation>();
         }
 
         public IEnumerator<ITraceEntry> GetEnumerator() => new TraceFileEnumerator(Buffer);
@@ -83,9 +83,10 @@ namespace Microwalk.FrameworkBase.TraceFormat
             // Deserialize trace entry
             _current = entryType switch
             {
-                TraceEntryTypes.TraceEntryTypes.Allocation => new Allocation(),
+                TraceEntryTypes.TraceEntryTypes.HeapAllocation => new HeapAllocation(),
+                TraceEntryTypes.TraceEntryTypes.HeapFree => new HeapFree(),
+                TraceEntryTypes.TraceEntryTypes.StackAllocaton => new StackAllocation(),
                 TraceEntryTypes.TraceEntryTypes.Branch => new Branch(),
-                TraceEntryTypes.TraceEntryTypes.Free => new Free(),
                 TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess => new HeapMemoryAccess(),
                 TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess => new ImageMemoryAccess(),
                 TraceEntryTypes.TraceEntryTypes.StackMemoryAccess => new StackMemoryAccess(),

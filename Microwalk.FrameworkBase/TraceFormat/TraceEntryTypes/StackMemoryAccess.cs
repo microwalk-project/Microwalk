@@ -15,6 +15,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             IsWrite = reader.ReadBoolean();
             InstructionImageId = reader.ReadInt32();
             InstructionRelativeAddress = reader.ReadUInt32();
+            StackAllocationBlockId = reader.ReadInt32();
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
@@ -24,6 +25,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             writer.Write(IsWrite);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);
+            writer.Write(StackAllocationBlockId);
             writer.Write(MemoryRelativeAddress);
         }
 
@@ -43,7 +45,13 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public uint InstructionRelativeAddress { get; set; }
 
         /// <summary>
-        /// The address of the accessed memory, relative to the stack minimum address.
+        /// The allocation block ID of the accessed stack memory.
+        /// -1 indicates that the allocation block could not be resolved.
+        /// </summary>
+        public int StackAllocationBlockId { get; set; }
+
+        /// <summary>
+        /// The address of the accessed memory, relative to the allocated block's start address.
         /// </summary>
         public uint MemoryRelativeAddress { get; set; }
     }

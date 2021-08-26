@@ -66,14 +66,26 @@ namespace Microwalk.Plugins.PinTracer
         private ulong _stackPointerMax = 0x0000_0000_0000_0000UL;
 
         /// <summary>
-        /// Allocation information from the trace prefix, indexed by start address.
+        /// Heap allocation information from the trace prefix, indexed by start address.
         /// </summary>
-        private SortedList<ulong, Allocation>? _tracePrefixAllocationLookup;
+        private SortedList<ulong, HeapAllocation>? _tracePrefixHeapAllocationLookup;
 
         /// <summary>
-        /// The last allocation ID used by the trace prefix.
+        /// Stack frames from the trace prefix.
+        /// This list is used as a stack, where the highest index contains the most recent stack frame (i.e. the stack frame with the lowest base address).
+        /// The current stack frame list for each trace is initialized with this list.
         /// </summary>
-        private int _tracePrefixLastAllocationId;
+        private List<(int id, ulong baseAddress)>? _tracePrefixStackFrames;
+
+        /// <summary>
+        /// The last heap allocation ID used by the trace prefix.
+        /// </summary>
+        private int _tracePrefixLastHeapAllocationId;
+
+        /// <summary>
+        /// The last stack allocation ID used by the trace prefix.
+        /// </summary>
+        private int _tracePrefixLastStackAllocationId;
 
         /// <summary>
         /// Initial size of the preprocessed trace writer buffer, to reduce number of allocations.
@@ -122,10 +134,9 @@ namespace Microwalk.Plugins.PinTracer
                     // Order image files
                     // Interesting image files come first, since memory accesses almost always hit those
                     _imageFiles = imageFiles.OrderByDescending(img => img.Interesting).ToArray();
-                    //_imageFiles = imageFiles.OrderBy(img => img.StartAddress).ToArray();
 
                     // Prepare writer for serializing trace data
-                    Dictionary<int, Allocation> tracePrefixAllocations;
+                    Dictionary<int, HeapAllocation> tracePrefixAllocations;
                     await using var tracePrefixFileStream = new MemoryStream();
                     await using(var tracePrefixFileWriter = new BinaryWriter(tracePrefixFileStream, Encoding.ASCII, true))
                     {
@@ -166,15 +177,15 @@ namespace Microwalk.Plugins.PinTracer
 
             // Preprocess trace data
             string rawTraceFilePath = traceEntity.RawTraceFilePath;
-            Dictionary<int, Allocation> allocations;
+            Dictionary<int, HeapAllocation> allocations;
             await using var traceFileStream = new MemoryStream(_estimatedTraceBufferCapacity);
             await using(var traceFileWriter = new BinaryWriter(traceFileStream, Encoding.ASCII, true))
                 PreprocessFile(rawTraceFilePath, false, traceFileWriter, out allocations);
 
             // Remember new capacity
-            if (traceFileStream.Capacity > _estimatedTraceBufferCapacity)
+            if(traceFileStream.Capacity > _estimatedTraceBufferCapacity)
                 _estimatedTraceBufferCapacity = traceFileStream.Capacity;
-            
+
             // Create trace file object
             var preprocessedTraceData = traceFileStream.GetBuffer().AsMemory(0, (int)traceFileStream.Length);
             var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
@@ -204,11 +215,11 @@ namespace Microwalk.Plugins.PinTracer
         /// <param name="inputFileName">Input file.</param>
         /// <param name="isPrefix">Determines whether the prefix file is handled.</param>
         /// <param name="traceFileWriter">Binary writer for storing the preprocessed trace data.</param>
-        /// <param name="allocations">Allocation lookup table, indexed by IDs.</param>
+        /// <param name="allocations">Heap allocation lookup table, indexed by IDs.</param>
         /// <remarks>
         /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, BinaryWriter traceFileWriter, out Dictionary<int, Allocation> allocations)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, BinaryWriter traceFileWriter, out Dictionary<int, HeapAllocation> allocations)
         {
             // Read entire trace file into memory, since these files should not get too big
             byte[] inputFile = File.ReadAllBytes(inputFileName);
@@ -217,11 +228,15 @@ namespace Microwalk.Plugins.PinTracer
 
             // Parse trace entries
             var lastAllocationSizes = new Stack<uint>();
+            var stackFrames = new List<(int id, ulong baseAddress)>(); // Is used as a stack, where the top element is the most recent stack frame
+            if(_tracePrefixStackFrames != null)
+                stackFrames.AddRange(_tracePrefixStackFrames);
             ulong lastAllocReturnAddress = 0;
             bool encounteredSizeSinceLastAlloc = false;
-            var allocationLookup = new SortedList<ulong, Allocation>();
-            var allocationData = new List<Allocation>();
-            int nextAllocationId = isPrefix ? 0 : _tracePrefixLastAllocationId + 1;
+            var heapAllocationLookup = new SortedList<ulong, HeapAllocation>();
+            var heapAllocationData = new List<HeapAllocation>();
+            int nextHeapAllocationId = isPrefix ? 0 : _tracePrefixLastHeapAllocationId + 1;
+            int nextStackAllocationId = isPrefix ? 0 : _tracePrefixLastStackAllocationId + 1;
             fixed(byte* inputFilePtr = inputFile)
             {
                 for(long pos = 0; pos < inputFileLength; pos += rawTraceEntrySize)
@@ -248,27 +263,27 @@ namespace Microwalk.Plugins.PinTracer
                                 break;
                             }
 
-                            // Allocation stack empty?
+                            // HeapAllocation stack empty?
                             if(lastAllocationSizes.Count == 0)
                             {
-                                Logger.LogErrorAsync("Encountered allocation address return, but size stack is empty").Wait();
+                                Logger.LogErrorAsync("Encountered heap allocation address return, but size stack is empty").Wait();
                                 break;
                             }
 
                             uint size = lastAllocationSizes.Pop();
 
                             // Create entry
-                            var entry = new Allocation
+                            var entry = new HeapAllocation
                             {
-                                Id = nextAllocationId++,
+                                Id = nextHeapAllocationId++,
                                 Size = size,
                                 Address = rawTraceEntry.Param2
                             };
                             entry.Store(traceFileWriter);
 
                             // Store allocation information
-                            allocationLookup[entry.Address] = entry;
-                            allocationData.Add(entry);
+                            heapAllocationLookup[entry.Address] = entry;
+                            heapAllocationData.Add(entry);
 
                             // Update state
                             lastAllocReturnAddress = entry.Address;
@@ -282,21 +297,21 @@ namespace Microwalk.Plugins.PinTracer
                             // Skip nonsense frees
                             if(rawTraceEntry.Param2 == 0)
                                 break;
-                            if(!allocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
+                            if(!heapAllocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                             {
-                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any allocation, skipping").Wait();
+                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any heap allocation, skipping").Wait();
                                 break;
                             }
 
                             // Create entry
-                            var entry = new Free
+                            var entry = new HeapFree
                             {
                                 Id = allocationEntry.Id
                             };
                             entry.Store(traceFileWriter);
 
                             // Remove entry from allocation list
-                            allocationLookup.Remove(allocationEntry.Address);
+                            heapAllocationLookup.Remove(allocationEntry.Address);
 
                             break;
                         }
@@ -306,6 +321,74 @@ namespace Microwalk.Plugins.PinTracer
                             // Save stack pointer data
                             _stackPointerMin = rawTraceEntry.Param1;
                             _stackPointerMax = rawTraceEntry.Param2;
+
+                            break;
+                        }
+
+                        case RawTraceEntryTypes.StackPointerModification:
+                        {
+                            /*
+                             * NOTE push/pop tracking is currently disabled in the tracer, as these are likely not relevant for resolving memory accesses and
+                             * thus only serve to bloat the trace files. We focus on the "easy" and most likely cases:
+                             * 
+                             *   func:             ; return address is at <stack frame #x> - 0x08
+                             *     push r15        ; ignored
+                             *     sub rsp, 0x20   ; new <stack frame #x+1> which includes the pushed register and the return address
+                             *     ...
+                             *     add rsp, 0x20   ; new temporary <stack frame #x+2> which includes the pushed register and the return address;
+                             *                     ;   will get deleted in the next function call, so this causes no harm
+                             *     pop r15         ; ignored
+                             *     ret             ; ignored
+                             *
+                             *  OR
+                             * 
+                             *   func: ; return address is at <stack frame #x> - 0x08
+                             *     sub rsp, 0x20 ; new <stack frame #x+1> which includes the return address
+                             *     ...
+                             *     ret 0x20      ; full deallocation of <stack frame #x+1>, <stack frame #x> is back on top
+                             */
+
+                            // Remove all addresses from stack frame list which are strictly smaller than the new one
+                            // We assume that an instruction never accesses addresses which are _before_ (i.e. smaller than) the current stack frame
+                            ulong newStackPointerValue = rawTraceEntry.Param2;
+                            while(stackFrames.Count > 0 && stackFrames[^1].baseAddress < newStackPointerValue)
+                            {
+                                stackFrames.RemoveAt(stackFrames.Count - 1);
+                            }
+
+                            // The new address is the top most stack frame
+                            if(stackFrames.Count == 0 || stackFrames[^1].baseAddress != newStackPointerValue)
+                            {
+                                // Create trace entry
+                                var entry = new StackAllocation
+                                {
+                                    Id = nextStackAllocationId++,
+                                    Size = (uint)(stackFrames.Count == 0 ? _stackPointerMax - newStackPointerValue : stackFrames[^1].baseAddress - newStackPointerValue),
+                                    Address = newStackPointerValue
+                                };
+                                entry.Store(traceFileWriter);
+
+                                stackFrames.Add((entry.Id, newStackPointerValue));
+                            }
+
+                            /*
+                            // NOTE The instruction type flag is ignored right now, as the stack pointer tracking technique does not depend on it.
+                            //      It may be used to do more fine granular tracking, or for inferring which kind of data is contained in the allocation blocks.
+                            var flags = (RawTraceStackPointerModificationEntryFlags)rawTraceEntry.Flag;
+                            var instructionType = flags & RawTraceStackPointerModificationEntryFlags.InstructionTypeMask;
+                            if(instructionType == RawTraceStackPointerModificationEntryFlags.PushOrPop)
+                            {
+                                
+                            }
+                            else if(instructionType == RawTraceStackPointerModificationEntryFlags.Return)
+                            {
+                                
+                            }
+                            else if(instructionType == RawTraceStackPointerModificationEntryFlags.Other)
+                            {
+                                
+                            }
+                            */
 
                             break;
                         }
@@ -372,13 +455,45 @@ namespace Microwalk.Plugins.PinTracer
                             bool isWrite = rawTraceEntry.Type == RawTraceEntryTypes.MemoryWrite;
                             if(_stackPointerMin <= rawTraceEntry.Param2 && rawTraceEntry.Param2 <= _stackPointerMax)
                             {
-                                // Stack
+                                // Find stack allocation
+                                int stackAllocationId = -1;
+                                ulong relativeAddress = 0;
+                                bool stackFrameFound = false;
+                                for(int i = stackFrames.Count - 1; i >= 0; --i)
+                                {
+                                    var currentStackFrame = stackFrames[i];
+                                    if(rawTraceEntry.Param2 >= currentStackFrame.baseAddress)
+                                    {
+                                        // Check next stack frame
+                                        if(i == 0 || stackFrames[i - 1].baseAddress > rawTraceEntry.Param2)
+                                        {
+                                            // We've found our allocation
+                                            stackAllocationId = currentStackFrame.id;
+                                            relativeAddress = rawTraceEntry.Param2 - currentStackFrame.baseAddress;
+                                            stackFrameFound = true;
+
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if(!stackFrameFound)
+                                {
+                                    // TODO add dummy catch-all stack frame?
+                                    Logger.LogWarningAsync(
+                                            $"Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
+                                        .Wait();
+
+                                    break;
+                                }
+
                                 var entry = new StackMemoryAccess
                                 {
                                     IsWrite = isWrite,
                                     InstructionImageId = instructionImageId,
                                     InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
-                                    MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - _stackPointerMin)
+                                    StackAllocationBlockId = stackAllocationId,
+                                    MemoryRelativeAddress = (uint)relativeAddress
                                 };
                                 entry.Store(traceFileWriter);
                             }
@@ -401,9 +516,9 @@ namespace Microwalk.Plugins.PinTracer
                                 else
                                 {
                                     // Heap
-                                    var (allocationBlockId, allocationBlock) = FindAllocation(allocationLookup, rawTraceEntry.Param2);
-                                    if(allocationBlockId < 0 && _tracePrefixAllocationLookup != null)
-                                        (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixAllocationLookup, rawTraceEntry.Param2);
+                                    var (allocationBlockId, allocationBlock) = FindAllocation(heapAllocationLookup, rawTraceEntry.Param2);
+                                    if(allocationBlockId < 0 && _tracePrefixHeapAllocationLookup != null)
+                                        (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixHeapAllocationLookup, rawTraceEntry.Param2);
                                     if(allocationBlockId < 0)
                                     {
                                         Logger.LogWarningAsync(
@@ -417,7 +532,7 @@ namespace Microwalk.Plugins.PinTracer
                                         IsWrite = isWrite,
                                         InstructionImageId = instructionImageId,
                                         InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
-                                        MemoryAllocationBlockId = allocationBlockId,
+                                        HeapAllocationBlockId = allocationBlockId,
                                         MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - allocationBlock.Address)
                                     };
                                     entry.Store(traceFileWriter);
@@ -431,11 +546,13 @@ namespace Microwalk.Plugins.PinTracer
             }
 
             // Create trace file object
-            allocations = allocationData.ToDictionary(ad => ad.Id);
+            allocations = heapAllocationData.ToDictionary(ad => ad.Id);
             if(isPrefix)
             {
-                _tracePrefixAllocationLookup = allocationLookup;
-                _tracePrefixLastAllocationId = nextAllocationId - 1;
+                _tracePrefixHeapAllocationLookup = heapAllocationLookup;
+                _tracePrefixStackFrames = stackFrames;
+                _tracePrefixLastHeapAllocationId = nextHeapAllocationId - 1;
+                _tracePrefixLastStackAllocationId = nextStackAllocationId - 1;
             }
         }
 
@@ -448,7 +565,7 @@ namespace Microwalk.Plugins.PinTracer
         {
             // Find image by linear search; the image count is expected to be rather small
             // Images are sorted by "interesting" status, to reduce number of loop iterations
-            // TODO Improve this further - maybe by counting hits and then sorting during the first non-prefix trace?
+            // TODO Improve this further - maybe by counting hits and then sorting after processing the first non-prefix trace?
             foreach(var img in _imageFiles)
             {
                 if(img.StartAddress <= address)
@@ -465,10 +582,10 @@ namespace Microwalk.Plugins.PinTracer
         /// <summary>
         /// Finds the allocation block that contains the given address and returns its ID, or -1 if the block is not found.
         /// </summary>
-        /// <param name="allocationLookup">List containing all allocations, sorted by start address in ascending order.</param>
+        /// <param name="allocationLookup">List containing all heap allocations, sorted by start address in ascending order.</param>
         /// <param name="address">The address to be searched.</param>
         /// <returns></returns>
-        private (int, Allocation) FindAllocation(SortedList<ulong, Allocation> allocationLookup, ulong address)
+        private (int, HeapAllocation) FindAllocation(SortedList<ulong, HeapAllocation> allocationLookup, ulong address)
         {
             // Use binary search to find allocation block with start address <= address
             var startAddresses = allocationLookup.Keys;
@@ -638,7 +755,7 @@ namespace Microwalk.Plugins.PinTracer
             /// Indicates that this branch is implemented as a RET instruction.
             /// </summary>
             Return = 3 << 1,
-            
+
             /// <summary>
             /// The mask used to extract the branch entry type (<see cref="Jump"/>, <see cref="Call"/> or <see cref="Return"/>).
             /// </summary>
@@ -655,17 +772,17 @@ namespace Microwalk.Plugins.PinTracer
             /// Indicates that the modification was caused by a push or pop instruction.
             /// </summary>
             PushOrPop = 1 << 0,
-            
+
             /// <summary>
             /// Indicates that the modification was caused by a ret instruction.
             /// </summary>
             Return = 2 << 0,
-            
+
             /// <summary>
             /// Indicates that the modification was caused by some other instruction.
             /// </summary>
             Other = 3 << 0,
-            
+
             /// <summary>
             /// The mask used to extract the instruction type (<see cref="PushOrPop"/>, <see cref="Return"/> or <see cref="Other"/>).
             /// </summary>

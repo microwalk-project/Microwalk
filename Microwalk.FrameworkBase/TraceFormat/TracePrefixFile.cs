@@ -21,7 +21,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
         /// </summary>
         /// <param name="buffer">Buffer containing the trace data.</param>
         /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
-        public TracePrefixFile(Memory<byte> buffer, Dictionary<int, Allocation>? allocations = null)
+        public TracePrefixFile(Memory<byte> buffer, Dictionary<int, HeapAllocation>? allocations = null)
             : base(allocations)
         {
             // Read image file information

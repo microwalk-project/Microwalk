@@ -15,7 +15,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             IsWrite = reader.ReadBoolean();
             InstructionImageId = reader.ReadInt32();
             InstructionRelativeAddress = reader.ReadUInt32();
-            MemoryAllocationBlockId = reader.ReadInt32();
+            HeapAllocationBlockId = reader.ReadInt32();
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
@@ -25,7 +25,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             writer.Write(IsWrite);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);
-            writer.Write(MemoryAllocationBlockId);
+            writer.Write(HeapAllocationBlockId);
             writer.Write(MemoryRelativeAddress);
         }
 
@@ -47,7 +47,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         /// <summary>
         /// The allocation block ID of the accessed memory.
         /// </summary>
-        public int MemoryAllocationBlockId { get; set; }
+        public int HeapAllocationBlockId { get; set; }
 
         /// <summary>
         /// The address of the accessed memory, relative to the allocated block's start address.

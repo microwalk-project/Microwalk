@@ -147,7 +147,7 @@ namespace Microwalk.Analysis.Modules
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
                         instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
-                        memoryAddressId = ((ulong)heapMemoryAccess.MemoryAllocationBlockId << 32) | heapMemoryAccess.MemoryRelativeAddress;
+                        memoryAddressId = ((ulong)heapMemoryAccess.HeapAllocationBlockId << 32) | heapMemoryAccess.MemoryRelativeAddress;
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,

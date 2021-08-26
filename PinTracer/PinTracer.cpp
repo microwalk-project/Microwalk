@@ -190,7 +190,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
 
             // Ignore frequent and uninteresting instructions to reduce instrumentation time
             OPCODE opc = INS_Opcode(ins);
-            if(!_enableStackAllocationTracking)
+            //if(!_enableStackAllocationTracking) // NOTE tracking of push/pop stack allocations is disabled for now
             {
                 if(opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ)
                     continue;
@@ -303,8 +303,9 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
             {
                 // The preprocessor assumes that a ret instruction always pops 8 bytes, so only record this
                 // instruction's stack deallocation when more than the return address is popped from the stack
-                if(_enableStackAllocationTracking && INS_OperandCount(ins) > 0)
+                if(_enableStackAllocationTracking && INS_OperandCount(ins) > 0 && INS_OperandIsImmediate(ins, 0))
                 {
+                    std::cerr << "Instrumenting return: " << INS_Disassemble(ins) << std::endl;
                     INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
                         IARG_REG_VALUE, _nextBufferEntryReg,
                         IARG_END);
@@ -362,6 +363,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                 if((opc >= XED_ICLASS_PUSH && opc <= XED_ICLASS_PUSHFQ)
                     || (opc >= XED_ICLASS_POP && opc <= XED_ICLASS_POPFQ))
                 {
+                    /*
                     INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(CheckNextTraceEntryPointerValid),
                         IARG_REG_VALUE, _nextBufferEntryReg,
                         IARG_END);
@@ -381,6 +383,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                         IARG_THREAD_ID,
                         IARG_RETURN_REGS, _nextBufferEntryReg,
                         IARG_END);
+                    */
 
                     // Ignore memory accesses of pushs and pops, as those only depend on the control flow/stack pointer and thus are not relevant for our analysis
                     continue;
