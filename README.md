@@ -13,13 +13,13 @@ The following guide is mostly for Linux systems and command line builds on Windo
 
 The main application is based on [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0), so the .NET 5.0 SDK is required for compiling.
 
-Compile command (optional):
+Compile (optional):
 ```
 cd Microwalk
 dotnet build -c Release
 ```
 
-Run command (compiles and executes; if you have compiled manually already, you can suppress compiliation with `--no-build`):
+Run (compiles and executes; if you compile manually, you can suppress compiliation with `--no-build`):
 ```
 cd Microwalk
 dotnet run -c Release <args>
@@ -33,13 +33,13 @@ Microwalk comes with a Pin tool for instrumenting and tracing x86 binaries. Buil
 
 **When building through Visual Studio**: Edit [Settings.props](PinTracer/Settings.props) to point to the Pin directory.
 
-Compile command:
+Compile:
 ```
 cd PinTracer
 make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
 ```
 
-Run command (assuming the `pin` executable is in the system's `PATH`):
+Run (assuming the `pin` executable is in the system's `PATH`):
 ```
 pin -t PinTracer/obj-intel64/PinTracer.so -o /path/to/output/file -- /path/to/wrapper/executable
 ```
@@ -89,7 +89,7 @@ Follow these steps to create a custom framework plugin with a new module:
     
 4. Implement the module logic.
 
-5. Register the module by calling the `XXXStage.Factory.Register<MyModule>` function in `PluginMain`.
+5. Register the module by calling `XXXStage.Factory.Register<MyModule>()` in `PluginMain.Register()`.
 
 6. Compile the plugin project.
 
