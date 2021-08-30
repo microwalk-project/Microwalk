@@ -59,7 +59,7 @@ struct TraceEntry
     UINT8 _padding[3];
 
     // The address of the instruction triggering the trace entry creation, or the size of an allocation.
-    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo.
+    // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo, StackPointerModification.
     UINT64 Param1;
 
     // The accessed/passed memory address.
@@ -165,7 +165,7 @@ public:
     static TraceEntry* InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
 
     // Creates a new StackPointerModification entry.
-    static TraceEntry* InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT newStackPointer, UINT8 flags);
+    static TraceEntry* InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags);
 
     // Creates a new Branch entry.
     static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type);

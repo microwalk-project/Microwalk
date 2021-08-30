@@ -68,7 +68,7 @@ namespace Microwalk.FrameworkBase.Utilities
             ImageName = mapFileLines[0];
 
             // Parse entries
-            var entryRegex = new Regex("^(?:0x)?([0-9a-fA-F]+)\\s+([^\\s]+)\\s*$", RegexOptions.Compiled);
+            var entryRegex = new Regex("^(?:0x)?([0-9a-fA-F]+)\\s+(.+)$", RegexOptions.Compiled);
             foreach(var line in mapFileLines.Skip(1))
             {
                 // Ignore entry lines
@@ -84,7 +84,7 @@ namespace Microwalk.FrameworkBase.Utilities
                     await _logger.LogWarningAsync($"Ignoring unrecognized line in MAP file: {line}");
                     continue;
                 }
-                string entrySymbolName = match.Groups[2].Value;
+                string entrySymbolName = match.Groups[2].Value.TrimEnd();
 
                 // Store entry in lookup tables
                 _addresses.Add(entryAddress);

@@ -336,7 +336,7 @@ namespace Microwalk.Plugins.PinTracer
                              *     sub rsp, 0x20   ; new <stack frame #x+1> which includes the pushed register and the return address
                              *     ...
                              *     add rsp, 0x20   ; new temporary <stack frame #x+2> which includes the pushed register and the return address;
-                             *                     ;   will get deleted in the next function call, so this causes no harm
+                             *                     ;   will get discarded with the next call instruction, so this causes no harm
                              *     pop r15         ; ignored
                              *     ret             ; ignored
                              *
@@ -359,10 +359,20 @@ namespace Microwalk.Plugins.PinTracer
                             // The new address is the top most stack frame
                             if(stackFrames.Count == 0 || stackFrames[^1].baseAddress != newStackPointerValue)
                             {
+                                // Resolve allocating instruction
+                                var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
+                                if(instructionImageId < 0)
+                                {
+                                    Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
+                                    break;
+                                }
+
                                 // Create trace entry
                                 var entry = new StackAllocation
                                 {
                                     Id = nextStackAllocationId++,
+                                    InstructionImageId = instructionImageId,
+                                    InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage!.StartAddress),
                                     Size = (uint)(stackFrames.Count == 0 ? _stackPointerMax - newStackPointerValue : stackFrames[^1].baseAddress - newStackPointerValue),
                                     Address = newStackPointerValue
                                 };

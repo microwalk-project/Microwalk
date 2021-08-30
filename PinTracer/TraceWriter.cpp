@@ -198,7 +198,7 @@ TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEnt
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT newStackPointer, UINT8 flags)
+TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == NULL)
@@ -207,6 +207,7 @@ TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEnt
     // Create entry
     nextEntry->Type = TraceEntryTypes::StackPointerModification;
     nextEntry->Flag = flags;
+    nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = newStackPointer;
     return ++nextEntry;
 }

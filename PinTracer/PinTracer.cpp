@@ -305,12 +305,12 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                 // instruction's stack deallocation when more than the return address is popped from the stack
                 if(_enableStackAllocationTracking && INS_OperandCount(ins) > 0 && INS_OperandIsImmediate(ins, 0))
                 {
-                    std::cerr << "Instrumenting return: " << INS_Disassemble(ins) << std::endl;
                     INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
                         IARG_REG_VALUE, _nextBufferEntryReg,
                         IARG_END);
                     INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
                         IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_INST_PTR,
                         IARG_REG_VALUE, REG_RSP,
                         IARG_UINT32, TraceEntryFlags::StackIsReturn,
                         IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -369,6 +369,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                         IARG_END);
                     INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
                         IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_INST_PTR,
                         IARG_REG_VALUE, REG_RSP,
                         IARG_UINT32, TraceEntryFlags::StackIsPushOrPop,
                         IARG_RETURN_REGS, _nextBufferEntryReg,
@@ -395,6 +396,7 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
                         IARG_END);
                     INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
                         IARG_REG_VALUE, _nextBufferEntryReg,
+                        IARG_INST_PTR,
                         IARG_REG_VALUE, REG_RSP,
                         IARG_UINT32, TraceEntryFlags::StackIsOther,
                         IARG_RETURN_REGS, _nextBufferEntryReg,

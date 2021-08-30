@@ -134,11 +134,11 @@ namespace Microwalk.Plugins.PinTracer
 
                             var instructionType = flags & PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.InstructionTypeMask;
                             if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.PushOrPop)
-                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (push/pop)");
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (push/pop)");
                             else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Return)
-                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (ret)");
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (ret)");
                             else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Other)
-                                outputWriter.WriteLine("StackMod: RSP = " + rawTraceEntry.Param2.ToString("X16") + " (other)");else
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (other)");else
                             {
                                 Logger.LogErrorAsync("Unspecified instruction type on stack pointer modification, skipping").Wait();
                             }

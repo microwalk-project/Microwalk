@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
 
@@ -8,6 +9,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
 {
     /// <summary>
     /// Provides functions to read trace files.
+    /// Iterating this trace file does not include the trace prefix!
     /// TODO The allocation lookup table is not guaranteed to be initialized, can be generated on-the-fly and is only rarely used. Drop it altogether?
     /// </summary>
     public class TraceFile : IEnumerable<ITraceEntry>
@@ -49,6 +51,12 @@ namespace Microwalk.FrameworkBase.TraceFormat
             Allocations = allocations ?? new Dictionary<int, HeapAllocation>();
         }
 
+        /// <summary>
+        /// Returns all trace entries, including the trace prefix.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<ITraceEntry> GetEntriesWithPrefix() => Prefix == null ? this : Prefix.Concat(this);
+
         public IEnumerator<ITraceEntry> GetEnumerator() => new TraceFileEnumerator(Buffer);
         IEnumerator IEnumerable.GetEnumerator() => new TraceFileEnumerator(Buffer);
     }
@@ -85,7 +93,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
             {
                 TraceEntryTypes.TraceEntryTypes.HeapAllocation => new HeapAllocation(),
                 TraceEntryTypes.TraceEntryTypes.HeapFree => new HeapFree(),
-                TraceEntryTypes.TraceEntryTypes.StackAllocaton => new StackAllocation(),
+                TraceEntryTypes.TraceEntryTypes.StackAllocation => new StackAllocation(),
                 TraceEntryTypes.TraceEntryTypes.Branch => new Branch(),
                 TraceEntryTypes.TraceEntryTypes.HeapMemoryAccess => new HeapMemoryAccess(),
                 TraceEntryTypes.TraceEntryTypes.ImageMemoryAccess => new ImageMemoryAccess(),

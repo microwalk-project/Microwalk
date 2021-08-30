@@ -72,6 +72,7 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Print entry
                         var allocationEntry = (HeapAllocation)entry;
+                        
                         await writer.WriteLineAsync(
                             $"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
 
@@ -94,12 +95,14 @@ namespace Microwalk.Analysis.Modules
                         break;
                     }
 
-                    case TraceEntryTypes.StackAllocaton:
+                    case TraceEntryTypes.StackAllocation:
                     {
                         // Print entry
                         var allocationEntry = (StackAllocation)entry;
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId], allocationEntry.InstructionRelativeAddress);
+
                         await writer.WriteLineAsync(
-                            $"StackAlloc: S#{allocationEntry.Id}, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
+                            $"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
 
                         break;
                     }

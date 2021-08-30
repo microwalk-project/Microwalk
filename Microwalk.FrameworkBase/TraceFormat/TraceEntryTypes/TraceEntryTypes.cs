@@ -38,6 +38,6 @@
         /// <summary>
         /// A stack allocation.
         /// </summary>
-        StackAllocaton = 7
+        StackAllocation = 7
     };
 }
