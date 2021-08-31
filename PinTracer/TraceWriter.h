@@ -56,7 +56,11 @@ struct TraceEntry
     UINT8 Flag;
 
     // (Padding for reliable parsing by analysis programs)
-    UINT8 _padding[3];
+    UINT8 _padding1;
+
+    // The size of a memory access.
+    // Used with: MemoryRead, MemoryWrite
+    UINT16 Param0;
 
     // The address of the instruction triggering the trace entry creation, or the size of an allocation.
     // Used with: MemoryRead, MemoryWrite, Branch, AllocSizeParameter, StackPointerInfo, StackPointerModification.
@@ -67,7 +71,7 @@ struct TraceEntry
     UINT64 Param2;
 };
 #pragma pack(pop)
-static_assert(sizeof(TraceEntry) == 4 + 1 + 3 + 8 + 8, "Wrong size of TraceEntry struct");
+static_assert(sizeof(TraceEntry) == 4 + 1 + 1 + 2 + 8 + 8, "Wrong size of TraceEntry struct");
 
 // Flags for various trace entries.
 enum struct TraceEntryFlags : UINT8
@@ -82,7 +86,7 @@ enum struct TraceEntryFlags : UINT8
     BranchTypeReturn = 3 << 1,
 
     // Stack (de)allocations
-    StackIsPushOrPop = 1 << 0,
+    StackIsCall = 1 << 0,
     StackIsReturn = 2 << 0,
     StackIsOther = 3 << 0
 };
@@ -149,10 +153,10 @@ public:
     static bool CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBufferEnd);
 
     // Creates a new MemoryRead entry.
-    static TraceEntry* InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress);
+    static TraceEntry* InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
 
     // Creates a new MemoryWrite entry.
-    static TraceEntry* InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress);
+    static TraceEntry* InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
 
     // Creates a new HeapAllocSizeParameter entry.
     static TraceEntry* InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size);

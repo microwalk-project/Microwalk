@@ -173,7 +173,7 @@ namespace Microwalk.Analysis.Modules
 
                             // Print entry
                             string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
-                            await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
+                            await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
                         }
 
                         break;
@@ -190,7 +190,7 @@ namespace Microwalk.Analysis.Modules
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "StackWrite" : "StackRead";
-                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
+                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
 
                         break;
                     }
@@ -206,7 +206,7 @@ namespace Microwalk.Analysis.Modules
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "ImageWrite" : "ImageRead";
-                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}]");
+                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
 
                         break;
                     }

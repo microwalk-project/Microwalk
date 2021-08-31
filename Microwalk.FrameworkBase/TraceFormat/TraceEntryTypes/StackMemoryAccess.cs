@@ -13,6 +13,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public void FromReader(FastBinaryReader reader)
         {
             IsWrite = reader.ReadBoolean();
+            Size = reader.ReadInt16();
             InstructionImageId = reader.ReadInt32();
             InstructionRelativeAddress = reader.ReadUInt32();
             StackAllocationBlockId = reader.ReadInt32();
@@ -23,6 +24,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         {
             writer.Write((byte)TraceEntryTypes.StackMemoryAccess);
             writer.Write(IsWrite);
+            writer.Write(Size);
             writer.Write(InstructionImageId);
             writer.Write(InstructionRelativeAddress);
             writer.Write(StackAllocationBlockId);
@@ -33,6 +35,11 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         /// Determines whether this is a write access.
         /// </summary>
         public bool IsWrite { get; set; }
+        
+        /// <summary>
+        /// Size of the memory access.
+        /// </summary>
+        public short Size { get; set; }
 
         /// <summary>
         /// The image ID of the accessing instruction.

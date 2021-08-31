@@ -139,19 +139,21 @@ bool TraceWriter::CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBuffer
     return nextEntry != NULL && nextEntry == entryBufferEnd;
 }
 
-TraceEntry* TraceWriter::InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::MemoryRead;
+    nextEntry->Param0 = size;
     nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = memoryAddress;
     return ++nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::MemoryWrite;
+    nextEntry->Param0 = size;
     nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = memoryAddress;
     return ++nextEntry;

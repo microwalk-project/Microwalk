@@ -328,24 +328,33 @@ namespace Microwalk.Plugins.PinTracer
                         case RawTraceEntryTypes.StackPointerModification:
                         {
                             /*
-                             * NOTE push/pop tracking is currently disabled in the tracer, as these are likely not relevant for resolving memory accesses and
-                             * thus only serve to bloat the trace files. We focus on the "easy" and most likely cases:
+                             * To reduce overhead and complexity, we focus on the "easy" and most likely cases:
+                             * (STACKMOD marks a StackPointerModification trace entry)
+                             *
+                             *     call func       ; STACKMOD - new <stack frame #x+1> with the return address (and possible arguments on the stack)
                              * 
-                             *   func:             ; return address is at <stack frame #x> - 0x08
+                             *   func:
                              *     push r15        ; ignored
-                             *     sub rsp, 0x20   ; new <stack frame #x+1> which includes the pushed register and the return address
+                             *     sub rsp, 0x20   ; STACKMOD - new <stack frame #x+2> which includes the pushed register
                              *     ...
-                             *     add rsp, 0x20   ; new temporary <stack frame #x+2> which includes the pushed register and the return address;
+                             *     add rsp, 0x20   ; STACKMOD - new temporary <stack frame #x+3> which only includes the pushed register;
                              *                     ;   will get discarded with the next call instruction, so this causes no harm
                              *     pop r15         ; ignored
-                             *     ret             ; ignored
+                             *     ret             ; STACKMOD - end of <stack frame #x+1>; if there are arguments on the stack, there may be allocation of
+                             *                     ;   temporary <stack frame #x+4>. This causes no harm, as this scenario (lots of arguments) is unlikely
                              *
-                             *  OR
+                             * -- OR --
+                             *
+                             *     call func       ; STACKMOD - new <stack frame #x+1> with the return address (and possible arguments on the stack)
                              * 
-                             *   func: ; return address is at <stack frame #x> - 0x08
-                             *     sub rsp, 0x20 ; new <stack frame #x+1> which includes the return address
+                             *   func:
+                             *     sub rsp, 0x20   ; STACKMOD - new <stack frame #x+2>
                              *     ...
-                             *     ret 0x20      ; full deallocation of <stack frame #x+1>, <stack frame #x> is back on top
+                             *     ret 0x20        ; STACKMOD - full deallocation of <stack frame #x+2> and <stack frame #x+1>, <stack frame #x> is back on top, or
+                             *                     ;   creation of temporary <stack frame #x+3> if there are arguments on the stack
+                             *
+                             * The temporary stack frames usually get quietly discarded, as push/pop instructions are ignored and there will probably be no
+                             * other direct accesses to that areas.
                              */
 
                             // Remove all addresses from stack frame list which are strictly smaller than the new one
@@ -489,7 +498,7 @@ namespace Microwalk.Plugins.PinTracer
 
                                 if(!stackFrameFound)
                                 {
-                                    // TODO add dummy catch-all stack frame?
+                                    // TODO add dummy catch-all stack frame, in case stack tracking is disabled
                                     Logger.LogWarningAsync(
                                             $"Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
                                         .Wait();
@@ -500,6 +509,7 @@ namespace Microwalk.Plugins.PinTracer
                                 var entry = new StackMemoryAccess
                                 {
                                     IsWrite = isWrite,
+                                    Size = rawTraceEntry.Param0,
                                     InstructionImageId = instructionImageId,
                                     InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
                                     StackAllocationBlockId = stackAllocationId,
@@ -516,6 +526,7 @@ namespace Microwalk.Plugins.PinTracer
                                     var entry = new ImageMemoryAccess
                                     {
                                         IsWrite = isWrite,
+                                        Size = rawTraceEntry.Param0,
                                         InstructionImageId = instructionImageId,
                                         InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
                                         MemoryImageId = accessedImageId,
@@ -540,6 +551,7 @@ namespace Microwalk.Plugins.PinTracer
                                     var entry = new HeapMemoryAccess
                                     {
                                         IsWrite = isWrite,
+                                        Size = rawTraceEntry.Param0,
                                         InstructionImageId = instructionImageId,
                                         InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
                                         HeapAllocationBlockId = allocationBlockId,
@@ -677,9 +689,10 @@ namespace Microwalk.Plugins.PinTracer
             private readonly byte _padding1;
 
             /// <summary>
-            /// (Padding for reliable parsing by analysis programs)
+            /// The size of a memory access.
+            /// Used with: MemoryRead, MemoryWrite
             /// </summary>
-            private readonly short _padding2;
+            public readonly short Param0;
 
             /// <summary>
             /// The address of the instruction triggering the trace entry creation, or the size of an allocation.
@@ -779,9 +792,9 @@ namespace Microwalk.Plugins.PinTracer
         internal enum RawTraceStackPointerModificationEntryFlags : byte
         {
             /// <summary>
-            /// Indicates that the modification was caused by a push or pop instruction.
+            /// Indicates that the modification was caused by a call instruction.
             /// </summary>
-            PushOrPop = 1 << 0,
+            Call = 1 << 0,
 
             /// <summary>
             /// Indicates that the modification was caused by a ret instruction.
@@ -794,7 +807,7 @@ namespace Microwalk.Plugins.PinTracer
             Other = 3 << 0,
 
             /// <summary>
-            /// The mask used to extract the instruction type (<see cref="PushOrPop"/>, <see cref="Return"/> or <see cref="Other"/>).
+            /// The mask used to extract the instruction type (<see cref="Call"/>, <see cref="Return"/> or <see cref="Other"/>).
             /// </summary>
             InstructionTypeMask = 3 << 0
         }

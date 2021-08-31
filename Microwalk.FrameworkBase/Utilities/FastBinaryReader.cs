@@ -73,6 +73,23 @@ namespace Microwalk.FrameworkBase.Utilities
         }
 
         /// <summary>
+        /// Reads a 16-bit integer from the buffer.
+        /// </summary>
+        /// <returns></returns>
+        public unsafe short ReadInt16()
+        {
+            // Read and increase position
+            short val;
+            fixed(byte* buf = &Buffer.Span[Position])
+                if((Position & 0b1) == 0) // If the alignment is right, direct conversion is possible
+                    val = *((short*)buf);
+                else
+                    val = (short)((*buf) | (*(buf + 1) << 8)); // Little Endian
+            Position += 2;
+            return val;
+        }
+
+        /// <summary>
         /// Reads a 32-bit integer from the buffer.
         /// </summary>
         /// <returns></returns>
