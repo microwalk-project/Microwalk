@@ -28,7 +28,7 @@ namespace Microwalk.Plugins.PinTracer
 
             // Output file
             string outputFileName = Path.Combine(_outputDirectory.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".txt");
-            await using var outputStream = File.OpenWrite(outputFileName);
+            await using var outputStream = File.Open(outputFileName, FileMode.Create);
             await using var outputWriter = new StreamWriter(outputStream);
 
             // Base path of raw trace files
