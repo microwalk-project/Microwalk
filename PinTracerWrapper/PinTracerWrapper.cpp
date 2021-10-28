@@ -192,7 +192,7 @@ _EXPORT void ReadAndSendStackPointer()
     }
 
     uint64_t stackMin = reinterpret_cast<uint64_t>(stackBase) - reinterpret_cast<uint64_t>(stackLimit.rlim_cur);
-    uint64_t stackMax = (reinterpret_cast<uint64_t>(stackBase) + 0x10000) & ~0x10000ull; // Round to next higher multiple of 64 kB (should be safe on x86 systems)
+    uint64_t stackMax = (reinterpret_cast<uint64_t>(stackBase) + 0x10000) & ~0xFFFFull; // Round to next higher multiple of 64 kB (should be safe on x86 systems)
     PinNotifyStackPointer(stackMin, stackMax);
 #endif
 }
