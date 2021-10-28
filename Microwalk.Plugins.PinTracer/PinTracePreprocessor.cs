@@ -322,11 +322,21 @@ namespace Microwalk.Plugins.PinTracer
                             _stackPointerMin = rawTraceEntry.Param1;
                             _stackPointerMax = rawTraceEntry.Param2;
 
+                            // HACK See comment below
+                            if (stackFrames.Count == 0)
+                                stackFrames.Add((nextStackAllocationId++, _stackPointerMin));
+
                             break;
                         }
 
                         case RawTraceEntryTypes.StackPointerModification:
                         {
+                            // TODO This is disabled for now. Problem: A function without any call instructions may never explicitly allocate a stack frame,
+                            //      because it doesn't need to. It can just use the empty stack space. However, this breaks the assumption of our stack frame
+                            //      tracking: We can't determine a minimum "base address" for stack frame, but have to use the stack pointer at the time of the
+                            //      call/ret instruction. This in turn means that stack memory accesses need to support negative offsets.
+                            //      For the time being, we just generate a single dummy stack frame and ignore all other stack pointer data.
+                          
                             /*
                              * To reduce overhead and complexity, we focus on the "easy" and most likely cases:
                              * (STACKMOD marks a StackPointerModification trace entry)
@@ -357,6 +367,7 @@ namespace Microwalk.Plugins.PinTracer
                              * other direct accesses to that areas.
                              */
 
+                            /*
                             // Remove all addresses from stack frame list which are strictly smaller than the new one
                             // We assume that an instruction never accesses addresses which are _before_ (i.e. smaller than) the current stack frame
                             ulong newStackPointerValue = rawTraceEntry.Param2;
@@ -389,6 +400,7 @@ namespace Microwalk.Plugins.PinTracer
 
                                 stackFrames.Add((entry.Id, newStackPointerValue));
                             }
+                            */
 
                             /*
                             // NOTE The instruction type flag is ignored right now, as the stack pointer tracking technique does not depend on it.
