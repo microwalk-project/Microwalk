@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
@@ -13,6 +12,7 @@ using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
+using Microwalk.FrameworkBase.Utilities;
 using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Plugins.PinTracer
@@ -88,13 +88,26 @@ namespace Microwalk.Plugins.PinTracer
         private int _tracePrefixLastStackAllocationId;
 
         /// <summary>
-        /// Initial size of the preprocessed trace writer buffer, to reduce number of allocations.
-        /// This number is updated when a trace requires a higher capacity.
-        /// We assume that all non-prefix traces have roughly the same size due to the uniform test cases, so outliers are not a problem here.
+        /// The maximum size of a preprocessed trace entry.
+        /// This number is used to compute an estimation of the size of the resulting preprocessed trace.
         /// </summary>
-        private int _estimatedTraceBufferCapacity = 1 * 1024 * 1024;
+        private readonly int _maxPreprocessedTraceEntrySize;
 
         public override bool SupportsParallelism => true;
+
+        public PinTracePreprocessor()
+        {
+            _maxPreprocessedTraceEntrySize = new[]
+            {
+                Branch.EntrySize,
+                HeapAllocation.EntrySize,
+                HeapFree.EntrySize,
+                HeapMemoryAccess.EntrySize,
+                ImageMemoryAccess.EntrySize,
+                StackAllocation.EntrySize,
+                StackMemoryAccess.EntrySize
+            }.Max();
+        }
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
         {
@@ -110,12 +123,13 @@ namespace Microwalk.Plugins.PinTracer
                 {
                     // Paths
                     string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath) ?? throw new Exception($"Could not determine directory: {traceEntity.RawTraceFilePath}");
-                    string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
+                    string prefixDataFilePath = Path.Combine(rawTraceFileDirectory, "prefix_data.txt"); // Suppress "possible null" warning
                     string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
 
                     // Read image data
                     string[] imageDataLines = await File.ReadAllLinesAsync(prefixDataFilePath);
                     int nextImageFileId = 0;
+                    int maxImageNameLength = 1;
                     List<TracePrefixFile.ImageFileInfo> imageFiles = new();
                     foreach(string line in imageDataLines)
                     {
@@ -129,6 +143,9 @@ namespace Microwalk.Plugins.PinTracer
                             Name = Path.GetFileName(imageData[4])
                         };
                         imageFiles.Add(imageFile);
+
+                        if(imageFile.Name.Length > maxImageNameLength)
+                            maxImageNameLength = imageFile.Name.Length;
                     }
 
                     // Order image files
@@ -136,21 +153,18 @@ namespace Microwalk.Plugins.PinTracer
                     _imageFiles = imageFiles.OrderByDescending(img => img.Interesting).ToArray();
 
                     // Prepare writer for serializing trace data
-                    Dictionary<int, HeapAllocation> tracePrefixAllocations;
-                    await using var tracePrefixFileStream = new MemoryStream();
-                    await using(var tracePrefixFileWriter = new BinaryWriter(tracePrefixFileStream, Encoding.ASCII, true))
-                    {
-                        // Write image files
-                        tracePrefixFileWriter.Write(_imageFiles.Length);
-                        foreach(var imageFile in _imageFiles)
-                            imageFile.Store(tracePrefixFileWriter);
+                    using var tracePrefixFileWriter = new FastBinaryWriter(_imageFiles.Length * (32 + maxImageNameLength));
 
-                        // Load and parse trace prefix data
-                        PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out tracePrefixAllocations);
-                    }
+                    // Write image files
+                    tracePrefixFileWriter.WriteInt32(_imageFiles.Length);
+                    foreach(var imageFile in _imageFiles)
+                        imageFile.Store(tracePrefixFileWriter);
+
+                    // Load and parse trace prefix data
+                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out Dictionary<int, HeapAllocation> tracePrefixAllocations);
 
                     // Create trace prefix object
-                    var preprocessedTracePrefixData = tracePrefixFileStream.GetBuffer().AsMemory(0, (int)tracePrefixFileStream.Length);
+                    var preprocessedTracePrefixData = tracePrefixFileWriter.Buffer.AsMemory(0, tracePrefixFileWriter.Length);
                     _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData, tracePrefixAllocations);
                     _firstTestcase = false;
 
@@ -175,19 +189,15 @@ namespace Microwalk.Plugins.PinTracer
                 _firstTestcaseSemaphore.Release();
             }
 
-            // Preprocess trace data
-            string rawTraceFilePath = traceEntity.RawTraceFilePath;
-            Dictionary<int, HeapAllocation> allocations;
-            await using var traceFileStream = new MemoryStream(_estimatedTraceBufferCapacity);
-            await using(var traceFileWriter = new BinaryWriter(traceFileStream, Encoding.ASCII, true))
-                PreprocessFile(rawTraceFilePath, false, traceFileWriter, out allocations);
+            // Prepare writer for serializing trace data
+            // The buffer will be resized by the preprocess method, which can compute a good upper bound for the output file size
+            using var traceFileWriter = new FastBinaryWriter(1);
 
-            // Remember new capacity
-            if(traceFileStream.Capacity > _estimatedTraceBufferCapacity)
-                _estimatedTraceBufferCapacity = traceFileStream.Capacity;
+            // Preprocess trace data
+            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, out Dictionary<int, HeapAllocation> allocations);
 
             // Create trace file object
-            var preprocessedTraceData = traceFileStream.GetBuffer().AsMemory(0, (int)traceFileStream.Length);
+            var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
             var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
 
             // Keep raw trace?
@@ -200,7 +210,7 @@ namespace Microwalk.Plugins.PinTracer
             // Store to disk?
             if(_storeTraces)
             {
-                traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(rawTraceFilePath) + ".preprocessed");
+                traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".preprocessed");
                 await using var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None));
                 writer.Write(preprocessedTraceData.Span);
             }
@@ -214,17 +224,20 @@ namespace Microwalk.Plugins.PinTracer
         /// </summary>
         /// <param name="inputFileName">Input file.</param>
         /// <param name="isPrefix">Determines whether the prefix file is handled.</param>
-        /// <param name="traceFileWriter">Binary writer for storing the preprocessed trace data.</param>
+        /// <param name="traceFileWriter">Writer for storing the preprocessed trace data.</param>
         /// <param name="allocations">Heap allocation lookup table, indexed by IDs.</param>
         /// <remarks>
         /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, BinaryWriter traceFileWriter, out Dictionary<int, HeapAllocation> allocations)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, out Dictionary<int, HeapAllocation> allocations)
         {
             // Read entire trace file into memory, since these files should not get too big
             byte[] inputFile = File.ReadAllBytes(inputFileName);
             int inputFileLength = inputFile.Length;
             int rawTraceEntrySize = Marshal.SizeOf(typeof(RawTraceEntry));
+
+            // Resize output buffer to avoid re-allocations
+            traceFileWriter.ResizeBuffer(_maxPreprocessedTraceEntrySize * inputFileLength / rawTraceEntrySize);
 
             // Parse trace entries
             var lastAllocationSizes = new Stack<uint>();
@@ -323,7 +336,7 @@ namespace Microwalk.Plugins.PinTracer
                             _stackPointerMax = rawTraceEntry.Param2;
 
                             // HACK See comment below
-                            if (stackFrames.Count == 0)
+                            if(stackFrames.Count == 0)
                                 stackFrames.Add((nextStackAllocationId++, _stackPointerMin));
 
                             break;
@@ -332,11 +345,11 @@ namespace Microwalk.Plugins.PinTracer
                         case RawTraceEntryTypes.StackPointerModification:
                         {
                             // TODO This is disabled for now. Problem: A function without any call instructions may never explicitly allocate a stack frame,
-                            //      because it doesn't need to. It can just use the empty stack space. However, this breaks the assumption of our stack frame
-                            //      tracking: We can't determine a minimum "base address" for stack frame, but have to use the stack pointer at the time of the
-                            //      call/ret instruction. This in turn means that stack memory accesses need to support negative offsets.
+                            //      because it doesn't need to ("red zone"). It can just use the empty stack space. However, this breaks the assumption of
+                            //      our stack frame tracking: We can't determine a minimum "base address" for stack frame, but have to use the stack pointer
+                            //      at the time of the call/ret instruction. This in turn means that stack memory accesses need to support negative offsets.
                             //      For the time being, we just generate a single dummy stack frame and ignore all other stack pointer data.
-                          
+
                             /*
                              * To reduce overhead and complexity, we focus on the "easy" and most likely cases:
                              * (STACKMOD marks a StackPointerModification trace entry)

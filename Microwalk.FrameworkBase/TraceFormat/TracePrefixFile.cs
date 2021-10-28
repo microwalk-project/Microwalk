@@ -51,9 +51,9 @@ namespace Microwalk.FrameworkBase.TraceFormat
             }
 
             /// <summary>
-            /// Reads the image data from the given stream.
+            /// Reads image data.
             /// </summary>
-            /// <param name="reader">Binary stream reader.</param>
+            /// <param name="reader">Binary reader.</param>
             public ImageFileInfo(FastBinaryReader reader)
             {
                 Id = reader.ReadInt32();
@@ -65,17 +65,17 @@ namespace Microwalk.FrameworkBase.TraceFormat
             }
 
             /// <summary>
-            /// Saves the image file data into the given stream.
+            /// Saves image file data.
             /// </summary>
-            /// <param name="writer">Stream writer.</param>
-            public void Store(BinaryWriter writer)
+            /// <param name="writer">Binary writer.</param>
+            public void Store(FastBinaryWriter writer)
             {
-                writer.Write(Id);
-                writer.Write(StartAddress);
-                writer.Write(EndAddress);
-                writer.Write(Name.Length);
-                writer.Write(Name.ToCharArray());
-                writer.Write(Interesting);
+                writer.WriteInt32(Id);
+                writer.WriteUInt64(StartAddress);
+                writer.WriteUInt64(EndAddress);
+                writer.WriteInt32(Name.Length);
+                writer.WriteChars(Name.ToCharArray());
+                writer.WriteBoolean(Interesting);
             }
 
             /// <summary>

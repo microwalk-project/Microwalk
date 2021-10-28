@@ -9,16 +9,17 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     public class HeapFree : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.HeapFree;
+        public const int EntrySize = 1 + 4;
 
         public void FromReader(FastBinaryReader reader)
         {
             Id = reader.ReadInt32();
         }
 
-        public void Store(BinaryWriter writer)
+        public void Store(FastBinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.HeapFree);
-            writer.Write(Id);
+            writer.WriteByte((byte)TraceEntryTypes.HeapFree);
+            writer.WriteInt32(Id);
         }
 
         /// <summary>

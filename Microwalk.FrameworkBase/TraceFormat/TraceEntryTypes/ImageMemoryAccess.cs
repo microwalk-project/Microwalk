@@ -9,6 +9,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     public class ImageMemoryAccess : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryAccess;
+        public const int EntrySize = 1 + 1 + 2 + 4 + 4 + 4 + 4;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -20,15 +21,15 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
-        public void Store(BinaryWriter writer)
+        public void Store(FastBinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.ImageMemoryAccess);
-            writer.Write(IsWrite);
-            writer.Write(Size);
-            writer.Write(InstructionImageId);
-            writer.Write(InstructionRelativeAddress);
-            writer.Write(MemoryImageId);
-            writer.Write(MemoryRelativeAddress);
+            writer.WriteByte((byte)TraceEntryTypes.ImageMemoryAccess);
+            writer.WriteBoolean(IsWrite);
+            writer.WriteInt16(Size);
+            writer.WriteInt32(InstructionImageId);
+            writer.WriteUInt32(InstructionRelativeAddress);
+            writer.WriteInt32(MemoryImageId);
+            writer.WriteUInt32(MemoryRelativeAddress);
         }
 
         /// <summary>

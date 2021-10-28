@@ -9,6 +9,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     public struct StackAllocation : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.StackAllocation;
+        public const int EntrySize = 1 + 4 + 4 + 4 + 4 + 8;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -19,14 +20,14 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             Address = reader.ReadUInt64();
         }
 
-        public void Store(BinaryWriter writer)
+        public void Store(FastBinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.StackAllocation);
-            writer.Write(Id);
-            writer.Write(InstructionImageId);
-            writer.Write(InstructionRelativeAddress);
-            writer.Write(Size);
-            writer.Write(Address);
+            writer.WriteByte((byte)TraceEntryTypes.StackAllocation);
+            writer.WriteInt32(Id);
+            writer.WriteInt32(InstructionImageId);
+            writer.WriteUInt32(InstructionRelativeAddress);
+            writer.WriteUInt32(Size);
+            writer.WriteUInt64(Address);
         }
 
         /// <summary>

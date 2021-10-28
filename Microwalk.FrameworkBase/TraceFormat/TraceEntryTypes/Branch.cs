@@ -9,6 +9,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     public class Branch : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.Branch;
+        public const int EntrySize = 1 + 4 + 4 + 4 + 4 + 1 + 1;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -20,15 +21,15 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             BranchType = (BranchTypes)reader.ReadByte();
         }
 
-        public void Store(BinaryWriter writer)
+        public void Store(FastBinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.Branch);
-            writer.Write(SourceImageId);
-            writer.Write(SourceInstructionRelativeAddress);
-            writer.Write(DestinationImageId);
-            writer.Write(DestinationInstructionRelativeAddress);
-            writer.Write(Taken);
-            writer.Write((byte)BranchType);
+            writer.WriteByte((byte)TraceEntryTypes.Branch);
+            writer.WriteInt32(SourceImageId);
+            writer.WriteUInt32(SourceInstructionRelativeAddress);
+            writer.WriteInt32(DestinationImageId);
+            writer.WriteUInt32(DestinationInstructionRelativeAddress);
+            writer.WriteBoolean(Taken);
+            writer.WriteByte((byte)BranchType);
         }
 
         /// <summary>

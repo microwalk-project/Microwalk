@@ -20,9 +20,9 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public void FromReader(FastBinaryReader reader);
 
         /// <summary>
-        /// Writes the entry data into the given stream.
+        /// Writes the entry data using the given binary writer.
         /// </summary>
-        /// <param name="writer">Stream writer.</param>
-        public void Store(BinaryWriter writer);
+        /// <param name="writer">Binary writer.</param>
+        public void Store(FastBinaryWriter writer);
     }
 }

@@ -9,6 +9,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     public struct HeapAllocation : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.HeapAllocation;
+        public const int EntrySize = 1 + 4 + 4 + 8;
 
         public void FromReader(FastBinaryReader reader)
         {
@@ -17,12 +18,12 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             Address = reader.ReadUInt64();
         }
 
-        public void Store(BinaryWriter writer)
+        public void Store(FastBinaryWriter writer)
         {
-            writer.Write((byte)TraceEntryTypes.HeapAllocation);
-            writer.Write(Id);
-            writer.Write(Size);
-            writer.Write(Address);
+            writer.WriteByte((byte)TraceEntryTypes.HeapAllocation);
+            writer.WriteInt32(Id);
+            writer.WriteUInt32(Size);
+            writer.WriteUInt64(Address);
         }
 
         /// <summary>
