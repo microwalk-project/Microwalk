@@ -337,7 +337,18 @@ namespace Microwalk.Plugins.PinTracer
 
                             // HACK See comment below
                             if(stackFrames.Count == 0)
-                                stackFrames.Add((nextStackAllocationId++, _stackPointerMin));
+                            {
+                                stackFrames.Add((nextStackAllocationId, _stackPointerMin));
+                                var entry = new StackAllocation
+                                {
+                                    Id = nextStackAllocationId++,
+                                    InstructionImageId = _imageFiles.First().Id,
+                                    InstructionRelativeAddress = 0,
+                                    Size = (uint)(_stackPointerMax - _stackPointerMin),
+                                    Address = _stackPointerMin
+                                };
+                                entry.Store(traceFileWriter);
+                            }
 
                             break;
                         }
