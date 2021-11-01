@@ -51,7 +51,6 @@ namespace Microwalk.FrameworkBase.Utilities
             _bufferMemoryHandle.Dispose();
 
             int newBufferSize = Math.Max(Buffer.Length * 2, Buffer.Length + minExtraSize);
-            Console.WriteLine($"Resizing buffer: {Buffer.Length:x8} -> {newBufferSize:x8}");
             byte[] newBuffer = new byte[newBufferSize];
             Array.Copy(Buffer, newBuffer, Buffer.Length);
 
