@@ -64,7 +64,15 @@ namespace Microwalk
             }
 
             // Parse command line and execute framework using these options
-            Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(
+            var parser = new Parser(options =>
+            {
+                options.AutoHelp = true;
+                options.AutoVersion = false;
+                options.CaseSensitive = true;
+                options.HelpWriter = Console.Error;
+                options.AllowMultiInstance = true;
+            });
+            parser.ParseArguments<CommandLineOptions>(args).WithParsed(
                 opts => RunAsync(opts)
                     .ContinueWith(t =>
                     {
@@ -82,30 +90,30 @@ namespace Microwalk
         private static async Task RunAsync(CommandLineOptions commandLineOptions)
         {
             // Register plugins, if there are any
-            string? pluginDir = commandLineOptions.PluginDirectory;
-            if(string.IsNullOrWhiteSpace(pluginDir) || !Directory.Exists(pluginDir))
-                pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            if(pluginDir == null)
-                Console.WriteLine("Could not determine plugin directory.");
-            else
+            foreach(var pluginDir in (commandLineOptions.PluginDirectories ?? Enumerable.Empty<string>()).Append(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)))
             {
-                var currentAssemblyName = Assembly.GetExecutingAssembly().GetName();
-                foreach(var pluginPath in Directory.EnumerateFiles(pluginDir, "*.dll"))
+                if(string.IsNullOrWhiteSpace(pluginDir) || !Directory.Exists(pluginDir))
+                    Console.WriteLine($"Could not find plugin directory '{pluginDir}'.");
+                else
                 {
-                    // Do not load the main application
-                    var pluginAssemblyName = new AssemblyName(Path.GetFileNameWithoutExtension(pluginPath));
-                    if(pluginAssemblyName == currentAssemblyName)
-                        continue;
-
-                    // Try to load assembly
-                    var pluginAssembly = new PluginLoadContext(pluginPath).LoadFromAssemblyName(pluginAssemblyName);
-
-                    // Find plugin main class(es)
-                    foreach(var type in pluginAssembly.GetTypes().Where(t => typeof(PluginBase).IsAssignableFrom(t)))
+                    var currentAssemblyName = Assembly.GetExecutingAssembly().GetName();
+                    foreach(var pluginPath in Directory.EnumerateFiles(pluginDir, "*.dll"))
                     {
-                        // Initialize plugin
-                        PluginBase? pluginBase = Activator.CreateInstance(type) as PluginBase;
-                        pluginBase?.Register();
+                        // Do not load the main application
+                        var pluginAssemblyName = new AssemblyName(Path.GetFileNameWithoutExtension(pluginPath));
+                        if(pluginAssemblyName == currentAssemblyName)
+                            continue;
+
+                        // Try to load assembly
+                        var pluginAssembly = new PluginLoadContext(pluginPath).LoadFromAssemblyName(pluginAssemblyName);
+
+                        // Find plugin main class(es)
+                        foreach(var type in pluginAssembly.GetTypes().Where(t => typeof(PluginBase).IsAssignableFrom(t)))
+                        {
+                            // Initialize plugin
+                            PluginBase? pluginBase = Activator.CreateInstance(type) as PluginBase;
+                            pluginBase?.Register();
+                        }
                     }
                 }
             }
