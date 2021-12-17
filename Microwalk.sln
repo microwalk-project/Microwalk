@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElfTools", "..\elftools\src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFileGenerator", "Tools\MapFileGenerator\MapFileGenerator.csproj", "{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.QemuKernelTracer", "Microwalk.Plugins.QemuKernelTracer\Microwalk.Plugins.QemuKernelTracer.csproj", "{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -125,6 +127,19 @@ Global
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Release|x64.Build.0 = Release|Any CPU
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Release|x86.ActiveCfg = Release|Any CPU
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Release|x86.Build.0 = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|x64.Build.0 = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Debug|x86.Build.0 = Debug|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x64.ActiveCfg = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x64.Build.0 = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x86.ActiveCfg = Release|Any CPU
+		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x86.Build.0 = Release|Any CPU
+
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

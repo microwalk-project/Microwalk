@@ -55,6 +55,7 @@ if(strtabSectionChunkIndex == null)
 var strtabSectionChunk = (StringTableChunk)elf.Chunks[strtabSectionChunkIndex.Value.chunkIndex];
 
 // Dump symbols
+ulong lastRelativeAddress = unchecked((ulong)-1);
 foreach(var symbol in symtabSectionChunk.Entries.OrderBy(s => s.Value))
 {
     if(symbol.Value < baseAddress)
@@ -63,8 +64,13 @@ foreach(var symbol in symtabSectionChunk.Entries.OrderBy(s => s.Value))
     ulong relativeAddress = symbol.Value - baseAddress;
     string name = strtabSectionChunk.GetString(symbol.Name);
 
+    if(relativeAddress == lastRelativeAddress)
+        continue;
+
     if(string.IsNullOrWhiteSpace(name))
         continue;
 
     outputWriter.WriteLine($"{relativeAddress:x8} {name}");
+
+    lastRelativeAddress = relativeAddress;
 }
