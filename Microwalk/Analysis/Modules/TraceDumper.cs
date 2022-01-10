@@ -60,6 +60,7 @@ namespace Microwalk.Analysis.Modules
             const int entryIndexMinWidth = 5; // Prevent too much misalignment
             int i = 0;
             bool firstReturn = !_includePrefix; // Skip return of "trace begin" marker, if there is no prefix -> suppress false warning
+            Dictionary<int, HeapAllocation> allocations = new(); // Keep track of heap allocations
             foreach(var entry in entries)
             {
                 // Print entry index and proper indentation based on call level
@@ -73,9 +74,11 @@ namespace Microwalk.Analysis.Modules
                         // Print entry
                         var allocationEntry = (HeapAllocation)entry;
                         
-                        await writer.WriteLineAsync(
-                            $"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
+                        await writer.WriteLineAsync($"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
 
+                        // Remember allocation
+                        allocations.Add(allocationEntry.Id, allocationEntry);
+                        
                         break;
                     }
 
@@ -83,13 +86,17 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Find matching allocation data
                         var freeEntry = (HeapFree)entry;
-                        if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(freeEntry.Id, out HeapAllocation allocationEntry)
-                           && !traceEntity.PreprocessedTraceFile.Prefix!.Allocations.TryGetValue(freeEntry.Id, out allocationEntry))
-                            await Logger.LogWarningAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
+                        if(allocations.TryGetValue(freeEntry.Id, out HeapAllocation allocationEntry))
+                        {
+                            await Logger.LogErrorAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
+                            await writer.WriteLineAsync("HeapFree: An error occured when formatting this trace entry.");
+                        }
                         else
                         {
                             // Print entry
                             await writer.WriteLineAsync($"HeapFree: H#{freeEntry.Id}, {allocationEntry.Address:X16}");
+
+                            allocations.Remove(allocationEntry.Id);
                         }
 
                         break;
@@ -101,8 +108,7 @@ namespace Microwalk.Analysis.Modules
                         var allocationEntry = (StackAllocation)entry;
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId], allocationEntry.InstructionRelativeAddress);
 
-                        await writer.WriteLineAsync(
-                            $"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
+                        await writer.WriteLineAsync($"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
 
                         break;
                     }
@@ -160,11 +166,14 @@ namespace Microwalk.Analysis.Modules
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
-
+                        string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
+                        
                         // Find allocation block
-                        if(!traceEntity.PreprocessedTraceFile.Allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation allocationEntry)
-                           && !traceEntity.PreprocessedTraceFile.Prefix.Allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out allocationEntry))
-                            await Logger.LogWarningAsync($"Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
+                        if(allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation allocationEntry))
+                        {
+                            await Logger.LogErrorAsync($"Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
+                            await writer.WriteLineAsync($"{formattedAccessType}: An error occured when formatting this trace entry.");
+                        }
                         else
                         {
                             // Format accessed address
@@ -172,7 +181,6 @@ namespace Microwalk.Analysis.Modules
                                 $"H#{accessEntry.HeapAllocationBlockId}+{accessEntry.MemoryRelativeAddress:X8} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress):X16})";
 
                             // Print entry
-                            string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
                             await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
                         }
 
