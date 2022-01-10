@@ -86,7 +86,7 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Find matching allocation data
                         var freeEntry = (HeapFree)entry;
-                        if(allocations.TryGetValue(freeEntry.Id, out HeapAllocation allocationEntry))
+                        if(!allocations.TryGetValue(freeEntry.Id, out HeapAllocation allocationEntry))
                         {
                             await Logger.LogErrorAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
                             await writer.WriteLineAsync("HeapFree: An error occured when formatting this trace entry.");
@@ -169,7 +169,7 @@ namespace Microwalk.Analysis.Modules
                         string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
                         
                         // Find allocation block
-                        if(allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation allocationEntry))
+                        if(!allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation allocationEntry))
                         {
                             await Logger.LogErrorAsync($"Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
                             await writer.WriteLineAsync($"{formattedAccessType}: An error occured when formatting this trace entry.");
