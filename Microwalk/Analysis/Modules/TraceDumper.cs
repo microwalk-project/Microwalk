@@ -26,6 +26,21 @@ namespace Microwalk.Analysis.Modules
         private bool _includePrefix;
 
         /// <summary>
+        /// Determines whether to skip memory accesses.
+        /// </summary>
+        private bool _skipMemoryAccesses;
+
+        /// <summary>
+        /// Determines whether to skip 'jump' entries.
+        /// </summary>
+        private bool _skipJumps;
+
+        /// <summary>
+        /// Determines whether to skip 'return' entries.
+        /// </summary>
+        private bool _skipReturns;
+
+        /// <summary>
         /// MAP file collection for resolving symbol names.
         /// </summary>
         private MapFileCollection _mapFileCollection = null!;
@@ -42,10 +57,9 @@ namespace Microwalk.Analysis.Modules
             string outputFilePath;
             if(traceEntity.PreprocessedTraceFilePath != null)
                 outputFilePath = Path.Combine(_outputDirectory.FullName, Path.GetFileName(traceEntity.PreprocessedTraceFilePath) + ".txt");
-            else if(traceEntity.RawTraceFilePath != null)
-                outputFilePath = Path.Combine(_outputDirectory.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".txt");
             else
-                outputFilePath = Path.Combine(_outputDirectory.FullName, $"dump_{traceEntity.Id}.txt");
+                outputFilePath = Path.Combine(_outputDirectory.FullName, $"t{traceEntity.Id}.trace.preprocessed.txt"); // Guess a name that likely fits
+
             await using var writer = new StreamWriter(File.Open(outputFilePath, FileMode.Create));
 
             // Compose entry sequence
@@ -63,7 +77,7 @@ namespace Microwalk.Analysis.Modules
             foreach(var entry in entries)
             {
                 // Print entry index and proper indentation based on call level
-                await writer.WriteAsync($"[{i,entryIndexMinWidth}] {new string(' ', 2 * callLevel)}");
+                string entryPrefix = $"[{i,entryIndexMinWidth}] {new string(' ', 2 * callLevel)}";
 
                 // Print entry depending on type
                 switch(entry.EntryType)
@@ -72,12 +86,12 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Print entry
                         var allocationEntry = (HeapAllocation)entry;
-                        
-                        await writer.WriteLineAsync($"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
+
+                        await writer.WriteLineAsync($"{entryPrefix}HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
 
                         // Remember allocation
                         allocations.Add(allocationEntry.Id, allocationEntry);
-                        
+
                         break;
                     }
 
@@ -88,12 +102,12 @@ namespace Microwalk.Analysis.Modules
                         if(!allocations.TryGetValue(freeEntry.Id, out HeapAllocation allocationEntry))
                         {
                             await Logger.LogErrorAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
-                            await writer.WriteLineAsync("HeapFree: An error occured when formatting this trace entry.");
+                            await writer.WriteLineAsync($"{entryPrefix}HeapFree: An error occured when formatting this trace entry.");
                         }
                         else
                         {
                             // Print entry
-                            await writer.WriteLineAsync($"HeapFree: H#{freeEntry.Id}, {allocationEntry.Address:x16}");
+                            await writer.WriteLineAsync($"{entryPrefix}HeapFree: H#{freeEntry.Id}, {allocationEntry.Address:x16}");
 
                             allocations.Remove(allocationEntry.Id);
                         }
@@ -107,7 +121,7 @@ namespace Microwalk.Analysis.Modules
                         var allocationEntry = (StackAllocation)entry;
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId], allocationEntry.InstructionRelativeAddress);
 
-                        await writer.WriteLineAsync($"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
+                        await writer.WriteLineAsync($"{entryPrefix}StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
 
                         break;
                     }
@@ -124,7 +138,7 @@ namespace Microwalk.Analysis.Modules
                         // Output entry and update call level
                         if(branchEntry.BranchType == Branch.BranchTypes.Call)
                         {
-                            string line = $"Call: <{formattedSource}> -> <{formattedDestination}>";
+                            string line = $"{entryPrefix}Call: <{formattedSource}> -> <{formattedDestination}>";
                             await writer.WriteLineAsync(line);
                             callStack.Push(line);
                             ++callLevel;
@@ -133,7 +147,9 @@ namespace Microwalk.Analysis.Modules
                         }
                         else if(branchEntry.BranchType == Branch.BranchTypes.Return)
                         {
-                            await writer.WriteLineAsync($"Return: <{formattedSource}> -> <{formattedDestination}>");
+                            if(!_skipReturns)
+                                await writer.WriteLineAsync($"{entryPrefix}Return: <{formattedSource}> -> <{formattedDestination}>");
+                            
                             if(callStack.Any())
                                 callStack.Pop();
                             --callLevel;
@@ -152,26 +168,26 @@ namespace Microwalk.Analysis.Modules
 
                             firstReturn = false;
                         }
-                        else if(branchEntry.BranchType == Branch.BranchTypes.Jump)
+                        else if(branchEntry.BranchType == Branch.BranchTypes.Jump && !_skipJumps)
                         {
-                            await writer.WriteLineAsync($"Jump: <{formattedSource}> -> <{formattedDestination}>, {(branchEntry.Taken ? "" : "not ")}taken");
+                            await writer.WriteLineAsync($"{entryPrefix}Jump: <{formattedSource}> -> <{formattedDestination}>, {(branchEntry.Taken ? "" : "not ")}taken");
                         }
 
                         break;
                     }
 
-                    case TraceEntryTypes.HeapMemoryAccess:
+                    case TraceEntryTypes.HeapMemoryAccess when !_skipMemoryAccesses:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
                         string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
-                        
+
                         // Find allocation block
                         if(!allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation allocationEntry))
                         {
                             await Logger.LogErrorAsync($"Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
-                            await writer.WriteLineAsync($"{formattedAccessType}: An error occured when formatting this trace entry.");
+                            await writer.WriteLineAsync($"{entryPrefix}{formattedAccessType}: An error occured when formatting this trace entry.");
                         }
                         else
                         {
@@ -180,13 +196,13 @@ namespace Microwalk.Analysis.Modules
                                 $"H#{accessEntry.HeapAllocationBlockId}+{accessEntry.MemoryRelativeAddress:x8} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress):x16})";
 
                             // Print entry
-                            await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
+                            await writer.WriteLineAsync($"{entryPrefix}{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
                         }
 
                         break;
                     }
 
-                    case TraceEntryTypes.StackMemoryAccess:
+                    case TraceEntryTypes.StackMemoryAccess when !_skipMemoryAccesses:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (StackMemoryAccess)entry;
@@ -197,12 +213,12 @@ namespace Microwalk.Analysis.Modules
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "StackWrite" : "StackRead";
-                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
+                        await writer.WriteLineAsync($"{entryPrefix}{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
 
                         break;
                     }
 
-                    case TraceEntryTypes.ImageMemoryAccess:
+                    case TraceEntryTypes.ImageMemoryAccess when !_skipMemoryAccesses:
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (ImageMemoryAccess)entry;
@@ -213,7 +229,7 @@ namespace Microwalk.Analysis.Modules
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "ImageWrite" : "ImageRead";
-                        await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
+                        await writer.WriteLineAsync($"{entryPrefix}{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
 
                         break;
                     }
@@ -233,15 +249,18 @@ namespace Microwalk.Analysis.Modules
         {
             if(moduleOptions == null)
                 throw new ConfigurationException("Missing module configuration.");
-            
+
             // Output directory
             string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("No output directory specified.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
-            // Include prefix
+            // Optional settings
             _includePrefix = moduleOptions.GetChildNodeOrDefault("include-prefix")?.AsBoolean() ?? false;
+            _skipMemoryAccesses = moduleOptions.GetChildNodeOrDefault("skip-memory-accesses")?.AsBoolean() ?? false;
+            _skipJumps = moduleOptions.GetChildNodeOrDefault("skip-jumps")?.AsBoolean() ?? false;
+            _skipReturns = moduleOptions.GetChildNodeOrDefault("skip-returns")?.AsBoolean() ?? false;
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);

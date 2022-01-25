@@ -578,9 +578,7 @@ namespace Microwalk.Plugins.PinTracer
                                         (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixHeapAllocationLookup, rawTraceEntry.Param2);
                                     if(allocationBlockId < 0)
                                     {
-                                        Logger.LogWarningAsync(
-                                                $"Could not resolve target of memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
-                                            .Wait();
+                                        Logger.LogWarningAsync($"Could not resolve target of memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping").Wait();
                                         break;
                                     }
 
