@@ -73,7 +73,7 @@ namespace Microwalk.Analysis.Modules
                         // Print entry
                         var allocationEntry = (HeapAllocation)entry;
                         
-                        await writer.WriteLineAsync($"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
+                        await writer.WriteLineAsync($"HeapAlloc: H#{allocationEntry.Id}, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
 
                         // Remember allocation
                         allocations.Add(allocationEntry.Id, allocationEntry);
@@ -93,7 +93,7 @@ namespace Microwalk.Analysis.Modules
                         else
                         {
                             // Print entry
-                            await writer.WriteLineAsync($"HeapFree: H#{freeEntry.Id}, {allocationEntry.Address:X16}");
+                            await writer.WriteLineAsync($"HeapFree: H#{freeEntry.Id}, {allocationEntry.Address:x16}");
 
                             allocations.Remove(allocationEntry.Id);
                         }
@@ -107,7 +107,7 @@ namespace Microwalk.Analysis.Modules
                         var allocationEntry = (StackAllocation)entry;
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId], allocationEntry.InstructionRelativeAddress);
 
-                        await writer.WriteLineAsync($"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:X16}...{(allocationEntry.Address + allocationEntry.Size):X16}, {allocationEntry.Size} bytes");
+                        await writer.WriteLineAsync($"StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
 
                         break;
                     }
@@ -177,7 +177,7 @@ namespace Microwalk.Analysis.Modules
                         {
                             // Format accessed address
                             string formattedMemoryAddress =
-                                $"H#{accessEntry.HeapAllocationBlockId}+{accessEntry.MemoryRelativeAddress:X8} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress):X16})";
+                                $"H#{accessEntry.HeapAllocationBlockId}+{accessEntry.MemoryRelativeAddress:x8} ({(allocationEntry.Address + accessEntry.MemoryRelativeAddress):x16})";
 
                             // Print entry
                             await writer.WriteLineAsync($"{formattedAccessType}: <{formattedInstructionAddress}>, [{formattedMemoryAddress}], {accessEntry.Size} bytes");
@@ -193,7 +193,7 @@ namespace Microwalk.Analysis.Modules
                         string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
-                        string formattedMemoryAddress = $"S#{(accessEntry.StackAllocationBlockId == -1 ? "?" : accessEntry.StackAllocationBlockId)}+{accessEntry.MemoryRelativeAddress:X8}";
+                        string formattedMemoryAddress = $"S#{(accessEntry.StackAllocationBlockId == -1 ? "?" : accessEntry.StackAllocationBlockId)}+{accessEntry.MemoryRelativeAddress:x8}";
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "StackWrite" : "StackRead";

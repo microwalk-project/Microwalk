@@ -311,7 +311,7 @@ namespace Microwalk.Plugins.PinTracer
                                 break;
                             if(!heapAllocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                             {
-                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:X16} does not correspond to any heap allocation, skipping").Wait();
+                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:x16} does not correspond to any heap allocation, skipping").Wait();
                                 break;
                             }
 
@@ -333,6 +333,7 @@ namespace Microwalk.Plugins.PinTracer
                             // Save stack pointer data
                             _stackPointerMin = rawTraceEntry.Param1;
                             _stackPointerMax = rawTraceEntry.Param2;
+                            Logger.LogDebugAsync($"Stack pointer info: {_stackPointerMin:x16}..{_stackPointerMax:x16}");
 
                             // HACK See comment below
                             if(stackFrames.Count == 0)
@@ -406,7 +407,7 @@ namespace Microwalk.Plugins.PinTracer
                                 var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
                                 if(instructionImageId < 0)
                                 {
-                                    Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
+                                    Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
                                     break;
                                 }
 
@@ -454,7 +455,7 @@ namespace Microwalk.Plugins.PinTracer
                             var (destinationImageId, destinationImage) = FindImage(rawTraceEntry.Param2);
                             if(sourceImageId < 0 || destinationImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
+                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -481,7 +482,7 @@ namespace Microwalk.Plugins.PinTracer
                                 entry.BranchType = Branch.BranchTypes.Return;
                             else
                             {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
+                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -497,7 +498,7 @@ namespace Microwalk.Plugins.PinTracer
                             var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
                             if(instructionImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:X16}, skipping").Wait();
+                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -535,7 +536,7 @@ namespace Microwalk.Plugins.PinTracer
                                 {
                                     // TODO add dummy catch-all stack frame, in case stack tracking is disabled
                                     Logger.LogWarningAsync(
-                                            $"Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
+                                            $"Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
                                         .Wait();
 
                                     break;
@@ -578,7 +579,7 @@ namespace Microwalk.Plugins.PinTracer
                                     if(allocationBlockId < 0)
                                     {
                                         Logger.LogWarningAsync(
-                                                $"Could not resolve target of memory access {rawTraceEntry.Param1:X16} -> [{rawTraceEntry.Param2:X16}] ({(isWrite ? "write" : "read")}), skipping")
+                                                $"Could not resolve target of memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
                                             .Wait();
                                         break;
                                     }

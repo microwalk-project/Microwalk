@@ -118,7 +118,7 @@ namespace MapFileConverter
 
                 uint address = segmentBaseAddresses[segmentId] + constantOffset + symbolAddress;
                 string name = match.Groups[3].Value.Trim();
-                output.WriteLine($"{address:X8} {name}");
+                output.WriteLine($"{address:x8} {name}");
             }
         }
     }

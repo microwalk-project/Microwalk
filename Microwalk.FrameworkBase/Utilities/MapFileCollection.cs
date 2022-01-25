@@ -59,11 +59,11 @@ namespace Microwalk.FrameworkBase.Utilities
             if(symbolData == null)
             {
                 // Just format the image name and the image offset
-                return $"{imageFile.Name}:{address:X}";
+                return $"{imageFile.Name}:{address:x}";
             }
 
             // Format image name, symbol name and symbol offset
-            return $"{imageFile.Name}:{symbolData.Value.Name}+{(address - symbolData.Value.StartAddress):X}";
+            return $"{imageFile.Name}:{symbolData.Value.Name}+{(address - symbolData.Value.StartAddress):x}";
         }
 
         /// <summary>

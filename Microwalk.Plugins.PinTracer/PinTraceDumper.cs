@@ -72,25 +72,25 @@ namespace Microwalk.Plugins.PinTracer
                     {
                         case PinTracePreprocessor.RawTraceEntryTypes.HeapAllocSizeParameter:
                         {
-                            outputWriter.WriteLine("AllocSize: " + ((uint)rawTraceEntry.Param1).ToString("X8"));
+                            outputWriter.WriteLine("AllocSize: " + ((uint)rawTraceEntry.Param1).ToString("x8"));
                             break;
                         }
 
                         case PinTracePreprocessor.RawTraceEntryTypes.HeapAllocAddressReturn:
                         {
-                            outputWriter.WriteLine("AllocReturn: " + rawTraceEntry.Param2.ToString("X16"));
+                            outputWriter.WriteLine("AllocReturn: " + rawTraceEntry.Param2.ToString("x16"));
                             break;
                         }
 
                         case PinTracePreprocessor.RawTraceEntryTypes.HeapFreeAddressParameter:
                         {
-                            outputWriter.WriteLine("HeapFree: " + rawTraceEntry.Param2.ToString("X16"));
+                            outputWriter.WriteLine("HeapFree: " + rawTraceEntry.Param2.ToString("x16"));
                             break;
                         }
 
                         case PinTracePreprocessor.RawTraceEntryTypes.StackPointerInfo:
                         {
-                            outputWriter.WriteLine("StackPtr: " + rawTraceEntry.Param1.ToString("X16") + " " + rawTraceEntry.Param2.ToString("X16"));
+                            outputWriter.WriteLine("StackPtr: " + rawTraceEntry.Param1.ToString("x16") + " " + rawTraceEntry.Param2.ToString("x16"));
                             break;
                         }
 
@@ -102,14 +102,14 @@ namespace Microwalk.Plugins.PinTracer
 
                             var rawBranchType = flags & PinTracePreprocessor.RawTraceBranchEntryFlags.BranchEntryTypeMask;
                             if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Jump)
-                                outputWriter.WriteLine("Jump: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
+                                outputWriter.WriteLine("Jump: " + rawTraceEntry.Param1.ToString("x16") + " -> " + rawTraceEntry.Param2.ToString("x16") + (taken ? " [taken]" : " [not taken]"));
                             else if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Call)
-                                outputWriter.WriteLine("Call: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
+                                outputWriter.WriteLine("Call: " + rawTraceEntry.Param1.ToString("x16") + " -> " + rawTraceEntry.Param2.ToString("x16") + (taken ? " [taken]" : " [not taken]"));
                             else if(rawBranchType == PinTracePreprocessor.RawTraceBranchEntryFlags.Return)
-                                outputWriter.WriteLine("Return: " + rawTraceEntry.Param1.ToString("X16") + " -> " + rawTraceEntry.Param2.ToString("X16") + (taken ? " [taken]" : " [not taken]"));
+                                outputWriter.WriteLine("Return: " + rawTraceEntry.Param1.ToString("x16") + " -> " + rawTraceEntry.Param2.ToString("x16") + (taken ? " [taken]" : " [not taken]"));
                             else
                             {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:X16} -> {rawTraceEntry.Param2:X16}, skipping").Wait();
+                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
                             }
 
                             break;
@@ -117,13 +117,13 @@ namespace Microwalk.Plugins.PinTracer
 
                         case PinTracePreprocessor.RawTraceEntryTypes.MemoryRead:
                         {
-                            outputWriter.WriteLine("MemoryRead: " + rawTraceEntry.Param1.ToString("X16") + " reads " + rawTraceEntry.Param2.ToString("X16") + " (" + rawTraceEntry.Param0 + " bytes)");
+                            outputWriter.WriteLine("MemoryRead: " + rawTraceEntry.Param1.ToString("x16") + " reads " + rawTraceEntry.Param2.ToString("x16") + " (" + rawTraceEntry.Param0 + " bytes)");
                             break;
                         }
 
                         case PinTracePreprocessor.RawTraceEntryTypes.MemoryWrite:
                         {
-                            outputWriter.WriteLine("MemoryWrite: " + rawTraceEntry.Param1.ToString("X16") + " writes " + rawTraceEntry.Param2.ToString("X16") + " (" + rawTraceEntry.Param0 + " bytes)");
+                            outputWriter.WriteLine("MemoryWrite: " + rawTraceEntry.Param1.ToString("x16") + " writes " + rawTraceEntry.Param2.ToString("x16") + " (" + rawTraceEntry.Param0 + " bytes)");
                             break;
                         }
 
@@ -133,11 +133,11 @@ namespace Microwalk.Plugins.PinTracer
 
                             var instructionType = flags & PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.InstructionTypeMask;
                             if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Call)
-                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (call)");
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("x16") + " sets RSP = " + rawTraceEntry.Param2.ToString("x16") + " (call)");
                             else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Return)
-                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (ret)");
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("x16") + " sets RSP = " + rawTraceEntry.Param2.ToString("x16") + " (ret)");
                             else if(instructionType == PinTracePreprocessor.RawTraceStackPointerModificationEntryFlags.Other)
-                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("X16") + " sets RSP = " + rawTraceEntry.Param2.ToString("X16") + " (other)");
+                                outputWriter.WriteLine("StackMod: " + rawTraceEntry.Param1.ToString("x16") + " sets RSP = " + rawTraceEntry.Param2.ToString("x16") + " (other)");
                             else
                             {
                                 Logger.LogErrorAsync("Unspecified instruction type on stack pointer modification, skipping").Wait();

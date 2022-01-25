@@ -355,7 +355,7 @@ namespace Microwalk.Analysis.Modules
 
             // Store results
             await Logger.LogInfoAsync("Call stack memory access trace leakage analysis completed, writing results");
-            string FormatCallStackId(ulong callStackId) => "CS-" + callStackId.ToString("X16");
+            string FormatCallStackId(ulong callStackId) => "CS-" + callStackId.ToString("x16");
             string csvListSeparator = ";"; // TextInfo.ListSeparator is unreliable
             if(_outputFormat == OutputFormat.Txt)
             {
@@ -426,7 +426,7 @@ namespace Microwalk.Analysis.Modules
             await using var callStackWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.txt")));
             foreach(var callStack in callStacks)
             {
-                await callStackWriter.WriteAsync($"CS-{callStack.Key:X16}: ");
+                await callStackWriter.WriteAsync($"CS-{callStack.Key:x16}: ");
                 await WriteCallStackAsync(callStackWriter, ((IEnumerable<ulong>)callStack.Value.InstructionIds).Reverse());
                 await callStackWriter.WriteLineAsync();
             }
@@ -446,7 +446,7 @@ namespace Microwalk.Analysis.Modules
                 foreach(var callStack in instructions.GroupBy(ins => ins.Key.Item1))
                 {
                     // Call stack name
-                    await traceHashDumpWriter.WriteAsync($"CS-{callStack.Key:X16}: ");
+                    await traceHashDumpWriter.WriteAsync($"CS-{callStack.Key:x16}: ");
                     await WriteCallStackAsync(traceHashDumpWriter, ((IEnumerable<ulong>)callStacks[callStack.Key].InstructionIds).Reverse());
                     await traceHashDumpWriter.WriteLineAsync();
 
@@ -518,7 +518,7 @@ namespace Microwalk.Analysis.Modules
                 await callStackInfoWriter.WriteAsync("Test Case ID");
                 var callStacksFixedOrder = callStacks.ToList();
                 foreach(var callStack in callStacksFixedOrder)
-                    await callStackInfoWriter.WriteAsync($"{csvListSeparator}CS-{callStack.Key:X16}");
+                    await callStackInfoWriter.WriteAsync($"{csvListSeparator}CS-{callStack.Key:x16}");
                 await callStackInfoWriter.WriteLineAsync();
                 foreach(var testcase in _testcaseCallTrees.Keys.ToList())
                 {
