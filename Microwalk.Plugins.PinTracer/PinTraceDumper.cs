@@ -3,10 +3,9 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Plugins.PinTracer
 {
@@ -35,7 +34,7 @@ namespace Microwalk.Plugins.PinTracer
             string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath) ?? throw new Exception($"Could not determine directory: {traceEntity.RawTraceFilePath}");
 
             // Write image data
-            string prefixDataFilePath = Path.Combine(rawTraceFileDirectory!, "prefix_data.txt"); // Suppress "possible null" warning
+            string prefixDataFilePath = Path.Combine(rawTraceFileDirectory, "prefix_data.txt"); // Suppress "possible null" warning
             await outputWriter.WriteLineAsync("-- Image data --");
             await outputWriter.WriteLineAsync(await File.ReadAllTextAsync(prefixDataFilePath));
 
@@ -150,10 +149,13 @@ namespace Microwalk.Plugins.PinTracer
                 }
         }
 
-        protected override Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();

@@ -1,5 +1,4 @@
-﻿using System.IO;
-using Microwalk.FrameworkBase.Utilities;
+﻿using Microwalk.FrameworkBase.Utilities;
 
 namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
 {

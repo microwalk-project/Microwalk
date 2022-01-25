@@ -5,11 +5,10 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.Utilities;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
 {
@@ -46,11 +45,14 @@ namespace Microwalk.TestcaseGeneration.Modules
         /// </summary>
         private readonly HashSet<byte[]> _knownTestcases = new(new ByteArrayComparer());
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Parse options
-            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount")?.GetNodeInteger() ?? throw new ConfigurationException("Missing test case count.");
-            _testcaseLength = moduleOptions.GetChildNodeWithKey("length")?.GetNodeInteger() ?? throw new ConfigurationException("Missing test case length.");
+            _testcaseCount = moduleOptions.GetChildNodeOrDefault("amount")?.AsInteger() ?? throw new ConfigurationException("Missing test case count.");
+            _testcaseLength = moduleOptions.GetChildNodeOrDefault("length")?.AsInteger() ?? throw new ConfigurationException("Missing test case length.");
 
             // Sanity check
             const double warnPercentage = 0.95;
@@ -59,7 +61,7 @@ namespace Microwalk.TestcaseGeneration.Modules
                                              "Consider increasing test case length or decreasing test case count to avoid performance hits and a possible endless loop.");
 
             // Make sure output directory exists
-            var outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            var outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();

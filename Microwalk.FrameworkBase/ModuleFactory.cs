@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Stages;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.FrameworkBase
 {
@@ -17,7 +18,7 @@ namespace Microwalk.FrameworkBase
         /// <summary>
         /// Contains a list of modules that implement this stage.
         /// </summary>
-        private readonly Dictionary<string, Type> _registeredModules = new Dictionary<string, Type>();
+        private readonly Dictionary<string, Type> _registeredModules = new();
 
         /// <summary>
         /// Registers the given type as a module for the given name.
@@ -43,8 +44,9 @@ namespace Microwalk.FrameworkBase
         /// <param name="name">The name of the requested module.</param>
         /// <param name="logger">Logger instance.</param>
         /// <param name="moduleOptions">The module-specific options, as defined in the configuration file.</param>
+        /// <param name="cancellationToken">Cancellation token for safely stopping the pipeline.</param>
         /// <returns></returns>
-        public async Task<TStage> CreateAsync(string name, ILogger logger, YamlMappingNode? moduleOptions)
+        public async Task<TStage> CreateAsync(string name, ILogger logger, MappingNode? moduleOptions, CancellationToken cancellationToken)
         {
             // Check parameters
             if(!_registeredModules.ContainsKey(name))
@@ -54,7 +56,7 @@ namespace Microwalk.FrameworkBase
             var module = (TStage?)Activator.CreateInstance(_registeredModules[name]);
             if(module == null)
                 throw new Exception($"Could not create instance of module \"{name}\".");
-            await module.CreateAsync(logger, moduleOptions);
+            await module.CreateAsync(logger, moduleOptions, cancellationToken);
             return module;
         }
 

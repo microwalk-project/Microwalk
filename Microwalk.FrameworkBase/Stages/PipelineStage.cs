@@ -1,5 +1,6 @@
-﻿using System.Threading.Tasks;
-using YamlDotNet.RepresentationModel;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using Microwalk.FrameworkBase.Configuration;
 
 namespace Microwalk.FrameworkBase.Stages
 {
@@ -8,21 +9,32 @@ namespace Microwalk.FrameworkBase.Stages
     /// </summary>
     public abstract class PipelineStage
     {
+        /// <summary>
+        /// A logger instance for printing infos, errors and debug outputs.
+        /// </summary>
         protected ILogger Logger { get; private set; } = null!; // Will always be initialized by CreateAsync() method
 
         /// <summary>
         /// Returns whether the stage is thread-safe and thus supports parallel execution.
         /// </summary>
         public abstract bool SupportsParallelism { get; }
+        
+        /// <summary>
+        /// Cancellation token for controlling the pipeline.
+        /// If this is cancelled, the respective pipeline stages should abort.
+        /// </summary>
+        protected CancellationToken PipelineToken { get; private set; }
 
         /// <summary>
         /// Creates a new instance of this stage with the given configuration data.
         /// </summary>
         /// <param name="logger">A logger instance for printing infos, errors and debug outputs.</param>
         /// <param name="moduleOptions">The module-specific options, as defined in the configuration file.</param>
-        public Task CreateAsync(ILogger logger, YamlMappingNode? moduleOptions)
+        /// <param name="cancellationToken">Cancellation token for safely stopping the pipeline.</param>
+        public Task CreateAsync(ILogger logger, MappingNode? moduleOptions, CancellationToken cancellationToken)
         {
             Logger = logger;
+            PipelineToken = cancellationToken;
 
             return InitAsync(moduleOptions);
         }
@@ -31,7 +43,7 @@ namespace Microwalk.FrameworkBase.Stages
         /// Initializes the stage with the given configuration data.
         /// </summary>
         /// <param name="moduleOptions">The module-specific options, as defined in the configuration file.</param>
-        protected abstract Task InitAsync(YamlMappingNode? moduleOptions);
+        protected abstract Task InitAsync(MappingNode? moduleOptions);
 
         /// <summary>
         /// Performs clean up.

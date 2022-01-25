@@ -5,11 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.Plugins.PinTracer.Extensions;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Plugins.PinTracer
 {
@@ -58,29 +57,32 @@ namespace Microwalk.Plugins.PinTracer
             }
         }
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+
             // Extract mandatory configuration values
-            string pinToolPath = moduleOptions.GetChildNodeWithKey("pin-tool-path")?.GetNodeString() ?? throw new ConfigurationException("Missing Pin tool path.");
-            string wrapperPath = moduleOptions.GetChildNodeWithKey("wrapper-path")?.GetNodeString() ?? throw new ConfigurationException("Missing wrapper path.");
+            string pinToolPath = moduleOptions.GetChildNodeOrDefault("pin-tool-path")?.AsString() ?? throw new ConfigurationException("Missing Pin tool path.");
+            string wrapperPath = moduleOptions.GetChildNodeOrDefault("wrapper-path")?.AsString() ?? throw new ConfigurationException("Missing wrapper path.");
 
             // Check output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Load image list
-            var imagesNode = moduleOptions.GetChildNodeWithKey("images");
-            if(imagesNode is not YamlSequenceNode imagesListNode)
+            var imagesNode = moduleOptions.GetChildNodeOrDefault("images");
+            if(imagesNode is not ListNode imagesListNode)
                 throw new ConfigurationException("No images list specified.");
-            string imagesList = string.Join(':', imagesListNode.Children.Select(c => c.GetNodeString()));
+            string imagesList = string.Join(':', imagesListNode.Children.Select(c => c.AsString()));
 
             // Extract optional configuration values
-            string pinPath = moduleOptions.GetChildNodeWithKey("pin-path")?.GetNodeString() ?? "pin";
-            ulong? fixedRdrand = moduleOptions.GetChildNodeWithKey("rdrand")?.GetNodeUnsignedLongHex();
-            int cpuModelId = moduleOptions.GetChildNodeWithKey("cpu")?.GetNodeInteger() ?? 0;
-            bool enableStackTracking = moduleOptions.GetChildNodeWithKey("stack-tracking")?.GetNodeBoolean() ?? false;
+            string pinPath = moduleOptions.GetChildNodeOrDefault("pin-path")?.AsString() ?? "pin";
+            ulong? fixedRdrand = moduleOptions.GetChildNodeOrDefault("rdrand")?.AsUnsignedLongHex();
+            int cpuModelId = moduleOptions.GetChildNodeOrDefault("cpu")?.AsInteger() ?? 0;
+            bool enableStackTracking = moduleOptions.GetChildNodeOrDefault("stack-tracking")?.AsBoolean() ?? false;
 
             // Prepare argument list
             var pinArgs = new List<string>
@@ -127,6 +129,30 @@ namespace Microwalk.Plugins.PinTracer
             // Start Pin tool
             _pinToolProcess = Process.Start(pinToolProcessStartInfo) ?? throw new Exception("Could not start the Pin process.");
 
+            // Ensure that the Pin process is eventually stopped when the Pipeline gets aborted early
+            PipelineToken.Register(() =>
+            {
+                if(_pinToolProcess.HasExited) 
+                    return;
+                
+                try
+                {
+                    // Try to stop the Pin process the clean way
+                    _pinToolProcess.StandardInput.WriteLineAsync("e 0").Wait(1000);
+                    if(_pinToolProcess.WaitForExit(1000))
+                        return;
+                    
+                    _pinToolProcess.Kill(true);
+                    
+                    if(!_pinToolProcess.WaitForExit(1000))
+                        Logger.LogErrorAsync("Sent a KILL signal to the Pin tool process, but it did not respond in time. Please check whether it still running.").Wait(2000);
+                }
+                catch(Exception ex)
+                {
+                    Logger.LogErrorAsync($"Could not safely stop the Pin tool process. Please check whether it still running. Error message:\n{ex}").Wait(2000);
+                }
+            });
+
             // Read and log error output of Pin tool (avoids pipe contention leading to I/O hangs)
             _pinToolProcess.ErrorDataReceived += async (_, e) => await Logger.LogDebugAsync($"Pin tool log: {e.Data}");
             _pinToolProcess.BeginErrorReadLine();
@@ -136,8 +162,11 @@ namespace Microwalk.Plugins.PinTracer
         {
             // Exit Pin tool process
             await Logger.LogDebugAsync("Stopping Pin tool process");
-            await _pinToolProcess.StandardInput.WriteLineAsync("e 0");
-            await _pinToolProcess.WaitForExitAsync();
+            if(!_pinToolProcess.HasExited)
+            {
+                await _pinToolProcess.StandardInput.WriteLineAsync("e 0");
+                await _pinToolProcess.WaitForExitAsync();
+            }
         }
     }
 }

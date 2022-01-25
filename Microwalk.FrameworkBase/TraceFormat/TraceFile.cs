@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Microwalk.FrameworkBase.Exceptions;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
 

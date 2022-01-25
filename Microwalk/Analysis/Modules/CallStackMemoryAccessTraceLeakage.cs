@@ -7,14 +7,13 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
 using Standart.Hash.xxHash;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
 {
@@ -560,28 +559,31 @@ namespace Microwalk.Analysis.Modules
             }
         }
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Extract output path
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory for analysis results.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory for analysis results.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);
-            var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
-            if(mapFilesNode is YamlSequenceNode mapFileListNode)
+            var mapFilesNode = moduleOptions.GetChildNodeOrDefault("map-files");
+            if(mapFilesNode is ListNode mapFileListNode)
                 foreach(var mapFileNode in mapFileListNode.Children)
-                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.AsString() ?? throw new ConfigurationException("Invalid node type in map file list."));
        
             // Check output format
-            string outputFormat = moduleOptions.GetChildNodeWithKey("output-format")?.GetNodeString() ?? throw new ConfigurationException("Missing output format.");
-            if(outputFormat != null && !Enum.TryParse(outputFormat, true, out _outputFormat))
+            string outputFormat = moduleOptions.GetChildNodeOrDefault("output-format")?.AsString() ?? throw new ConfigurationException("Missing output format.");
+            if(!Enum.TryParse(outputFormat, true, out _outputFormat))
                 throw new ConfigurationException("Invalid output format.");
 
             // Dump internal data?
-            _dumpFullData = moduleOptions.GetChildNodeWithKey("dump-full-data")?.GetNodeBoolean() ?? false;
+            _dumpFullData = moduleOptions.GetChildNodeOrDefault("dump-full-data")?.AsBoolean() ?? false;
         }
 
         public override Task UnInitAsync()

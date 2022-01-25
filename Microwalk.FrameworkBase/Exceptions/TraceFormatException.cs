@@ -1,7 +1,7 @@
 ﻿using System;
 using Microwalk.FrameworkBase.TraceFormat;
 
-namespace Microwalk.FrameworkBase
+namespace Microwalk.FrameworkBase.Exceptions
 {
     /// <summary>
     /// Used when encountering problems during (de)serializing and handling <see cref="TraceFile"/> objects.

@@ -85,7 +85,14 @@ namespace Microwalk.FrameworkBase.Utilities
                     continue;
                 }
                 string entrySymbolName = match.Groups[2].Value.TrimEnd();
-
+                
+                // Check whether address is already known
+                if(_symbolNames.ContainsKey(entryAddress))
+                {
+                    await _logger.LogWarningAsync($"Ignoring duplicate MAP entry for address {entryAddress:x8}");
+                    continue;
+                }
+                    
                 // Store entry in lookup tables
                 _addresses.Add(entryAddress);
                 _symbolNames.Add(entryAddress, entrySymbolName);

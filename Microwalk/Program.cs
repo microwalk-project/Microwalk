@@ -10,13 +10,12 @@ using System.Threading.Tasks.Dataflow;
 using CommandLine;
 using Microwalk.Analysis.Modules;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.TestcaseGeneration.Modules;
 using Microwalk.TraceGeneration.Modules;
 using Microwalk.TracePreprocessing.Modules;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk
 {
@@ -146,48 +145,57 @@ namespace Microwalk
                 // Done
                 return;
             }
+            
+            // Our working directory is where the configuration resides
+            Environment.CurrentDirectory = Path.GetDirectoryName(commandLineOptions.ConfigurationFile) ?? throw new Exception("Could not determine working directory.");
 
+            // Global cancellation token for graceful shutdown
+            CancellationTokenSource globalCancellationToken = new();
+            Console.CancelKeyPress += (_, args) =>
+            {
+                Console.WriteLine("Received exit signal, performing cleanup...");
+                args.Cancel = true;
+                
+                // ReSharper disable once AccessToDisposedClosure
+                globalCancellationToken.Cancel();
+            };
+            
             // Load configuration file
-            // TODO delay the module initialization until the configuration load is complete, _or_ ensure that already active modules are properly cancelled
-            //      -> The Pin process loves to stay alive and generate HUGE traces
             try
             {
-                // Open file and read YAML
-                YamlStream yaml = new();
-                using(var configFileStream = new StreamReader(File.Open(commandLineOptions.ConfigurationFile, FileMode.Open, FileAccess.Read, FileShare.Read)))
-                    yaml.Load(configFileStream);
-                var rootNode = (YamlMappingNode)yaml.Documents[0].RootNode;
+                // Load configuration file
+                var configurationParser = new YamlConfigurationParser();
+                configurationParser.LoadConfigurationFile(commandLineOptions.ConfigurationFile);
 
                 // Read general configuration first
-                var generalConfigurationNode = rootNode.GetChildNodeWithKey("general");
+                var generalConfigurationNode = configurationParser.RootNodes.GetValueOrDefault("general") as MappingNode;
 
                 // Initialize logger
-                _logger = new Logger((YamlMappingNode?)generalConfigurationNode?.GetChildNodeWithKey("logger"));
+                _logger = new Logger(generalConfigurationNode?.Children.GetValueOrDefault("logger") as MappingNode);
                 await _logger.LogDebugAsync("Loaded configuration file, initialized logger");
-
+                
                 // Read stages
                 await _logger.LogDebugAsync("Reading pipeline configuration");
-                foreach(var mainNode in rootNode.Children)
+                foreach(var rootNode in configurationParser.RootNodes)
                 {
                     // Read key
-                    switch(mainNode.Key.GetNodeString())
+                    switch(rootNode.Key)
                     {
                         case "testcase":
                         {
                             await _logger.LogDebugAsync("Reading and applying 'testcase' stage configuration");
 
+                            if(rootNode.Value is not MappingNode mappingNode)
+                                throw new ConfigurationException("Could not parse root node for 'testcase' stage configuration.");
+                            
                             // There must be a module name node
-                            string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing testcase module name.");
-
-                            // Check for options
-                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
-                                throw new ConfigurationException("Missing or invalid module options in 'testcase' stage configuration.");
+                            string moduleName = mappingNode.GetChildNodeOrDefault("module")?.AsString() ?? throw new ConfigurationException("Missing testcase module name.");
 
                             // Create module, if possible
-                            _moduleConfiguration.TestcaseStageModule = await TestcaseStage.Factory.CreateAsync(moduleName, _logger, optionNode);
+                            _moduleConfiguration.TestcaseStageModule = await TestcaseStage.Factory.CreateAsync(moduleName, _logger, mappingNode.GetChildNodeOrDefault("module-options") as MappingNode, globalCancellationToken.Token);
 
                             // Remember general stage options
-                            _moduleConfiguration.TestcaseStageOptions = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("options");
+                            _moduleConfiguration.TestcaseStageOptions = mappingNode.GetChildNodeOrDefault("options") as MappingNode;
 
                             break;
                         }
@@ -196,18 +204,17 @@ namespace Microwalk
                         {
                             await _logger.LogDebugAsync("Reading and applying 'trace' stage configuration");
 
-                            // There must be a module name node
-                            string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing trace module name.");
+                            if(rootNode.Value is not MappingNode mappingNode)
+                                throw new ConfigurationException("Could not parse root node for 'trace' stage configuration.");
 
-                            // Check for options
-                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
-                                throw new ConfigurationException("Missing or invalid module options in 'trace' stage configuration.");
+                            // There must be a module name node
+                            string moduleName = mappingNode.GetChildNodeOrDefault("module")?.AsString() ?? throw new ConfigurationException("Missing trace module name.");
 
                             // Create module, if possible
-                            _moduleConfiguration.TraceStageModule = await TraceStage.Factory.CreateAsync(moduleName, _logger, optionNode);
+                            _moduleConfiguration.TraceStageModule = await TraceStage.Factory.CreateAsync(moduleName, _logger, mappingNode.GetChildNodeOrDefault("module-options") as MappingNode, globalCancellationToken.Token);
 
                             // Remember general stage options
-                            _moduleConfiguration.TraceStageOptions = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("options");
+                            _moduleConfiguration.TraceStageOptions = mappingNode.GetChildNodeOrDefault("options") as MappingNode;
 
                             break;
                         }
@@ -216,18 +223,17 @@ namespace Microwalk
                         {
                             await _logger.LogDebugAsync("Reading and applying 'preprocess' stage configuration");
 
-                            // There must be a module name node
-                            string moduleName = mainNode.Value.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing preprocessor module name.");
+                            if(rootNode.Value is not MappingNode mappingNode)
+                                throw new ConfigurationException("Could not parse root node for 'preprocess' stage configuration.");
 
-                            // Check for options
-                            if(mainNode.Value.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
-                                throw new ConfigurationException("Missing or invalid module options in 'preprocess' stage configuration.");
+                            // There must be a module name node
+                            string moduleName = mappingNode.GetChildNodeOrDefault("module")?.AsString() ?? throw new ConfigurationException("Missing preprocess module name.");
 
                             // Create module, if possible
-                            _moduleConfiguration.PreprocessorStageModule = await PreprocessorStage.Factory.CreateAsync(moduleName, _logger, optionNode);
+                            _moduleConfiguration.PreprocessorStageModule = await PreprocessorStage.Factory.CreateAsync(moduleName, _logger, mappingNode.GetChildNodeOrDefault("module-options") as MappingNode, globalCancellationToken.Token);
 
                             // Remember general stage options
-                            _moduleConfiguration.PreprocessorStageOptions = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("options");
+                            _moduleConfiguration.PreprocessorStageOptions = mappingNode.GetChildNodeOrDefault("options") as MappingNode;
 
                             break;
                         }
@@ -236,28 +242,28 @@ namespace Microwalk
                         {
                             await _logger.LogDebugAsync("Reading and applying 'analysis' stage configuration");
 
+                            if(rootNode.Value is not MappingNode mappingNode)
+                                throw new ConfigurationException("Could not parse root node for 'analysis' stage configuration.");
+
                             // There must be a module list node
-                            var moduleListNode = mainNode.Value.GetChildNodeWithKey("modules");
-                            if(!(moduleListNode is YamlSequenceNode moduleListSequenceNode))
+                            var moduleListNode = mappingNode.GetChildNodeOrDefault("modules");
+                            if(moduleListNode is not ListNode moduleListSequenceNode)
                                 throw new ConfigurationException("Module list node does not contain a sequence.");
                             _moduleConfiguration.AnalysesStageModules = new List<AnalysisStage>();
-                            foreach(var yamlNode in moduleListSequenceNode)
+                            foreach(var moduleListEntryNode in moduleListSequenceNode.Children)
                             {
-                                var moduleEntryNode = (YamlMappingNode)yamlNode;
+                                if(moduleListEntryNode is not MappingNode moduleEntryNode)
+                                    throw new ConfigurationException("Could not module list entry node in 'analysis' stage configuration.");
 
                                 // There must be a module name node
-                                string moduleName = moduleEntryNode.GetChildNodeWithKey("module")?.GetNodeString() ?? throw new ConfigurationException("Missing analysis module name.");
-
-                                // Check for options
-                                if(moduleEntryNode.GetChildNodeWithKey("module-options") is not YamlMappingNode optionNode)
-                                    throw new ConfigurationException($"Missing or invalid options for module '{moduleName}' in 'analysis' stage configuration.");
+                                string moduleName = moduleEntryNode.GetChildNodeOrDefault("module")?.AsString() ?? throw new ConfigurationException("Missing analysis module name.");
 
                                 // Create module, if possible
-                                _moduleConfiguration.AnalysesStageModules.Add(await AnalysisStage.Factory.CreateAsync(moduleName, _logger, optionNode));
+                                _moduleConfiguration.AnalysesStageModules.Add(await AnalysisStage.Factory.CreateAsync(moduleName, _logger, moduleEntryNode.GetChildNodeOrDefault("module-options") as MappingNode, globalCancellationToken.Token));
                             }
 
                             // Remember general stage options
-                            _moduleConfiguration.AnalysisStageOptions = (YamlMappingNode?)mainNode.Value.GetChildNodeWithKey("options");
+                            _moduleConfiguration.AnalysisStageOptions = mappingNode.GetChildNodeOrDefault("options") as MappingNode;
 
                             break;
                         }
@@ -275,45 +281,51 @@ namespace Microwalk
                         "Incomplete module specification. Make sure that there is at least one module for testcase generation, trace generation, preprocessing and analysis, respectively.");
 
                 // Initialize pipeline stages
-                // -> [buffer] -> trace -> [buffer]-> preprocess -> [buffer] -> analysis
+                // -> [buffer] -> trace -> [buffer] -> preprocess -> [buffer] -> analysis
                 await _logger.LogDebugAsync("Initializing pipeline stages");
                 var traceStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
-                    BoundedCapacity = _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("input-buffer-size").GetNodeInteger(1),
+                    BoundedCapacity = _moduleConfiguration.TraceStageOptions?.GetChildNodeOrDefault("input-buffer-size")?.AsInteger() ?? 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true
                 });
                 var traceStage = new TransformBlock<TraceEntity, TraceEntity>(TraceStageFunc, new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.TraceStageModule.SupportsParallelism
-                        ? _moduleConfiguration.TraceStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        ? _moduleConfiguration.TraceStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
                 var preprocessorStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
-                    BoundedCapacity = _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("input-buffer-size").GetNodeInteger(1),
+                    BoundedCapacity = _moduleConfiguration.PreprocessorStageOptions?.GetChildNodeOrDefault("input-buffer-size")?.AsInteger() ?? 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true
                 });
                 var preprocessorStage = new TransformBlock<TraceEntity, TraceEntity>(PreprocessorStageFunc, new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism
-                        ? _moduleConfiguration.PreprocessorStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        ? _moduleConfiguration.PreprocessorStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
                 var analysisStageBuffer = new BufferBlock<TraceEntity>(new DataflowBlockOptions
                 {
-                    BoundedCapacity = _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("input-buffer-size").GetNodeInteger(1),
+                    BoundedCapacity = _moduleConfiguration.AnalysisStageOptions?.GetChildNodeOrDefault("input-buffer-size")?.AsInteger() ?? 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true
                 });
                 var analysisStage = new ActionBlock<TraceEntity>(AnalysisStageFunc, new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
+                    CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism)
-                        ? _moduleConfiguration.AnalysisStageOptions.GetChildNodeWithKey("max-parallel-threads").GetNodeInteger(1)
+                        ? _moduleConfiguration.AnalysisStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
 
@@ -331,8 +343,7 @@ namespace Microwalk
 
                 // Start posting test cases
                 await _logger.LogInfoAsync("Start testcase thread -> pipeline start");
-                var testcaseTaskCancellationTokenSource = new CancellationTokenSource();
-                var testcaseTask = PostTestcases(traceStageBuffer, testcaseTaskCancellationTokenSource.Token)
+                var testcaseTask = PostTestcases(traceStageBuffer, globalCancellationToken.Token)
                     .ContinueWith(async t =>
                     {
                         if(t.IsFaulted && t.Exception != null && !t.Exception.Flatten().InnerExceptions.Any(e => e is TaskCanceledException))
@@ -344,7 +355,7 @@ namespace Microwalk
                             await _logger.LogWarningAsync("Pipeline execution will be continued with the existing test cases.");
                             // ReSharper restore AccessToDisposedClosure
                         }
-                    }, testcaseTaskCancellationTokenSource.Token);
+                    }, globalCancellationToken.Token);
 
                 // Handle pipeline exceptions
                 try
@@ -359,8 +370,8 @@ namespace Microwalk
                 }
                 catch(Exception ex)
                 {
-                    // Stop test case generator for clean exit
-                    testcaseTaskCancellationTokenSource.Cancel();
+                    // Abort entire pipeline for clean exit
+                    globalCancellationToken.Cancel();
 
                     // Log exception
                     await _logger.LogErrorAsync("An exception occured in the pipeline:");
@@ -377,10 +388,6 @@ namespace Microwalk
                 catch(TaskCanceledException)
                 {
                     // Ignore
-                }
-                finally
-                {
-                    testcaseTaskCancellationTokenSource.Dispose();
                 }
 
                 // Do some cleanup
@@ -406,11 +413,14 @@ namespace Microwalk
                     Console.WriteLine("A general error occured:");
                     Console.WriteLine(FormatException(ex));
                 }
+                
+                // Stop pipeline
+                globalCancellationToken.Cancel();
             }
             finally
             {
-                // Make sure logger is disposed properly
                 _logger?.Dispose();
+                globalCancellationToken.Dispose();
             }
         }
 
@@ -532,10 +542,10 @@ namespace Microwalk
             public List<AnalysisStage>? AnalysesStageModules { get; set; }
 
             // ReSharper disable once UnusedAutoPropertyAccessor.Local
-            public YamlMappingNode? TestcaseStageOptions { get; set; }
-            public YamlMappingNode? TraceStageOptions { get; set; }
-            public YamlMappingNode? PreprocessorStageOptions { get; set; }
-            public YamlMappingNode? AnalysisStageOptions { get; set; }
+            public MappingNode? TestcaseStageOptions { get; set; }
+            public MappingNode? TraceStageOptions { get; set; }
+            public MappingNode? PreprocessorStageOptions { get; set; }
+            public MappingNode? AnalysisStageOptions { get; set; }
         }
     }
 }

@@ -1,16 +1,16 @@
 ﻿using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Stages;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TracePreprocessing.Modules
 {
     [FrameworkModule("passthrough", "Passes through the raw traces without preprocessing.")]
     internal class Passthrough : PreprocessorStage
     {
-        public override bool SupportsParallelism { get; } = true;
-        
-        protected override Task InitAsync(YamlMappingNode? moduleOptions)
+        public override bool SupportsParallelism => true;
+
+        protected override Task InitAsync(MappingNode? moduleOptions)
         {
             return Task.CompletedTask;
         }

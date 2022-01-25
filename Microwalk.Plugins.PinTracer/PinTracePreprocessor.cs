@@ -7,13 +7,12 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Plugins.PinTracer
 {
@@ -678,10 +677,10 @@ namespace Microwalk.Plugins.PinTracer
             return (-1, default);
         }
 
-        protected override Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override Task InitAsync(MappingNode? moduleOptions)
         {
             // Extract optional configuration values
-            string? outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString();
+            string? outputDirectoryPath = moduleOptions?.GetChildNodeOrDefault("output-directory")?.AsString();
             if(outputDirectoryPath != null)
             {
                 _outputDirectory = new DirectoryInfo(outputDirectoryPath);
@@ -689,10 +688,10 @@ namespace Microwalk.Plugins.PinTracer
                     _outputDirectory.Create();
             }
 
-            _storeTraces = moduleOptions.GetChildNodeWithKey("store-traces")?.GetNodeBoolean() ?? false;
+            _storeTraces = moduleOptions?.GetChildNodeOrDefault("store-traces")?.AsBoolean() ?? false;
             if(_storeTraces && outputDirectoryPath == null)
                 throw new ConfigurationException("Missing output directory for preprocessed traces.");
-            _keepRawTraces = moduleOptions.GetChildNodeWithKey("keep-raw-traces")?.GetNodeBoolean() ?? false;
+            _keepRawTraces = moduleOptions?.GetChildNodeOrDefault("keep-raw-traces")?.AsBoolean() ?? false;
 
             return Task.CompletedTask;
         }

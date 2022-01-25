@@ -1,26 +1,28 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TracePreprocessing.Modules
 {
     [FrameworkModule("load", "Loads existing preprocessed traces from a given directory.")]
     internal class PreprocessedTraceLoader : PreprocessorStage
     {
-        public override bool SupportsParallelism { get; } = false;
+        public override bool SupportsParallelism => false;
 
         private DirectoryInfo _inputDirectory = null!;
         private TracePrefixFile _tracePrefix = null!;
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Check input directory
-            var inputDirectoryPath = moduleOptions.GetChildNodeWithKey("input-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing input directory.");
+            var inputDirectoryPath = moduleOptions.GetChildNodeOrDefault("input-directory")?.AsString() ?? throw new ConfigurationException("Missing input directory.");
             _inputDirectory = new DirectoryInfo(inputDirectoryPath);
             if(!_inputDirectory.Exists)
                 throw new ConfigurationException("Could not find input directory.");

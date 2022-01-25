@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Microwalk
+namespace Microwalk.FrameworkBase
 {
     public interface ILogger : IDisposable
     {

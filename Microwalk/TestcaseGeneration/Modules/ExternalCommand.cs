@@ -4,10 +4,9 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.TestcaseGeneration.Modules
 {
@@ -86,15 +85,18 @@ namespace Microwalk.TestcaseGeneration.Modules
             return traceEntity;
         }
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Parse options
-            _testcaseCount = moduleOptions.GetChildNodeWithKey("amount")?.GetNodeInteger() ?? throw new ConfigurationException("Missing testcase count.");
-            _commandFilePath = moduleOptions.GetChildNodeWithKey("exe")?.GetNodeString() ?? throw  new ConfigurationException("Missing external command executable.");
-            _argumentTemplate = moduleOptions.GetChildNodeWithKey("args")?.GetNodeString() ?? "";
+            _testcaseCount = moduleOptions.GetChildNodeOrDefault("amount")?.AsInteger() ?? throw new ConfigurationException("Missing testcase count.");
+            _commandFilePath = moduleOptions.GetChildNodeOrDefault("exe")?.AsString() ?? throw  new ConfigurationException("Missing external command executable.");
+            _argumentTemplate = moduleOptions.GetChildNodeOrDefault("args")?.AsString() ?? "";
 
             // Make sure output directory exists
-            var outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("Missing output directory.");
+            var outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();

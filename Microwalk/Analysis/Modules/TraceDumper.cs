@@ -4,12 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
-using Microwalk.FrameworkBase.Extensions;
 using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk.Analysis.Modules
 {
@@ -222,23 +221,26 @@ namespace Microwalk.Analysis.Modules
             return Task.CompletedTask;
         }
 
-        protected override async Task InitAsync(YamlMappingNode? moduleOptions)
+        protected override async Task InitAsync(MappingNode? moduleOptions)
         {
+            if(moduleOptions == null)
+                throw new ConfigurationException("Missing module configuration.");
+            
             // Output directory
-            string outputDirectoryPath = moduleOptions.GetChildNodeWithKey("output-directory")?.GetNodeString() ?? throw new ConfigurationException("No output directory specified.");
+            string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("No output directory specified.");
             _outputDirectory = new DirectoryInfo(outputDirectoryPath);
             if(!_outputDirectory.Exists)
                 _outputDirectory.Create();
 
             // Include prefix
-            _includePrefix = moduleOptions.GetChildNodeWithKey("include-prefix")?.GetNodeBoolean() ?? false;
+            _includePrefix = moduleOptions.GetChildNodeOrDefault("include-prefix")?.AsBoolean() ?? false;
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);
-            var mapFilesNode = moduleOptions.GetChildNodeWithKey("map-files");
-            if(mapFilesNode is YamlSequenceNode mapFileListNode)
+            var mapFilesNode = moduleOptions.GetChildNodeOrDefault("map-files");
+            if(mapFilesNode is ListNode mapFileListNode)
                 foreach(var mapFileNode in mapFileListNode.Children)
-                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.GetNodeString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+                    await _mapFileCollection.LoadMapFileAsync(mapFileNode.AsString() ?? throw new ConfigurationException("Invalid node type in map file list."));
         }
 
         public override Task UnInitAsync()

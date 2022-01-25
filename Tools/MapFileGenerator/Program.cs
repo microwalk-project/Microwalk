@@ -15,10 +15,10 @@ var elf = ElfReader.Load(args[0]);
 using var outputWriter = new StreamWriter(File.Open(args[1], FileMode.Create, FileAccess.Write));
 
 // Find base address
-ulong baseAddress = elf.ProgramHeaderTable?.ProgramHeaders.First(ph => (ph.Flags & SegmentFlags.Executable) != 0).VirtualMemoryAddress ?? 0;
+ulong baseAddress = elf.ProgramHeaderTable?.ProgramHeaders.First(ph => ph.Type == SegmentType.Load).VirtualMemoryAddress ?? 0;
 
 // Write object name
-outputWriter.WriteLine(Path.GetFileNameWithoutExtension(args[0]));
+outputWriter.WriteLine(Path.GetFileName(args[0]));
 
 // Find symbol table
 var symtabSectionHeader = elf.SectionHeaderTable.SectionHeaders.FirstOrDefault(s => s.Type == SectionType.SymbolTable);
@@ -39,7 +39,7 @@ var symtabSectionChunk = (SymbolTableChunk)elf.Chunks[symtabSectionChunkIndex.Va
 
 // Find corresponding string table
 var strtabSectionHeader = elf.SectionHeaderTable.SectionHeaders[(int)symtabSectionHeader.Link];
-if(strtabSectionHeader == null || strtabSectionHeader.Type != SectionType.StringTable)
+if(strtabSectionHeader.Type != SectionType.StringTable)
 {
     Console.WriteLine("Couldn't find STRTAB section.");
     return;

@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microwalk.FrameworkBase;
+using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
 using Nito.AsyncEx;
-using YamlDotNet.RepresentationModel;
 
 namespace Microwalk
 {
@@ -45,7 +46,7 @@ namespace Microwalk
         /// <summary>
         /// Stream writer for the log output file ("null" if unused).
         /// </summary>
-        private readonly StreamWriter? _outputFileWriter = null;
+        private StreamWriter? _outputFileWriter = null;
 
         /// <summary>
         /// Lock for coordinated access to the console.
@@ -56,7 +57,7 @@ namespace Microwalk
         /// Initializes the logger.
         /// </summary>
         /// <param name="loggerOptions">The logger options, as specified in the configuration file.</param>
-        internal Logger(YamlMappingNode? loggerOptions)
+        internal Logger(MappingNode? loggerOptions)
         {
             // Setup internal state
             _defaultConsoleColor = (Console.ForegroundColor, Console.BackgroundColor);
@@ -67,26 +68,22 @@ namespace Microwalk
                 return;
             foreach(var optionNode in loggerOptions.Children)
             {
-                // Sanity check
-                if(!(optionNode.Key is YamlScalarNode keyNode))
-                    throw new ConfigurationException("Invalid key node type.");
-
                 // Get option
-                switch(keyNode.Value)
+                switch(optionNode.Key)
                 {
                     case "log-level":
                     {
                         // Parse log level
-                        if(!(optionNode.Value is YamlScalarNode valueNode) || !Enum.TryParse(valueNode.Value, true, out _logLevel))
-                            throw new ConfigurationException($"Invalid node value for \"{keyNode.Value}\"");
+                        if(optionNode.Value is not ValueNode valueNode || !Enum.TryParse(valueNode.Value, true, out _logLevel))
+                            throw new ConfigurationException($"Invalid node value for \"{optionNode.Key}\"");
                         break;
                     }
 
                     case "file":
                     {
                         // Parse file name
-                        if(!(optionNode.Value is YamlScalarNode valueNode))
-                            throw new ConfigurationException($"Invalid node value for \"{keyNode.Value}\"");
+                        if(optionNode.Value is not ValueNode valueNode)
+                            throw new ConfigurationException($"Invalid node value for \"{optionNode.Key}\"");
 
                         // Initialize file stream
                         // Exceptions will be handled by caller
@@ -167,6 +164,7 @@ namespace Microwalk
         {
             // Close file stream
             _outputFileWriter?.Dispose();
+            _outputFileWriter = null;
         }
 
         /// <summary>
