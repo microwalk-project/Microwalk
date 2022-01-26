@@ -122,7 +122,7 @@ namespace Microwalk.Plugins.PinTracer
                 {
                     // Paths
                     string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath) ?? throw new Exception($"Could not determine directory: {traceEntity.RawTraceFilePath}");
-                    string prefixDataFilePath = Path.Combine(rawTraceFileDirectory, "prefix_data.txt"); // Suppress "possible null" warning
+                    string prefixDataFilePath = Path.Combine(rawTraceFileDirectory, "prefix_data.txt");
                     string tracePrefixFilePath = Path.Combine(rawTraceFileDirectory, "prefix.trace");
 
                     // Read image data
@@ -160,7 +160,7 @@ namespace Microwalk.Plugins.PinTracer
                         imageFile.Store(tracePrefixFileWriter);
 
                     // Load and parse trace prefix data
-                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, out Dictionary<int, HeapAllocation> tracePrefixAllocations);
+                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]", out Dictionary<int, HeapAllocation> tracePrefixAllocations);
 
                     // Create trace prefix object
                     var preprocessedTracePrefixData = tracePrefixFileWriter.Buffer.AsMemory(0, tracePrefixFileWriter.Length);
@@ -193,7 +193,7 @@ namespace Microwalk.Plugins.PinTracer
             using var traceFileWriter = new FastBinaryWriter(1);
 
             // Preprocess trace data
-            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, out Dictionary<int, HeapAllocation> allocations);
+            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]", out Dictionary<int, HeapAllocation> allocations);
 
             // Create trace file object
             var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
@@ -224,11 +224,12 @@ namespace Microwalk.Plugins.PinTracer
         /// <param name="inputFileName">Input file.</param>
         /// <param name="isPrefix">Determines whether the prefix file is handled.</param>
         /// <param name="traceFileWriter">Writer for storing the preprocessed trace data.</param>
+        /// <param name="logPrefix">Short prefix for log messages printed by this function.</param>
         /// <param name="allocations">Heap allocation lookup table, indexed by IDs.</param>
         /// <remarks>
         /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, out Dictionary<int, HeapAllocation> allocations)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix, out Dictionary<int, HeapAllocation> allocations)
         {
             // Read entire trace file into memory, since these files should not get too big
             byte[] inputFile = File.ReadAllBytes(inputFileName);
@@ -271,14 +272,14 @@ namespace Microwalk.Plugins.PinTracer
                             // Catch double returns of the same allocated address (happens for some allocator implementations)
                             if(rawTraceEntry.Param2 == lastAllocReturnAddress && !encounteredSizeSinceLastAlloc)
                             {
-                                Logger.LogDebugAsync("Skipped double return of allocated address").Wait();
+                                Logger.LogDebugAsync($"{logPrefix} Skipped double return of allocated address").Wait();
                                 break;
                             }
 
                             // HeapAllocation stack empty?
                             if(lastAllocationSizes.Count == 0)
                             {
-                                Logger.LogErrorAsync("Encountered heap allocation address return, but size stack is empty").Wait();
+                                Logger.LogErrorAsync($"{logPrefix} Encountered heap allocation address return, but size stack is empty").Wait();
                                 break;
                             }
 
@@ -311,7 +312,7 @@ namespace Microwalk.Plugins.PinTracer
                                 break;
                             if(!heapAllocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                             {
-                                Logger.LogWarningAsync($"Free of address {rawTraceEntry.Param2:x16} does not correspond to any heap allocation, skipping").Wait();
+                                Logger.LogWarningAsync($"{logPrefix} Free of address {rawTraceEntry.Param2:x16} does not correspond to any heap allocation, skipping").Wait();
                                 break;
                             }
 
@@ -333,7 +334,7 @@ namespace Microwalk.Plugins.PinTracer
                             // Save stack pointer data
                             _stackPointerMin = rawTraceEntry.Param1;
                             _stackPointerMax = rawTraceEntry.Param2;
-                            Logger.LogDebugAsync($"Stack pointer info: {_stackPointerMin:x16}..{_stackPointerMax:x16}");
+                            Logger.LogDebugAsync($"{logPrefix} Stack pointer info: {_stackPointerMin:x16}..{_stackPointerMax:x16}");
 
                             // HACK See comment below
                             if(stackFrames.Count == 0)
@@ -407,7 +408,7 @@ namespace Microwalk.Plugins.PinTracer
                                 var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
                                 if(instructionImageId < 0)
                                 {
-                                    Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
+                                    Logger.LogWarningAsync($"{logPrefix} Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
                                     break;
                                 }
 
@@ -455,7 +456,7 @@ namespace Microwalk.Plugins.PinTracer
                             var (destinationImageId, destinationImage) = FindImage(rawTraceEntry.Param2);
                             if(sourceImageId < 0 || destinationImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
+                                Logger.LogWarningAsync($"{logPrefix} Could not resolve image information of branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -482,7 +483,7 @@ namespace Microwalk.Plugins.PinTracer
                                 entry.BranchType = Branch.BranchTypes.Return;
                             else
                             {
-                                Logger.LogErrorAsync($"Unspecified instruction type on branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
+                                Logger.LogErrorAsync($"{logPrefix} Unspecified instruction type on branch {rawTraceEntry.Param1:x16} -> {rawTraceEntry.Param2:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -498,7 +499,7 @@ namespace Microwalk.Plugins.PinTracer
                             var (instructionImageId, instructionImage) = FindImage(rawTraceEntry.Param1);
                             if(instructionImageId < 0)
                             {
-                                Logger.LogWarningAsync($"Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
+                                Logger.LogWarningAsync($"{logPrefix} Could not resolve image information of instruction {rawTraceEntry.Param1:x16}, skipping").Wait();
                                 break;
                             }
 
@@ -535,8 +536,7 @@ namespace Microwalk.Plugins.PinTracer
                                 if(!stackFrameFound)
                                 {
                                     // TODO add dummy catch-all stack frame, in case stack tracking is disabled
-                                    Logger.LogWarningAsync(
-                                            $"Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
+                                    Logger.LogWarningAsync($"{logPrefix} Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
                                         .Wait();
 
                                     break;
@@ -574,11 +574,11 @@ namespace Microwalk.Plugins.PinTracer
                                 {
                                     // Heap
                                     var (allocationBlockId, allocationBlock) = FindAllocation(heapAllocationLookup, rawTraceEntry.Param2);
-                                    if(allocationBlockId < 0 && _tracePrefixHeapAllocationLookup != null)
-                                        (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixHeapAllocationLookup, rawTraceEntry.Param2);
+                                    if(allocationBlockId < 0)
+                                        (allocationBlockId, allocationBlock) = FindAllocation(_tracePrefixHeapAllocationLookup!, rawTraceEntry.Param2);
                                     if(allocationBlockId < 0)
                                     {
-                                        Logger.LogWarningAsync($"Could not resolve target of memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping").Wait();
+                                        Logger.LogWarningAsync($"{logPrefix} Could not resolve target of memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping").Wait();
                                         break;
                                     }
 

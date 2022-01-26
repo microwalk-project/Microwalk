@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -109,7 +111,7 @@ namespace Microwalk.Plugins.PinTracer
             pinArgs.Add($"{cpuModelId}");
             pinArgs.Add("--");
             pinArgs.Add(wrapperPath);
-
+            
             // Prepare Pin tool process
             await Logger.LogDebugAsync("Starting Pin tool process");
             ProcessStartInfo pinToolProcessStartInfo = new()
@@ -123,10 +125,20 @@ namespace Microwalk.Plugins.PinTracer
                 RedirectStandardError = true
             };
             pinToolProcessStartInfo.ArgumentList.AddRange(pinArgs);
+            
+            // Environment variables
+            if(moduleOptions.GetChildNodeOrDefault("environment") is MappingNode environmentNode)
+            {
+                foreach(var variable in environmentNode.Children)
+                {
+                    string value = variable.Value.AsString() ?? throw new ConfigurationException($"Invalid value for environment variable '{variable.Key}'");
+                    pinToolProcessStartInfo.EnvironmentVariables[variable.Key] = value;
+                }
+            }
             pinToolProcessStartInfo.EnvironmentVariables["PATH"] += Path.PathSeparator + Path.GetDirectoryName(wrapperPath);
-            await Logger.LogDebugAsync($"Pin tool command: {pinToolProcessStartInfo.FileName} {string.Join(" ", pinToolProcessStartInfo.ArgumentList)}");
 
             // Start Pin tool
+            await Logger.LogDebugAsync($"Pin tool command: {pinToolProcessStartInfo.FileName} {string.Join(" ", pinToolProcessStartInfo.ArgumentList)}");
             _pinToolProcess = Process.Start(pinToolProcessStartInfo) ?? throw new Exception("Could not start the Pin process.");
 
             // Ensure that the Pin process is eventually stopped when the Pipeline gets aborted early
