@@ -8,14 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using CommandLine;
-using Microwalk.Analysis.Modules;
 using Microwalk.FrameworkBase;
 using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
 using Microwalk.FrameworkBase.Stages;
-using Microwalk.TestcaseGeneration.Modules;
-using Microwalk.TraceGeneration.Modules;
-using Microwalk.TracePreprocessing.Modules;
 
 namespace Microwalk
 {
@@ -43,22 +39,23 @@ namespace Microwalk
             // Register generic modules
             {
                 // Testcase generation
-                TestcaseStage.Factory.Register<TestcaseLoader>();
-                TestcaseStage.Factory.Register<RandomTestcaseGenerator>();
-                TestcaseStage.Factory.Register<ExternalCommand>();
+                TestcaseStage.Factory.Register<TestcaseGeneration.Modules.TestcaseLoader>();
+                TestcaseStage.Factory.Register<TestcaseGeneration.Modules.RandomTestcaseGenerator>();
+                TestcaseStage.Factory.Register<TestcaseGeneration.Modules.ExternalCommand>();
 
                 // Trace generation
-                TraceStage.Factory.Register<TraceLoader>();
+                TraceStage.Factory.Register<TraceGeneration.Modules.TraceLoader>();
                 TraceStage.Factory.Register<TraceGeneration.Modules.Passthrough>();
 
                 // Trace preprocessing
                 PreprocessorStage.Factory.Register<TracePreprocessing.Modules.Passthrough>();
-                PreprocessorStage.Factory.Register<PreprocessedTraceLoader>();
+                PreprocessorStage.Factory.Register<TracePreprocessing.Modules.PreprocessedTraceLoader>();
 
                 // Analysis
-                AnalysisStage.Factory.Register<TraceDumper>();
-                AnalysisStage.Factory.Register<InstructionMemoryAccessTraceLeakage>();
-                AnalysisStage.Factory.Register<CallStackMemoryAccessTraceLeakage>();
+                AnalysisStage.Factory.Register<Analysis.Modules.TraceDumper>();
+                AnalysisStage.Factory.Register<Analysis.Modules.InstructionMemoryAccessTraceLeakage>();
+                AnalysisStage.Factory.Register<Analysis.Modules.CallStackMemoryAccessTraceLeakage>();
+                AnalysisStage.Factory.Register<Analysis.Modules.ControlFlowLeakage>();
                 AnalysisStage.Factory.Register<Analysis.Modules.Passthrough>();
             }
 
