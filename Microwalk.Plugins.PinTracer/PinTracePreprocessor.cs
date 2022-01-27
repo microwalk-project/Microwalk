@@ -198,20 +198,20 @@ namespace Microwalk.Plugins.PinTracer
             // Create trace file object
             var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
             var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
-
-            // Keep raw trace?
-            if(!_keepRawTraces)
-            {
-                File.Delete(traceEntity.RawTraceFilePath);
-                traceEntity.RawTraceFilePath = null;
-            }
-
+            
             // Store to disk?
             if(_storeTraces)
             {
                 traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".preprocessed");
                 await using var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None));
                 writer.Write(preprocessedTraceData.Span);
+            }
+            
+            // Keep raw trace?
+            if(!_keepRawTraces)
+            {
+                File.Delete(traceEntity.RawTraceFilePath);
+                traceEntity.RawTraceFilePath = null;
             }
 
             // Keep trace data in memory for the analysis stages

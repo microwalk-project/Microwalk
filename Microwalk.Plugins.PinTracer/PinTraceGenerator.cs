@@ -111,7 +111,7 @@ namespace Microwalk.Plugins.PinTracer
             pinArgs.Add($"{cpuModelId}");
             pinArgs.Add("--");
             pinArgs.Add(wrapperPath);
-            
+
             // Prepare Pin tool process
             await Logger.LogDebugAsync("Starting Pin tool process");
             ProcessStartInfo pinToolProcessStartInfo = new()
@@ -125,7 +125,7 @@ namespace Microwalk.Plugins.PinTracer
                 RedirectStandardError = true
             };
             pinToolProcessStartInfo.ArgumentList.AddRange(pinArgs);
-            
+
             // Environment variables
             if(moduleOptions.GetChildNodeOrDefault("environment") is MappingNode environmentNode)
             {
@@ -135,6 +135,7 @@ namespace Microwalk.Plugins.PinTracer
                     pinToolProcessStartInfo.EnvironmentVariables[variable.Key] = value;
                 }
             }
+
             pinToolProcessStartInfo.EnvironmentVariables["PATH"] += Path.PathSeparator + Path.GetDirectoryName(wrapperPath);
 
             // Start Pin tool
@@ -144,18 +145,18 @@ namespace Microwalk.Plugins.PinTracer
             // Ensure that the Pin process is eventually stopped when the Pipeline gets aborted early
             PipelineToken.Register(() =>
             {
-                if(_pinToolProcess.HasExited) 
+                if(_pinToolProcess.HasExited)
                     return;
-                
+
                 try
                 {
                     // Try to stop the Pin process the clean way
                     _pinToolProcess.StandardInput.WriteLineAsync("e 0").Wait(1000);
                     if(_pinToolProcess.WaitForExit(1000))
                         return;
-                    
+
                     _pinToolProcess.Kill(true);
-                    
+
                     if(!_pinToolProcess.WaitForExit(1000))
                         Logger.LogErrorAsync("Sent a KILL signal to the Pin tool process, but it did not respond in time. Please check whether it still running.").Wait(2000);
                 }
@@ -166,7 +167,11 @@ namespace Microwalk.Plugins.PinTracer
             });
 
             // Read and log error output of Pin tool (avoids pipe contention leading to I/O hangs)
-            _pinToolProcess.ErrorDataReceived += async (_, e) => await Logger.LogDebugAsync($"Pin tool log: {e.Data}");
+            _pinToolProcess.ErrorDataReceived += async (_, e) =>
+            {
+                if(!string.IsNullOrWhiteSpace(e.Data))
+                    await Logger.LogDebugAsync($"Pin tool log: {e.Data}");
+            };
             _pinToolProcess.BeginErrorReadLine();
         }
 
