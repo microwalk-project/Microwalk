@@ -119,9 +119,16 @@ public class YamlConfigurationParser
             string key = (node.Key as YamlScalarNode)?.Value ?? throw new ConfigurationException("Could not parse root node key.");
             var parsedNode = TraverseYamlNode(node.Value);
 
-            // TODO We may even support partial configuration keys, which are then automatically merged. Right now we just fail in such cases
-
-            RootNodes.Add(key, parsedNode);
+            // Is the node already known?
+            if(RootNodes.TryGetValue(key, out var existingNode))
+            {
+                // Merge
+                MergeNodes(parsedNode, existingNode);
+            }
+            else
+            {
+                RootNodes.Add(key, parsedNode);
+            }
         }
     }
 
@@ -148,6 +155,43 @@ public class YamlConfigurationParser
     }
 
     /// <summary>
+    /// Recursively merges the source node into the target node.
+    /// </summary>
+    /// <param name="source">Source node.</param>
+    /// <param name="target">Source node.</param>
+    private void MergeNodes(Node source, Node target)
+    {
+        if(source is MappingNode sourceMappingNode)
+        {
+            if(target is not MappingNode targetMappingNode)
+                throw new ConfigurationException("Could not merge mapping node into existing node due to conflicting types.");
+
+            foreach(var sourceChild in sourceMappingNode.Children)
+            {
+                if(targetMappingNode.Children.TryGetValue(sourceChild.Key, out var targetChild))
+                    MergeNodes(sourceChild.Value, targetChild);
+                else
+                    targetMappingNode.Children.Add(sourceChild.Key, sourceChild.Value);
+            }
+        }
+        else if(source is ListNode sourceListNode)
+        {
+            if(target is not ListNode targetListNode)
+                throw new ConfigurationException("Could not merge list node into existing node due to conflicting types.");
+
+            foreach(var child in sourceListNode.Children)
+                targetListNode.Children.Add(child);
+        }
+        else if(source is ValueNode sourceValueNode)
+        {
+            if(target is not ValueNode targetValueNode)
+                throw new ConfigurationException("Could not merge value node into existing node due to conflicting types.");
+
+            targetValueNode.Value = sourceValueNode.Value;
+        }
+    }
+
+    /// <summary>
     /// Loads the given YAML configuration file, while recursively resolving base files and preprocessor constants.
     /// </summary>
     /// <param name="path">Configuration file path.</param>
@@ -157,7 +201,7 @@ public class YamlConfigurationParser
         RootNodes = new Dictionary<string, Node>();
         Constants = new Dictionary<string, string>
         {
-            { "$$CONFIG_PATH$$", Path.GetDirectoryName(path) ?? throw new Exception("Could not resolve configuration directory.")},
+            { "$$CONFIG_PATH$$", Path.GetDirectoryName(path) ?? throw new Exception("Could not resolve configuration directory.") },
             { "$$CONFIG_FILENAME$$", Path.GetFileNameWithoutExtension(path) }
         };
 
