@@ -995,8 +995,12 @@ public class ControlFlowLeakage : AnalysisStage
             if(id / 64 < _testcaseIdBitField.Length)
                 return;
 
+            int newSize = 2 * _testcaseIdBitField.Length;
+            while(newSize <= id / 64)
+                newSize *= 2;
+
             // Resize
-            ulong[] newBitField = new ulong[2 * _testcaseIdBitField.Length];
+            ulong[] newBitField = new ulong[newSize];
             _testcaseIdBitField.CopyTo(newBitField, 0);
 
             _testcaseIdBitField = newBitField;
