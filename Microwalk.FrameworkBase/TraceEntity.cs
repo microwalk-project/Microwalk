@@ -12,6 +12,8 @@ namespace Microwalk.FrameworkBase
     {
         /// <summary>
         /// A unique number identifying this object.
+        /// The testcase IDs are guaranteed to be issued consecutively without gaps, starting with a small value.
+        /// However, due to parallelization they may not appear in order.
         /// </summary>
         public int Id { get; init; }
 

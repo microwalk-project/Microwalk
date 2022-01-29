@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
@@ -11,6 +14,7 @@ using Microwalk.FrameworkBase.Stages;
 using Microwalk.FrameworkBase.TraceFormat;
 using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
+using Standart.Hash.xxHash;
 
 namespace Microwalk.Analysis.Modules;
 
@@ -18,6 +22,11 @@ namespace Microwalk.Analysis.Modules;
 public class ControlFlowLeakage : AnalysisStage
 {
     public override bool SupportsParallelism => false;
+
+    /// <summary>
+    /// Call stack ID of the root node (base value for call stack ID hashing)
+    /// </summary>
+    private const ulong _rootNodeCallStackId = 0;
 
     /// <summary>
     /// The output directory for analysis results.
@@ -80,33 +89,51 @@ public class ControlFlowLeakage : AnalysisStage
         // Mark our visit at the root node
         _rootNode.TestcaseIds.Add(traceEntity.Id);
 
+        // Buffer for call stack ID computations
+        byte[] callStackBuffer = new byte[24]; // hash | source address | target address
+        var callStackBufferHash = callStackBuffer.AsMemory(0..8);
+        var callStackBufferSource = callStackBuffer.AsMemory(8..16);
+        var callStackBufferTarget = callStackBuffer.AsMemory(16..24);
+
         // Run through trace entries
         Stack<(SplitNode node, int successorIndex)> nodeStack = new();
+        Stack<ulong> callStackIds = new();
         SplitNode currentNode = _rootNode;
         int successorIndex = 0;
+        ulong currentCallStackId = _rootNodeCallStackId;
         int traceEntryId = -1;
         foreach(var traceEntry in traceEntity.PreprocessedTraceFile)
         {
             ++traceEntryId;
 
-            // Ignore non-branch entries and non-taken branches
+            // Ignore non-branch entries
             if(traceEntry.EntryType != TraceEntryTypes.Branch)
                 continue;
-            
+
             var branchEntry = (Branch)traceEntry;
-            if(!branchEntry.Taken)
-                continue;
 
             // Format addresses
             ulong sourceInstructionId = ((ulong)branchEntry.SourceImageId << 32) | branchEntry.SourceInstructionRelativeAddress;
-            ulong targetInstructionId = ((ulong)branchEntry.DestinationImageId << 32) | branchEntry.DestinationInstructionRelativeAddress;
             StoreFormattedAddress(sourceInstructionId, traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
-            StoreFormattedAddress(targetInstructionId, traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
+
+            ulong targetInstructionId = 0;
+            if(branchEntry.Taken)
+            {
+                targetInstructionId = ((ulong)branchEntry.DestinationImageId << 32) | branchEntry.DestinationInstructionRelativeAddress;
+                StoreFormattedAddress(targetInstructionId, traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
+            }
 
             switch(branchEntry.BranchType)
             {
                 case Branch.BranchTypes.Call:
                 {
+                    // Compute new call stack ID
+                    callStackIds.Push(currentCallStackId);
+                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferHash.Span, currentCallStackId);
+                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferSource.Span, sourceInstructionId);
+                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferTarget.Span, targetInstructionId);
+                    currentCallStackId = xxHash64.ComputeHash(callStackBuffer, callStackBuffer.Length);
+                    
                     // Are there successor nodes from previous testcases?
                     if(successorIndex < currentNode.Successors.Count)
                     {
@@ -125,9 +152,9 @@ public class ControlFlowLeakage : AnalysisStage
                             // Successor does not match, we need to split the current node at this point
 
                             // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode();
-                            foreach(var testcaseId in currentNode.TestcaseIds)
-                                splitNode1.TestcaseIds.Add(testcaseId);
+                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
+                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
+
                             splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
                             currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
                             splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
@@ -138,7 +165,8 @@ public class ControlFlowLeakage : AnalysisStage
                             callNode = new CallNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                CallStackId = currentCallStackId
                             };
                             splitNode2.Successors.Add(callNode);
                             splitNode2.TestcaseIds.Add(traceEntity.Id);
@@ -146,6 +174,7 @@ public class ControlFlowLeakage : AnalysisStage
                             currentNode.SplitSuccessors.Add(splitNode1);
                             currentNode.SplitSuccessors.Add(splitNode2);
 
+                            nodeStack.Push((splitNode2, 1)); // Return to split node and keep filling its successors
                             callNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode = callNode;
                             successorIndex = 0;
@@ -161,7 +190,8 @@ public class ControlFlowLeakage : AnalysisStage
                             var callNode = new CallNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                CallStackId = currentCallStackId
                             };
                             currentNode.Successors.Add(callNode);
 
@@ -182,7 +212,7 @@ public class ControlFlowLeakage : AnalysisStage
 
                                     splitSuccessor.TestcaseIds.Add(traceEntity.Id);
 
-                                    nodeStack.Push((splitSuccessor, 1)); // We return to the linear part of the split node
+                                    nodeStack.Push((splitSuccessor, 1)); // Return to split node and keep going through its successors
                                     callNode.TestcaseIds.Add(traceEntity.Id);
                                     currentNode = callNode;
                                     successorIndex = 0;
@@ -199,14 +229,15 @@ public class ControlFlowLeakage : AnalysisStage
                                 var callNode = new CallNode
                                 {
                                     SourceInstructionId = sourceInstructionId,
-                                    TargetInstructionId = targetInstructionId
+                                    TargetInstructionId = targetInstructionId,
+                                    CallStackId = currentCallStackId
                                 };
 
                                 splitNode.Successors.Add(callNode);
                                 splitNode.TestcaseIds.Add(traceEntity.Id);
                                 currentNode.SplitSuccessors.Add(splitNode);
 
-                                nodeStack.Push((splitNode, 1)); // We return to the linear part of the split node
+                                nodeStack.Push((splitNode, 1)); // Return to split node and keep filling its successors
                                 callNode.TestcaseIds.Add(traceEntity.Id);
                                 currentNode = callNode;
                                 successorIndex = 0;
@@ -224,14 +255,15 @@ public class ControlFlowLeakage : AnalysisStage
                             var callNode = new CallNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                CallStackId = currentCallStackId
                             };
 
                             splitNode.Successors.Add(callNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode.SplitSuccessors.Add(splitNode);
 
-                            nodeStack.Push((splitNode, 1)); // We return to the linear part of the split node
+                            nodeStack.Push((splitNode, 1)); // Return to split node and keep filling its successors
                             callNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode = callNode;
                             successorIndex = 0;
@@ -259,9 +291,9 @@ public class ControlFlowLeakage : AnalysisStage
                             // Successor does not match, we need to split the current node at this point
 
                             // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode();
-                            foreach(var testcaseId in currentNode.TestcaseIds)
-                                splitNode1.TestcaseIds.Add(testcaseId);
+                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
+                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
+
                             splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
                             currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
                             splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
@@ -272,7 +304,8 @@ public class ControlFlowLeakage : AnalysisStage
                             branchNode = new BranchNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                Taken = branchEntry.Taken
                             };
                             splitNode2.Successors.Add(branchNode);
                             splitNode2.TestcaseIds.Add(traceEntity.Id);
@@ -296,7 +329,8 @@ public class ControlFlowLeakage : AnalysisStage
                             var branchNode = new BranchNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                Taken = branchEntry.Taken
                             };
                             currentNode.Successors.Add(branchNode);
 
@@ -332,7 +366,8 @@ public class ControlFlowLeakage : AnalysisStage
                                 var branchNode = new BranchNode
                                 {
                                     SourceInstructionId = sourceInstructionId,
-                                    TargetInstructionId = targetInstructionId
+                                    TargetInstructionId = targetInstructionId,
+                                    Taken = branchEntry.Taken
                                 };
 
                                 splitNode.Successors.Add(branchNode);
@@ -356,7 +391,8 @@ public class ControlFlowLeakage : AnalysisStage
                             var branchNode = new BranchNode
                             {
                                 SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
+                                TargetInstructionId = targetInstructionId,
+                                Taken = branchEntry.Taken
                             };
 
                             splitNode.Successors.Add(branchNode);
@@ -390,16 +426,18 @@ public class ControlFlowLeakage : AnalysisStage
                                 ++successorIndex;
                             }
                             else
+                            {
                                 (currentNode, successorIndex) = nodeStack.Pop();
+                            }
                         }
                         else
                         {
                             // Successor does not match, we need to split the current node at this point
 
                             // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode();
-                            foreach(var testcaseId in currentNode.TestcaseIds)
-                                splitNode1.TestcaseIds.Add(testcaseId);
+                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
+                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
+
                             splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
                             currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
                             splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
@@ -422,7 +460,9 @@ public class ControlFlowLeakage : AnalysisStage
                             if(nodeStack.Count == 0)
                                 await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (2) Encountered return entry, but node stack is empty; continuing with root node");
                             else
+                            {
                                 (currentNode, successorIndex) = nodeStack.Pop();
+                            }
                         }
                     }
                     else
@@ -446,7 +486,9 @@ public class ControlFlowLeakage : AnalysisStage
                                 ++successorIndex;
                             }
                             else
+                            {
                                 (currentNode, successorIndex) = nodeStack.Pop();
+                            }
                         }
                         else if(currentNode.SplitSuccessors.Count > 0)
                         {
@@ -464,7 +506,9 @@ public class ControlFlowLeakage : AnalysisStage
                                     if(nodeStack.Count == 0)
                                         await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (4) Encountered return entry, but node stack is empty; continuing with root node");
                                     else
+                                    {
                                         (currentNode, successorIndex) = nodeStack.Pop();
+                                    }
 
                                     found = true;
                                     break;
@@ -489,7 +533,9 @@ public class ControlFlowLeakage : AnalysisStage
                                 if(nodeStack.Count == 0)
                                     await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (5) Encountered return entry, but node stack is empty; continuing with root node");
                                 else
+                                {
                                     (currentNode, successorIndex) = nodeStack.Pop();
+                                }
                             }
                         }
                         else
@@ -514,10 +560,18 @@ public class ControlFlowLeakage : AnalysisStage
                             if(nodeStack.Count == 0)
                                 await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (6) Encountered return entry, but node stack is empty; continuing with root node");
                             else
+                            {
                                 (currentNode, successorIndex) = nodeStack.Pop();
+                            }
                         }
                     }
 
+                    // Restore call stack ID
+                    if(nodeStack.Count == 0)
+                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered return entry, but call stack is empty; continuing with root call stack ID");
+                    else
+                        currentCallStackId = callStackIds.Pop();
+                    
                     break;
                 }
             }
@@ -526,104 +580,200 @@ public class ControlFlowLeakage : AnalysisStage
 
     public override async Task FinishAsync()
     {
-        // Write entire state into file?
-        if(_dumpFullData)
-        {
-            // Write call tree
-            await using var callTreeDumpWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-tree-dump.txt")));
-            Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex)> nodeStack = new();
-            SplitNode currentNode = _rootNode;
-            int level = 0;
-            string indentation = "";
-            int? successorIndex = null;
-            int? splitSuccessorIndex = null;
-            while(true)
-            {
-                if(successorIndex == null && splitSuccessorIndex == null)
-                {
-                    // First time encounter of this node
+        /*
+         * Runs through the final call tree once and does the following:
+         * - write a text representation of each node to a text file
+         * - TODO
+         */
+        
+        string logMessagePrefix = "[analyze:cfl]";
+        await Logger.LogInfoAsync($"{logMessagePrefix} Running control flow leakage analysis");
 
-                    // Name
-                    if(currentNode == _rootNode)
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
-                    else if(currentNode is CallNode callNode)
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedAddresses[callNode.SourceInstructionId]} -> {_formattedAddresses[callNode.TargetInstructionId]}");
-                    else
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}@split");
+        // Write call tree to text file
+        await using var callTreeDumpWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-tree-dump.txt")));
+
+        // Stores analysis results for each instruction and each call stack
+        Dictionary<(ulong CallStackId, ulong InstructionId), AnalysisData> instructionAnalysisData = new();
+
+        // Iterate call tree
+        Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex, ulong CallStackId)> nodeStack = new();
+        SplitNode currentNode = _rootNode;
+        int level = 0;
+        string indentation = "";
+        int? successorIndex = null;
+        int? splitSuccessorIndex = null;
+        ulong currentCallStackId = _rootNodeCallStackId;
+        while(true)
+        {
+            if(successorIndex == null && splitSuccessorIndex == null)
+            {
+                // First time encounter of this node
+
+                // Name
+                if(currentNode == _rootNode)
+                {
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
+                }
+                else if(currentNode is CallNode callNode)
+                {
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedAddresses[callNode.SourceInstructionId]} -> {_formattedAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
+                }
+                else
+                {
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}@split");
 
                     // Testcase IDs
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {FormatIntegerSequence(currentNode.TestcaseIds.OrderBy(t => t))}");
-
-                    // Successors
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
-
-                    successorIndex = 0;
+                    // We print testcase IDs only for pure split nodes, to improve readability of the output file
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {FormatIntegerSequence(currentNode.TestcaseIds.AsEnumerable())} ({currentNode.TestcaseIds.Count} total)");
                 }
 
-                if(successorIndex != null)
-                {
-                    for(int i = successorIndex.Value; i < currentNode.Successors.Count; ++i)
-                    {
-                        CallTreeNode successorNode = currentNode.Successors[i];
-                        if(successorNode is SplitNode splitNode)
-                        {
-                            // Dive into split node
-                            nodeStack.Push((currentNode, level, i + 1, null));
-                            currentNode = splitNode;
-                            ++level;
-                            indentation = new string(' ', 4 * level);
-                            successorIndex = null;
-                            splitSuccessorIndex = null;
+                await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
-                            goto nextIteration;
-                        }
-                        else if(successorNode is ReturnNode returnNode)
-                        {
-                            // Print node
-                            await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedAddresses[returnNode.SourceInstructionId]} -> {_formattedAddresses[returnNode.TargetInstructionId]}");
-                            await callTreeDumpWriter.WriteLineAsync($"{indentation}      Testcases: {FormatIntegerSequence(successorNode.TestcaseIds.OrderBy(t => t))}");
-                        }
-                        else if(successorNode is BranchNode branchNode)
-                        {
-                            // Print node
-                            await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedAddresses[branchNode.SourceInstructionId]} -> {_formattedAddresses[branchNode.TargetInstructionId]}");
-                            await callTreeDumpWriter.WriteLineAsync($"{indentation}      Testcases: {FormatIntegerSequence(successorNode.TestcaseIds.OrderBy(t => t))}");
-                        }
+                // Check split successors: If an instruction caused a split, record its testcase ID hashes
+                Dictionary<ulong, HashSet<ulong>> splitSuccessorHashes = new();
+                foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                {
+                    var firstInstruction = splitSuccessor.Successors[0];
+
+                    ulong firstInstructionId;
+                    if(firstInstruction is BranchNode branchNode)
+                        firstInstructionId = branchNode.SourceInstructionId;
+                    else if(firstInstruction is CallNode callNode)
+                        firstInstructionId = callNode.SourceInstructionId;
+                    else if(firstInstruction is ReturnNode returnNode)
+                        firstInstructionId = returnNode.SourceInstructionId;
+                    else
+                        continue; // Weird
+
+                    if(!splitSuccessorHashes.TryGetValue(firstInstructionId, out var firstInstructionHashes))
+                    {
+                        firstInstructionHashes = new HashSet<ulong>();
+                        splitSuccessorHashes.Add(firstInstructionId, firstInstructionHashes);
                     }
 
-                    // Done, move to split successors
-                    await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
-                    successorIndex = null;
-                    splitSuccessorIndex = 0;
+                    firstInstructionHashes.Add(splitSuccessor.TestcaseIds.GetHash());
                 }
 
-                if(splitSuccessorIndex != null)
+                foreach(var splitSuccessorData in splitSuccessorHashes)
                 {
-                    // Dive into split node, if there is any
-                    // No point putting a loop here, as we will immediately move to a child node.
-                    if(splitSuccessorIndex.Value < currentNode.SplitSuccessors.Count)
+                    if(splitSuccessorData.Value.Count > 1)
+                    {
+                        // This instruction appeared more than once, record its hashes in the result list
+
+                        // Get analysis data object for this instruction
+                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, splitSuccessorData.Key), out var analysisData))
+                        {
+                            analysisData = new AnalysisData();
+                            instructionAnalysisData.Add((currentCallStackId, splitSuccessorData.Key), analysisData);
+                        }
+
+                        foreach(var hash in splitSuccessorData.Value)
+                            analysisData.TestcaseHashes.Add(hash);
+                    }
+                }
+
+                successorIndex = 0;
+            }
+
+            if(successorIndex != null)
+            {
+                for(int i = successorIndex.Value; i < currentNode.Successors.Count; ++i)
+                {
+                    CallTreeNode successorNode = currentNode.Successors[i];
+                    if(successorNode is SplitNode splitNode)
                     {
                         // Dive into split node
-                        nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1));
-                        currentNode = currentNode.SplitSuccessors[splitSuccessorIndex.Value];
+                        nodeStack.Push((currentNode, level, i + 1, null, currentCallStackId));
+                        currentNode = splitNode;
                         ++level;
                         indentation = new string(' ', 4 * level);
                         successorIndex = null;
                         splitSuccessorIndex = null;
 
+                        if(currentNode is CallNode callNode)
+                            currentCallStackId = callNode.CallStackId;
+
                         goto nextIteration;
                     }
 
-                    // Done, move back up to the parent node, if there is any
-                    if(nodeStack.Count == 0)
-                        break;
-                    (currentNode, level, successorIndex, splitSuccessorIndex) = nodeStack.Pop();
-                    indentation = new string(' ', 4 * level);
+                    if(successorNode is ReturnNode returnNode)
+                    {
+                        // Print node
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedAddresses[returnNode.SourceInstructionId]} -> {_formattedAddresses[returnNode.TargetInstructionId]}");
+
+                        // Get analysis data object for this instruction
+                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, returnNode.SourceInstructionId), out var analysisData))
+                        {
+                            analysisData = new AnalysisData();
+                            instructionAnalysisData.Add((currentCallStackId, returnNode.SourceInstructionId), analysisData);
+                        }
+
+                        
+                    }
+                    else if(successorNode is BranchNode branchNode)
+                    {
+                        // Print node
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
+
+                        // Get analysis data object for this instruction
+                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, branchNode.SourceInstructionId), out var analysisData))
+                        {
+                            analysisData = new AnalysisData();
+                            instructionAnalysisData.Add((currentCallStackId, branchNode.SourceInstructionId), analysisData);
+                        }
+
+                        
+                    }
                 }
 
-                // Used after switching to a new node, for immediately breaking inner loops and continuing with the outer one
-                nextIteration: ;
+                // Done, move to split successors
+                await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
+                successorIndex = null;
+                splitSuccessorIndex = 0;
             }
+
+            if(splitSuccessorIndex != null)
+            {
+                // Dive into split node, if there is any
+                // No point putting a loop here, as we will immediately move to a child node.
+                if(splitSuccessorIndex.Value < currentNode.SplitSuccessors.Count)
+                {
+                    // Dive into split node
+                    nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1, currentCallStackId));
+                    currentNode = currentNode.SplitSuccessors[splitSuccessorIndex.Value];
+                    ++level;
+                    indentation = new string(' ', 4 * level);
+                    successorIndex = null;
+                    splitSuccessorIndex = null;
+
+                    if(currentNode is CallNode callNode)
+                        currentCallStackId = callNode.CallStackId;
+
+                    goto nextIteration;
+                }
+
+                // Done, move back up to the parent node, if there is any
+                if(nodeStack.Count == 0)
+                    break;
+                (currentNode, level, successorIndex, splitSuccessorIndex, currentCallStackId) = nodeStack.Pop();
+                indentation = new string(' ', 4 * level);
+            }
+
+            // Used after switching to a new node, for immediately breaking inner loops and continuing with the outer one
+            nextIteration: ;
+        }
+
+        await Logger.LogInfoAsync($"{logMessagePrefix} Control flow leakage analysis completed, writing results");
+        
+        // Write instruction analysis results
+        await using var instructionResultsWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "instructions.txt")));
+        foreach(var instructionResult in instructionAnalysisData.OrderBy(i => i.Key.InstructionId))
+        {
+            if(instructionResult.Value.TestcaseHashes.Count == 0)
+                continue;
+            
+            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedAddresses[instructionResult.Key.InstructionId]}");
+            await instructionResultsWriter.WriteLineAsync($"  Unique hashes: {instructionResult.Value.TestcaseHashes.Count}");
         }
     }
 
@@ -673,7 +823,7 @@ public class ControlFlowLeakage : AnalysisStage
     /// </summary>
     /// <param name="sequence">Number sequence, in ascending order.</param>
     /// <returns></returns>
-    private string FormatIntegerSequence(IOrderedEnumerable<int> sequence)
+    private string FormatIntegerSequence(IEnumerable<int> sequence)
     {
         StringBuilder result = new();
 
@@ -729,7 +879,7 @@ public class ControlFlowLeakage : AnalysisStage
         // Remove trailing space
         if(result[^1] == ' ')
             result.Remove(result.Length - 1, 1);
-        
+
         return result.ToString();
     }
 
@@ -738,7 +888,7 @@ public class ControlFlowLeakage : AnalysisStage
         /// <summary>
         /// Testcase IDs leading to this call tree node.
         /// </summary>
-        public HashSet<int> TestcaseIds { get; } = new();
+        public TestcaseIdSet TestcaseIds { get; protected set; } = new();
     }
 
     /// <summary>
@@ -755,12 +905,33 @@ public class ControlFlowLeakage : AnalysisStage
         /// Alternative successors of this node, directly following the last node of <see cref="Successors"/>, in no particular order.
         /// </summary>
         public List<SplitNode> SplitSuccessors { get; } = new();
+
+        public SplitNode()
+        {
+        }
+
+        public SplitNode(TestcaseIdSet testcaseIds)
+        {
+            TestcaseIds = testcaseIds;
+        }
     }
 
     private class CallNode : SplitNode
     {
+        /// <summary>
+        /// Branch instruction ID.
+        /// </summary>
         public ulong SourceInstructionId { get; init; }
+
+        /// <summary>
+        /// Target instruction ID.
+        /// </summary>
         public ulong TargetInstructionId { get; init; }
+
+        /// <summary>
+        /// ID of the call stack created by this node.
+        /// </summary>
+        public ulong CallStackId { get; set; }
     }
 
     private class RootNode : SplitNode
@@ -769,8 +940,20 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class BranchNode : CallTreeNode
     {
+        /// <summary>
+        /// Branch instruction ID.
+        /// </summary>
         public ulong SourceInstructionId { get; init; }
+
+        /// <summary>
+        /// Target instruction ID. Only valid if <see cref="Taken"/> is true.
+        /// </summary>
         public ulong TargetInstructionId { get; init; }
+
+        /// <summary>
+        /// Denotes whether the branch was taken.
+        /// </summary>
+        public bool Taken { get; init; }
 
 
         public override bool Equals(object? obj)
@@ -792,5 +975,111 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class ReturnNode : BranchNode
     {
+    }
+
+    /// <summary>
+    /// Utility class for efficient storage of a testcase ID set.
+    /// Assumes that testcase IDs are small and don't have large gaps in between.
+    /// </summary>
+    /// <remarks>
+    /// This class is not thread-safe.
+    /// </remarks>
+    private class TestcaseIdSet
+    {
+        private ulong[] _testcaseIdBitField = new ulong[1];
+
+        private static byte[] _hashBuffer = new byte[8];
+
+        private void EnsureArraySize(int id)
+        {
+            if(id / 64 < _testcaseIdBitField.Length)
+                return;
+
+            // Resize
+            ulong[] newBitField = new ulong[2 * _testcaseIdBitField.Length];
+            _testcaseIdBitField.CopyTo(newBitField, 0);
+
+            _testcaseIdBitField = newBitField;
+        }
+
+        /// <summary>
+        /// Adds the given testcase ID to this set, if it is not yet included.
+        /// </summary>
+        /// <param name="id">Testcase ID.</param>
+        public void Add(int id)
+        {
+            EnsureArraySize(id);
+
+            _testcaseIdBitField[id / 64] |= (1ul << (id % 64));
+        }
+
+        /// <summary>
+        /// Removes the given testcase ID from this set, if it is included.
+        /// </summary>
+        /// <param name="id">Testcase ID.</param>
+        public void Remove(int id)
+        {
+            EnsureArraySize(id);
+
+            _testcaseIdBitField[id / 64] &= ~(1ul << (id % 64));
+        }
+
+        /// <summary>
+        /// Returns a deep copy of this set.
+        /// </summary>
+        public TestcaseIdSet Copy()
+        {
+            TestcaseIdSet s = new TestcaseIdSet
+            {
+                _testcaseIdBitField = new ulong[_testcaseIdBitField.Length]
+            };
+            _testcaseIdBitField.CopyTo(s._testcaseIdBitField, 0);
+
+            return s;
+        }
+
+        /// <summary>
+        /// Returns the included testcase ID in ascending order.
+        /// </summary>
+        public IEnumerable<int> AsEnumerable()
+        {
+            for(int i = 0; i < _testcaseIdBitField.Length; ++i)
+            {
+                ulong b = _testcaseIdBitField[i];
+                for(int j = 0; j < 64; ++j)
+                {
+                    if((b & 1) != 0)
+                        yield return 64 * i + j;
+
+                    b >>= 1;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Computes a hash over all included IDs.
+        /// </summary>
+        public ulong GetHash()
+        {
+            // Resize shared hash buffer, if necessary
+            int byteCount = 8 * _testcaseIdBitField.Length;
+            if(_hashBuffer.Length < byteCount)
+                _hashBuffer = new byte[byteCount];
+
+            // Copy encoded testcase IDs to hash buffer
+            Buffer.BlockCopy(_testcaseIdBitField, 0, _hashBuffer, 0, byteCount);
+
+            return xxHash64.ComputeHash(_hashBuffer, byteCount);
+        }
+
+        /// <summary>
+        /// Returns the number of IDs contained in this object.
+        /// </summary>
+        public int Count => _testcaseIdBitField.Sum(BitOperations.PopCount);
+    }
+
+    private class AnalysisData
+    {
+        public HashSet<ulong> TestcaseHashes { get; } = new();
     }
 }
