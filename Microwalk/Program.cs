@@ -359,7 +359,7 @@ namespace Microwalk
                 {
                     // Wait for all stages to complete
                     await analysisStage.Completion;
-                    await _logger.LogInfoAsync("Pipeline completed.");
+                    await _logger.LogInfoAsync("Pipeline completed, executing final analysis steps");
 
                     // Do final analysis steps
                     foreach(var module in _moduleConfiguration.AnalysesStageModules)

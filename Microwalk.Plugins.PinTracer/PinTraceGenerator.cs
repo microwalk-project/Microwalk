@@ -17,6 +17,8 @@ namespace Microwalk.Plugins.PinTracer
     [FrameworkModule("pin", "Generates traces using a Pin tool.")]
     public class PinTraceGenerator : TraceStage
     {
+        private const string _genericLogMessagePrefix = "[trace:pin]";
+
         /// <summary>
         /// The trace output directory.
         /// </summary>
@@ -32,8 +34,10 @@ namespace Microwalk.Plugins.PinTracer
 
         public override async Task GenerateTraceAsync(TraceEntity traceEntity)
         {
+            string logMessagePrefix = $"[trace:pin:{traceEntity.Id}]";
+            
             // Debug
-            await Logger.LogDebugAsync("Trace #" + traceEntity.Id);
+            await Logger.LogDebugAsync($"{logMessagePrefix} Trace #" + traceEntity.Id);
 
             // Send test case
             await _pinToolProcess.StandardInput.WriteLineAsync($"t {traceEntity.Id}");
@@ -41,12 +45,12 @@ namespace Microwalk.Plugins.PinTracer
             while(true)
             {
                 // Read Pin tool output
-                await Logger.LogDebugAsync("Read from Pin tool stdout...");
+                await Logger.LogDebugAsync($"{logMessagePrefix} Read from Pin tool stdout...");
                 string pinToolOutput = await _pinToolProcess.StandardOutput.ReadLineAsync()
                                        ?? throw new IOException("Could not read from Pin tool standard output (null). Probably the process has exited early.");
 
                 // Parse output
-                await Logger.LogDebugAsync($"Pin tool output: {pinToolOutput}");
+                await Logger.LogDebugAsync($"{logMessagePrefix} Pin tool output: {pinToolOutput}");
                 string[] outputParts = pinToolOutput.Split('\t');
                 if(outputParts[0] == "t")
                 {
@@ -55,7 +59,7 @@ namespace Microwalk.Plugins.PinTracer
                     break;
                 }
 
-                await Logger.LogWarningAsync("Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
+                await Logger.LogWarningAsync($"{logMessagePrefix} Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
             }
         }
 
@@ -113,7 +117,7 @@ namespace Microwalk.Plugins.PinTracer
             pinArgs.Add(wrapperPath);
 
             // Prepare Pin tool process
-            await Logger.LogDebugAsync("Starting Pin tool process");
+            await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Starting Pin tool process");
             ProcessStartInfo pinToolProcessStartInfo = new()
             {
                 Arguments = string.Empty,
@@ -139,7 +143,7 @@ namespace Microwalk.Plugins.PinTracer
             pinToolProcessStartInfo.EnvironmentVariables["PATH"] += Path.PathSeparator + Path.GetDirectoryName(wrapperPath);
 
             // Start Pin tool
-            await Logger.LogDebugAsync($"Pin tool command: {pinToolProcessStartInfo.FileName} {string.Join(" ", pinToolProcessStartInfo.ArgumentList)}");
+            await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Pin tool command: {pinToolProcessStartInfo.FileName} {string.Join(" ", pinToolProcessStartInfo.ArgumentList)}");
             _pinToolProcess = Process.Start(pinToolProcessStartInfo) ?? throw new Exception("Could not start the Pin process.");
 
             // Ensure that the Pin process is eventually stopped when the Pipeline gets aborted early
@@ -158,11 +162,11 @@ namespace Microwalk.Plugins.PinTracer
                     _pinToolProcess.Kill(true);
 
                     if(!_pinToolProcess.WaitForExit(1000))
-                        Logger.LogErrorAsync("Sent a KILL signal to the Pin tool process, but it did not respond in time. Please check whether it still running.").Wait(2000);
+                        Logger.LogErrorAsync($"{_genericLogMessagePrefix} Sent a KILL signal to the Pin tool process, but it did not respond in time. Please check whether it still running.").Wait(2000);
                 }
                 catch(Exception ex)
                 {
-                    Logger.LogErrorAsync($"Could not safely stop the Pin tool process. Please check whether it still running. Error message:\n{ex}").Wait(2000);
+                    Logger.LogErrorAsync($"{_genericLogMessagePrefix} Could not safely stop the Pin tool process. Please check whether it still running. Error message:\n{ex}").Wait(2000);
                 }
             });
 
@@ -170,7 +174,7 @@ namespace Microwalk.Plugins.PinTracer
             _pinToolProcess.ErrorDataReceived += async (_, e) =>
             {
                 if(!string.IsNullOrWhiteSpace(e.Data))
-                    await Logger.LogDebugAsync($"Pin tool log: {e.Data}");
+                    await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Pin tool log: {e.Data}");
             };
             _pinToolProcess.BeginErrorReadLine();
         }
@@ -178,7 +182,7 @@ namespace Microwalk.Plugins.PinTracer
         public override async Task UnInitAsync()
         {
             // Exit Pin tool process
-            await Logger.LogDebugAsync("Stopping Pin tool process");
+            await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Stopping Pin tool process");
             if(!_pinToolProcess.HasExited)
             {
                 await _pinToolProcess.StandardInput.WriteLineAsync("e 0");

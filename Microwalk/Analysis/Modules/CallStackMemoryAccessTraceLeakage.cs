@@ -20,6 +20,8 @@ namespace Microwalk.Analysis.Modules
     [FrameworkModule("call-stack-memory-access-trace-leakage", "Calculates several trace leakage measures for each call stack of a memory accessing instruction.")]
     internal class CallStackMemoryAccessTraceLeakage : AnalysisStage
     {
+        private const string _genericLogMessagePrefix = "[analyze:csmal]";
+        
         /// <summary>
         /// Maps testcase IDs to call trees.
         /// </summary>
@@ -57,6 +59,8 @@ namespace Microwalk.Analysis.Modules
             // Input check
             if(traceEntity.PreprocessedTraceFile == null)
                 throw new Exception("Preprocessed trace is null. Is the preprocessor stage missing?");
+            
+            string logMessagePrefix = $"[analyze:csmal:{traceEntity.Id}]";
             
             // Trace call tree
             var currentCallTree = new Stack<CallTreeNode>();
@@ -125,7 +129,7 @@ namespace Microwalk.Analysis.Modules
                         // Sanity check for unbalanced calls/returns: Never pop the root node
                         if(currentCallTree.Count == 1)
                         {
-                            await Logger.LogWarningAsync("Skipping unbalanced return entry in call tree analysis. Results may be incorrect.");
+                            await Logger.LogWarningAsync($"{logMessagePrefix} Skipping unbalanced return entry in call tree analysis. Results may be incorrect.");
                             continue;
                         }
 
@@ -209,7 +213,7 @@ namespace Microwalk.Analysis.Modules
             var instructions = new Dictionary<(ulong, ulong), InstructionData>();
 
             // Transform per-testcase call trees into flat per-(call stack, instruction) representation
-            await Logger.LogInfoAsync("Transforming call trees");
+            await Logger.LogInfoAsync($"{_genericLogMessagePrefix} Transforming call trees");
             foreach(var testcase in _testcaseCallTrees)
             {
                 // Iterate call tree using BFS
@@ -277,7 +281,7 @@ namespace Microwalk.Analysis.Modules
             var instructionLeakage = new Dictionary<(ulong, ulong), InstructionLeakageResult>();
 
             // Calculate leakage measures for each call stack/instruction tuple
-            await Logger.LogInfoAsync("Running call stack memory access trace leakage analysis");
+            await Logger.LogInfoAsync($"{_genericLogMessagePrefix} Running call stack memory access trace leakage analysis");
             double maximumMutualInformation = 0.0;
             foreach(var instruction in instructions)
             {
@@ -351,10 +355,10 @@ namespace Microwalk.Analysis.Modules
             const double warnThreshold = 0.9;
             double testcaseCountBits = Math.Log2(_testcaseCallTrees.Count);
             if(maximumMutualInformation > testcaseCountBits - warnThreshold)
-                await Logger.LogWarningAsync("For some instructions the calculated mutual information is suspiciously near to the testcase range. It is recommended to run more testcases.");
+                await Logger.LogWarningAsync($"{_genericLogMessagePrefix} For some instructions the calculated mutual information is suspiciously near to the testcase range. It is recommended to run more testcases.");
 
             // Store results
-            await Logger.LogInfoAsync("Call stack memory access trace leakage analysis completed, writing results");
+            await Logger.LogInfoAsync($"{_genericLogMessagePrefix} Call stack memory access trace leakage analysis completed, writing results");
             string FormatCallStackId(ulong callStackId) => "CS-" + callStackId.ToString("x16");
             string csvListSeparator = ";"; // TextInfo.ListSeparator is unreliable
             if(_outputFormat == OutputFormat.Txt)
