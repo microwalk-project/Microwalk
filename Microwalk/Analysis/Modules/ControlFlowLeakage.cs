@@ -105,7 +105,6 @@ public class ControlFlowLeakage : AnalysisStage
         {
             ++traceEntryId;
 
-            // Ignore non-branch entries
             if(traceEntry.EntryType != TraceEntryTypes.Branch)
                 continue;
 
@@ -150,30 +149,10 @@ public class ControlFlowLeakage : AnalysisStage
                         {
                             // Successor does not match, we need to split the current node at this point
 
-                            // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
-                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
+                            callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
+                            var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, callNode);
 
-                            splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
-                            currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
-                            splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
-                            currentNode.SplitSuccessors.Clear();
-
-                            // The 2nd split node holds the new, conflicting entry
-                            var splitNode2 = new SplitNode();
-                            callNode = new CallNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                CallStackId = currentCallStackId
-                            };
-                            splitNode2.Successors.Add(callNode);
-                            splitNode2.TestcaseIds.Add(traceEntity.Id);
-
-                            currentNode.SplitSuccessors.Add(splitNode1);
-                            currentNode.SplitSuccessors.Add(splitNode2);
-
-                            nodeStack.Push((splitNode2, 1)); // Return to split node and keep filling its successors
+                            nodeStack.Push((newSplitNode, 1)); // Return to split node and keep filling its successors
                             callNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode = callNode;
                             successorIndex = 0;
@@ -186,12 +165,7 @@ public class ControlFlowLeakage : AnalysisStage
                         if(currentNode.TestcaseIds.Count == 1)
                         {
                             // No, this is purely ours. So just append another successor
-                            var callNode = new CallNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                CallStackId = currentCallStackId
-                            };
+                            var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
                             currentNode.Successors.Add(callNode);
 
                             nodeStack.Push((currentNode, successorIndex + 1)); // The node still has linear history, we want to return there
@@ -225,12 +199,7 @@ public class ControlFlowLeakage : AnalysisStage
                             {
                                 // Add new split successor
                                 var splitNode = new SplitNode();
-                                var callNode = new CallNode
-                                {
-                                    SourceInstructionId = sourceInstructionId,
-                                    TargetInstructionId = targetInstructionId,
-                                    CallStackId = currentCallStackId
-                                };
+                                var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
 
                                 splitNode.Successors.Add(callNode);
                                 splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -244,19 +213,11 @@ public class ControlFlowLeakage : AnalysisStage
                         }
                         else
                         {
-                            // Weird, another testcase produced the successors of the current node, but no split successors.
-                            // This should not happen, since the current testcase must have shared all its successor entries until now,
-                            // and the other testcase had to emit a "return" statement at some point, taking it back up the call tree...
-                            // We handle this case anyway, just to be sure, and append a split node.
+                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
                             await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for call entry");
 
                             var splitNode = new SplitNode();
-                            var callNode = new CallNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                CallStackId = currentCallStackId
-                            };
+                            var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
 
                             splitNode.Successors.Add(callNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -289,32 +250,12 @@ public class ControlFlowLeakage : AnalysisStage
                         {
                             // Successor does not match, we need to split the current node at this point
 
-                            // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
-                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
-
-                            splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
-                            currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
-                            splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
-                            currentNode.SplitSuccessors.Clear();
-
-                            // The 2nd split node holds the new, conflicting entry
-                            var splitNode2 = new SplitNode();
-                            branchNode = new BranchNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                Taken = branchEntry.Taken
-                            };
-                            splitNode2.Successors.Add(branchNode);
-                            splitNode2.TestcaseIds.Add(traceEntity.Id);
-
-                            currentNode.SplitSuccessors.Add(splitNode1);
-                            currentNode.SplitSuccessors.Add(splitNode2);
+                            branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
+                            var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, branchNode);
 
                             // Continue with new split node
                             branchNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = splitNode2;
+                            currentNode = newSplitNode;
                             successorIndex = 1;
                         }
                     }
@@ -325,12 +266,7 @@ public class ControlFlowLeakage : AnalysisStage
                         if(currentNode.TestcaseIds.Count == 1)
                         {
                             // No, this is purely ours. So just append another successor
-                            var branchNode = new BranchNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                Taken = branchEntry.Taken
-                            };
+                            var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
                             currentNode.Successors.Add(branchNode);
 
                             // Next
@@ -362,12 +298,7 @@ public class ControlFlowLeakage : AnalysisStage
                             {
                                 // Add new split successor
                                 var splitNode = new SplitNode();
-                                var branchNode = new BranchNode
-                                {
-                                    SourceInstructionId = sourceInstructionId,
-                                    TargetInstructionId = targetInstructionId,
-                                    Taken = branchEntry.Taken
-                                };
+                                var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
 
                                 splitNode.Successors.Add(branchNode);
                                 splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -381,18 +312,11 @@ public class ControlFlowLeakage : AnalysisStage
                         }
                         else
                         {
-                            // Weird, until now we were aligned with another testcase just fine, but it seemed to have disappeared suddenly - else
-                            // we would have seen a return entry and generated a node split. This case should not occur in any sane trace, but we
-                            // handle it anyway and generate a node split.
+                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
                             await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for branch entry");
 
                             var splitNode = new SplitNode();
-                            var branchNode = new BranchNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId,
-                                Taken = branchEntry.Taken
-                            };
+                            var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
 
                             splitNode.Successors.Add(branchNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -433,27 +357,8 @@ public class ControlFlowLeakage : AnalysisStage
                         {
                             // Successor does not match, we need to split the current node at this point
 
-                            // Copy remaining info from this node over to 1st split node
-                            var splitNode1 = new SplitNode(currentNode.TestcaseIds.Copy());
-                            splitNode1.TestcaseIds.Remove(traceEntity.Id);
-
-                            splitNode1.Successors.AddRange(currentNode.Successors.Skip(successorIndex));
-                            currentNode.Successors.RemoveRange(successorIndex, currentNode.Successors.Count - successorIndex);
-                            splitNode1.SplitSuccessors.AddRange(currentNode.SplitSuccessors);
-                            currentNode.SplitSuccessors.Clear();
-
-                            // The 2nd split node holds the new, conflicting entry
-                            var splitNode2 = new SplitNode();
-                            returnNode = new ReturnNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
-                            };
-                            splitNode2.Successors.Add(returnNode);
-                            splitNode2.TestcaseIds.Add(traceEntity.Id);
-
-                            currentNode.SplitSuccessors.Add(splitNode1);
-                            currentNode.SplitSuccessors.Add(splitNode2);
+                            returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
+                            currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, returnNode);
 
                             returnNode.TestcaseIds.Add(traceEntity.Id);
                             if(nodeStack.Count == 0)
@@ -471,11 +376,7 @@ public class ControlFlowLeakage : AnalysisStage
                         if(currentNode.TestcaseIds.Count == 1)
                         {
                             // No, this is purely ours. So just append another successor
-                            var returnNode = new ReturnNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
-                            };
+                            var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
                             currentNode.Successors.Add(returnNode);
 
                             returnNode.TestcaseIds.Add(traceEntity.Id);
@@ -518,11 +419,7 @@ public class ControlFlowLeakage : AnalysisStage
                             {
                                 // Add new split successor
                                 var splitNode = new SplitNode();
-                                var returnNode = new ReturnNode
-                                {
-                                    SourceInstructionId = sourceInstructionId,
-                                    TargetInstructionId = targetInstructionId
-                                };
+                                var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
 
                                 splitNode.Successors.Add(returnNode);
                                 splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -539,17 +436,11 @@ public class ControlFlowLeakage : AnalysisStage
                         }
                         else
                         {
-                            // Another testcase already hit this branch and ended just before ours.
-                            // However, there was no prior return statement/split, which should not happen.
-                            // We handle this case anyway, by creating a dummy split
+                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
                             await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for return entry");
 
                             var splitNode = new SplitNode();
-                            var returnNode = new ReturnNode
-                            {
-                                SourceInstructionId = sourceInstructionId,
-                                TargetInstructionId = targetInstructionId
-                            };
+                            var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
 
                             splitNode.Successors.Add(returnNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -922,32 +813,62 @@ public class ControlFlowLeakage : AnalysisStage
         /// </summary>
         public List<SplitNode> SplitSuccessors { get; } = new();
 
-        public SplitNode()
+        /// <summary>
+        /// Splits the given node at the given successor index.
+        /// </summary>
+        /// <param name="successorIndex">Index of the successor where the split is created.</param>
+        /// <param name="testcaseId">Current testcase ID.</param>
+        /// <param name="firstSuccessor">First successor of the new split branch.</param>
+        /// <returns></returns>
+        public SplitNode SplitAtSuccessor(int successorIndex, int testcaseId, CallTreeNode firstSuccessor)
         {
-        }
+            // Copy remaining info from this node over to 1st split node
+            var splitNode1 = new SplitNode
+            {
+                TestcaseIds = TestcaseIds.Copy()
+            };
+            splitNode1.TestcaseIds.Remove(testcaseId);
 
-        public SplitNode(TestcaseIdSet testcaseIds)
-        {
-            TestcaseIds = testcaseIds;
+            splitNode1.Successors.AddRange(Successors.Skip(successorIndex));
+            Successors.RemoveRange(successorIndex, Successors.Count - successorIndex);
+            splitNode1.SplitSuccessors.AddRange(SplitSuccessors);
+            SplitSuccessors.Clear();
+
+            // The 2nd split node holds the new, conflicting entry
+            var splitNode2 = new SplitNode();
+            splitNode2.Successors.Add(firstSuccessor);
+            splitNode2.TestcaseIds.Add(testcaseId);
+
+            SplitSuccessors.Add(splitNode1);
+            SplitSuccessors.Add(splitNode2);
+
+            return splitNode2;
         }
     }
 
     private class CallNode : SplitNode
     {
+        public CallNode(ulong sourceInstructionId, ulong targetInstructionId, ulong callStackId)
+        {
+            SourceInstructionId = sourceInstructionId;
+            TargetInstructionId = targetInstructionId;
+            CallStackId = callStackId;
+        }
+
         /// <summary>
         /// Branch instruction ID.
         /// </summary>
-        public ulong SourceInstructionId { get; init; }
+        public ulong SourceInstructionId { get; }
 
         /// <summary>
         /// Target instruction ID.
         /// </summary>
-        public ulong TargetInstructionId { get; init; }
+        public ulong TargetInstructionId { get; }
 
         /// <summary>
         /// ID of the call stack created by this node.
         /// </summary>
-        public ulong CallStackId { get; init; }
+        public ulong CallStackId { get; }
     }
 
     private class RootNode : SplitNode
@@ -956,20 +877,27 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class BranchNode : CallTreeNode
     {
+        public BranchNode(ulong sourceInstructionId, ulong targetInstructionId, bool taken)
+        {
+            SourceInstructionId = sourceInstructionId;
+            TargetInstructionId = targetInstructionId;
+            Taken = taken;
+        }
+
         /// <summary>
         /// Branch instruction ID.
         /// </summary>
-        public ulong SourceInstructionId { get; init; }
+        public ulong SourceInstructionId { get; }
 
         /// <summary>
         /// Target instruction ID. Only valid if <see cref="Taken"/> is true.
         /// </summary>
-        public ulong TargetInstructionId { get; init; }
+        public ulong TargetInstructionId { get; }
 
         /// <summary>
         /// Denotes whether the branch was taken.
         /// </summary>
-        public bool Taken { get; init; }
+        public bool Taken { get; }
 
 
         public override bool Equals(object? obj)
@@ -991,6 +919,25 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class ReturnNode : BranchNode
     {
+        public ReturnNode(ulong sourceInstructionId, ulong targetInstructionId)
+            : base(sourceInstructionId, targetInstructionId, true)
+        {
+        }
+    }
+
+    private class MemoryAccessNode : CallTreeNode
+    {
+        /// <summary>
+        /// Instruction ID of the memory access.
+        /// </summary>
+        public ulong InstructionId { get; init; }
+
+        /// <summary>
+        /// Encoded target address of this memory accessing instruction, and the respective testcases.
+        /// </summary>
+        public Dictionary<ulong, TestcaseIdSet> Targets { get; } = new();
+
+        public bool IsWrite { get; init; }
     }
 
     /// <summary>
