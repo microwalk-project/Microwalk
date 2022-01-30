@@ -20,12 +20,16 @@ namespace Microwalk.Analysis.Modules;
 [FrameworkModule("control-flow-leakage", "Finds control flow variations on each call stack level.")]
 public class ControlFlowLeakage : AnalysisStage
 {
-    public override bool SupportsParallelism => false;
+    private const ulong _addressIdFlagImage = 0x0000_0000_0000_0000;
+    private const ulong _addressIdFlagMemory = 0x8000_0000_0000_0000;
+    private const ulong _addressIdFlagsMask = 0x8000_0000_0000_0000;
 
     /// <summary>
     /// Call stack ID of the root node (base value for call stack ID hashing)
     /// </summary>
     private const ulong _rootNodeCallStackId = 0;
+
+    public override bool SupportsParallelism => false;
 
     /// <summary>
     /// The output directory for analysis results.
@@ -48,9 +52,14 @@ public class ControlFlowLeakage : AnalysisStage
     private readonly RootNode _rootNode = new();
 
     /// <summary>
-    /// Lookup for formatted addresses.
+    /// Lookup for formatted image addresses.
     /// </summary>
-    private readonly Dictionary<ulong, string> _formattedAddresses = new();
+    private readonly Dictionary<ulong, string> _formattedImageAddresses = new();
+
+    /// <summary>
+    /// Lookup for formatted heap/stack addresses.
+    /// </summary>
+    private readonly Dictionary<ulong, string> _formattedMemoryAddresses = new();
 
     public override async Task AddTraceAsync(TraceEntity traceEntity)
     {
@@ -105,99 +114,112 @@ public class ControlFlowLeakage : AnalysisStage
         {
             ++traceEntryId;
 
-            if(traceEntry.EntryType != TraceEntryTypes.Branch)
-                continue;
-
-            var branchEntry = (Branch)traceEntry;
-
-            // Format addresses
-            ulong sourceInstructionId = ((ulong)branchEntry.SourceImageId << 32) | branchEntry.SourceInstructionRelativeAddress;
-            StoreFormattedAddress(sourceInstructionId, traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
-
-            ulong targetInstructionId = 0;
-            if(branchEntry.Taken)
+            if(traceEntry.EntryType == TraceEntryTypes.Branch)
             {
-                targetInstructionId = ((ulong)branchEntry.DestinationImageId << 32) | branchEntry.DestinationInstructionRelativeAddress;
-                StoreFormattedAddress(targetInstructionId, traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
-            }
+                var branchEntry = (Branch)traceEntry;
 
-            switch(branchEntry.BranchType)
-            {
-                case Branch.BranchTypes.Call:
+                // Format addresses
+                ulong sourceInstructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
+
+                ulong targetInstructionId = 0;
+                if(branchEntry.Taken)
+                    targetInstructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress);
+
+                switch(branchEntry.BranchType)
                 {
-                    // Compute new call stack ID
-                    callStackIds.Push(currentCallStackId);
-                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferHash.Span, currentCallStackId);
-                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferSource.Span, sourceInstructionId);
-                    BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferTarget.Span, targetInstructionId);
-                    currentCallStackId = xxHash64.ComputeHash(callStackBuffer, callStackBuffer.Length);
-
-                    // Are there successor nodes from previous testcases?
-                    if(successorIndex < currentNode.Successors.Count)
+                    case Branch.BranchTypes.Call:
                     {
-                        // Check current successor
-                        if(currentNode.Successors[successorIndex] is CallNode callNode && callNode.SourceInstructionId == sourceInstructionId && callNode.TargetInstructionId == targetInstructionId)
-                        {
-                            // The successor matches, we can continue there
+                        // Compute new call stack ID
+                        callStackIds.Push(currentCallStackId);
+                        BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferHash.Span, currentCallStackId);
+                        BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferSource.Span, sourceInstructionId);
+                        BinaryPrimitives.WriteUInt64LittleEndian(callStackBufferTarget.Span, targetInstructionId);
+                        currentCallStackId = xxHash64.ComputeHash(callStackBuffer, callStackBuffer.Length);
 
-                            nodeStack.Push((currentNode, successorIndex + 1)); // The node still has linear history, we want to return there
-                            callNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = callNode;
-                            successorIndex = 0;
+                        // Are there successor nodes from previous testcases?
+                        if(successorIndex < currentNode.Successors.Count)
+                        {
+                            // Check current successor
+                            if(currentNode.Successors[successorIndex] is CallNode callNode && callNode.SourceInstructionId == sourceInstructionId && callNode.TargetInstructionId == targetInstructionId)
+                            {
+                                // The successor matches, we can continue there
+
+                                nodeStack.Push((currentNode, successorIndex + 1)); // The node still has linear history, we want to return there
+                                callNode.TestcaseIds.Add(traceEntity.Id);
+                                currentNode = callNode;
+                                successorIndex = 0;
+                            }
+                            else
+                            {
+                                // Successor does not match, we need to split the current node at this point
+
+                                callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
+                                var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, callNode);
+
+                                nodeStack.Push((newSplitNode, 1)); // Return to split node and keep filling its successors
+                                callNode.TestcaseIds.Add(traceEntity.Id);
+                                currentNode = callNode;
+                                successorIndex = 0;
+                            }
                         }
                         else
                         {
-                            // Successor does not match, we need to split the current node at this point
-
-                            callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
-                            var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, callNode);
-
-                            nodeStack.Push((newSplitNode, 1)); // Return to split node and keep filling its successors
-                            callNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = callNode;
-                            successorIndex = 0;
-                        }
-                    }
-                    else
-                    {
-                        // We ran out of successor nodes
-                        // Check whether another testcase already hit this particular path
-                        if(currentNode.TestcaseIds.Count == 1)
-                        {
-                            // No, this is purely ours. So just append another successor
-                            var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
-                            currentNode.Successors.Add(callNode);
-
-                            nodeStack.Push((currentNode, successorIndex + 1)); // The node still has linear history, we want to return there
-                            callNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = callNode;
-                            successorIndex = 0;
-                        }
-                        else if(currentNode.SplitSuccessors.Count > 0)
-                        {
-                            // Is there a split successor that matches?
-                            bool found = false;
-                            foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                            // We ran out of successor nodes
+                            // Check whether another testcase already hit this particular path
+                            if(currentNode.TestcaseIds.Count == 1)
                             {
-                                if(splitSuccessor.Successors[0] is CallNode callNode && callNode.SourceInstructionId == sourceInstructionId && callNode.TargetInstructionId == targetInstructionId)
+                                // No, this is purely ours. So just append another successor
+                                var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
+                                currentNode.Successors.Add(callNode);
+
+                                nodeStack.Push((currentNode, successorIndex + 1)); // The node still has linear history, we want to return there
+                                callNode.TestcaseIds.Add(traceEntity.Id);
+                                currentNode = callNode;
+                                successorIndex = 0;
+                            }
+                            else if(currentNode.SplitSuccessors.Count > 0)
+                            {
+                                // Is there a split successor that matches?
+                                bool found = false;
+                                foreach(var splitSuccessor in currentNode.SplitSuccessors)
                                 {
-                                    // The split successor matches, we can continue there
+                                    if(splitSuccessor.Successors[0] is CallNode callNode && callNode.SourceInstructionId == sourceInstructionId && callNode.TargetInstructionId == targetInstructionId)
+                                    {
+                                        // The split successor matches, we can continue there
 
-                                    splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                        splitSuccessor.TestcaseIds.Add(traceEntity.Id);
 
-                                    nodeStack.Push((splitSuccessor, 1)); // Return to split node and keep going through its successors
+                                        nodeStack.Push((splitSuccessor, 1)); // Return to split node and keep going through its successors
+                                        callNode.TestcaseIds.Add(traceEntity.Id);
+                                        currentNode = callNode;
+                                        successorIndex = 0;
+
+                                        found = true;
+                                        break;
+                                    }
+                                }
+
+                                if(!found)
+                                {
+                                    // Add new split successor
+                                    var splitNode = new SplitNode();
+                                    var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
+
+                                    splitNode.Successors.Add(callNode);
+                                    splitNode.TestcaseIds.Add(traceEntity.Id);
+                                    currentNode.SplitSuccessors.Add(splitNode);
+
+                                    nodeStack.Push((splitNode, 1)); // Return to split node and keep filling its successors
                                     callNode.TestcaseIds.Add(traceEntity.Id);
                                     currentNode = callNode;
                                     successorIndex = 0;
-
-                                    found = true;
-                                    break;
                                 }
                             }
-
-                            if(!found)
+                            else
                             {
-                                // Add new split successor
+                                // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
+                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for call entry");
+
                                 var splitNode = new SplitNode();
                                 var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
 
@@ -211,92 +233,92 @@ public class ControlFlowLeakage : AnalysisStage
                                 successorIndex = 0;
                             }
                         }
-                        else
-                        {
-                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
-                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for call entry");
 
-                            var splitNode = new SplitNode();
-                            var callNode = new CallNode(sourceInstructionId, targetInstructionId, currentCallStackId);
-
-                            splitNode.Successors.Add(callNode);
-                            splitNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode.SplitSuccessors.Add(splitNode);
-
-                            nodeStack.Push((splitNode, 1)); // Return to split node and keep filling its successors
-                            callNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = callNode;
-                            successorIndex = 0;
-                        }
+                        break;
                     }
 
-                    break;
-                }
-
-                case Branch.BranchTypes.Jump:
-                {
-                    // Are there successor nodes from previous testcases?
-                    if(successorIndex < currentNode.Successors.Count)
+                    case Branch.BranchTypes.Jump:
                     {
-                        // Check current successor
-                        if(currentNode.Successors[successorIndex] is BranchNode branchNode && branchNode.SourceInstructionId == sourceInstructionId && branchNode.TargetInstructionId == targetInstructionId)
+                        // Are there successor nodes from previous testcases?
+                        if(successorIndex < currentNode.Successors.Count)
                         {
-                            // The successor matches, nothing to do here
-
-                            branchNode.TestcaseIds.Add(traceEntity.Id);
-                            ++successorIndex;
-                        }
-                        else
-                        {
-                            // Successor does not match, we need to split the current node at this point
-
-                            branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
-                            var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, branchNode);
-
-                            // Continue with new split node
-                            branchNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = newSplitNode;
-                            successorIndex = 1;
-                        }
-                    }
-                    else
-                    {
-                        // We ran out of successor nodes
-                        // Check whether another testcase already hit this particular path
-                        if(currentNode.TestcaseIds.Count == 1)
-                        {
-                            // No, this is purely ours. So just append another successor
-                            var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
-                            currentNode.Successors.Add(branchNode);
-
-                            // Next
-                            branchNode.TestcaseIds.Add(traceEntity.Id);
-                            ++successorIndex;
-                        }
-                        else if(currentNode.SplitSuccessors.Count > 0)
-                        {
-                            // Is there a split successor that matches?
-                            bool found = false;
-                            foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                            // Check current successor
+                            if(currentNode.Successors[successorIndex] is BranchNode branchNode && branchNode.SourceInstructionId == sourceInstructionId && branchNode.TargetInstructionId == targetInstructionId)
                             {
-                                if(splitSuccessor.Successors[0] is BranchNode branchNode && branchNode.SourceInstructionId == sourceInstructionId && branchNode.TargetInstructionId == targetInstructionId)
+                                // The successor matches, nothing to do here
+
+                                branchNode.TestcaseIds.Add(traceEntity.Id);
+                                ++successorIndex;
+                            }
+                            else
+                            {
+                                // Successor does not match, we need to split the current node at this point
+
+                                branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
+                                var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, branchNode);
+
+                                // Continue with new split node
+                                branchNode.TestcaseIds.Add(traceEntity.Id);
+                                currentNode = newSplitNode;
+                                successorIndex = 1;
+                            }
+                        }
+                        else
+                        {
+                            // We ran out of successor nodes
+                            // Check whether another testcase already hit this particular path
+                            if(currentNode.TestcaseIds.Count == 1)
+                            {
+                                // No, this is purely ours. So just append another successor
+                                var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
+                                currentNode.Successors.Add(branchNode);
+
+                                // Next
+                                branchNode.TestcaseIds.Add(traceEntity.Id);
+                                ++successorIndex;
+                            }
+                            else if(currentNode.SplitSuccessors.Count > 0)
+                            {
+                                // Is there a split successor that matches?
+                                bool found = false;
+                                foreach(var splitSuccessor in currentNode.SplitSuccessors)
                                 {
-                                    // The split successor matches, we can continue there
+                                    if(splitSuccessor.Successors[0] is BranchNode branchNode && branchNode.SourceInstructionId == sourceInstructionId && branchNode.TargetInstructionId == targetInstructionId)
+                                    {
+                                        // The split successor matches, we can continue there
 
-                                    splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                        splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                        branchNode.TestcaseIds.Add(traceEntity.Id);
+
+                                        currentNode = splitSuccessor;
+                                        successorIndex = 1;
+
+                                        found = true;
+                                        break;
+                                    }
+                                }
+
+                                if(!found)
+                                {
+                                    // Add new split successor
+                                    var splitNode = new SplitNode();
+                                    var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
+
+                                    splitNode.Successors.Add(branchNode);
+                                    splitNode.TestcaseIds.Add(traceEntity.Id);
+                                    currentNode.SplitSuccessors.Add(splitNode);
+
+                                    // Continue with new split node
                                     branchNode.TestcaseIds.Add(traceEntity.Id);
-
-                                    currentNode = splitSuccessor;
+                                    currentNode = splitNode;
                                     successorIndex = 1;
-
-                                    found = true;
-                                    break;
                                 }
                             }
-
-                            if(!found)
+                            else
                             {
-                                // Add new split successor
+                                // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
+                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for branch entry");
+
                                 var splitNode = new SplitNode();
                                 var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
 
@@ -310,114 +332,117 @@ public class ControlFlowLeakage : AnalysisStage
                                 successorIndex = 1;
                             }
                         }
-                        else
-                        {
-                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
-                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for branch entry");
 
-                            var splitNode = new SplitNode();
-                            var branchNode = new BranchNode(sourceInstructionId, targetInstructionId, branchEntry.Taken);
-
-                            splitNode.Successors.Add(branchNode);
-                            splitNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode.SplitSuccessors.Add(splitNode);
-
-                            // Continue with new split node
-                            branchNode.TestcaseIds.Add(traceEntity.Id);
-                            currentNode = splitNode;
-                            successorIndex = 1;
-                        }
+                        break;
                     }
 
-                    break;
-                }
-
-                case Branch.BranchTypes.Return:
-                {
-                    // Are there successor nodes from previous testcases?
-                    if(successorIndex < currentNode.Successors.Count)
+                    case Branch.BranchTypes.Return:
                     {
-                        // Check current successor
-                        if(currentNode.Successors[successorIndex] is ReturnNode returnNode && returnNode.SourceInstructionId == sourceInstructionId && returnNode.TargetInstructionId == targetInstructionId)
+                        // Are there successor nodes from previous testcases?
+                        if(successorIndex < currentNode.Successors.Count)
                         {
-                            // The successor matches, we don't need to do anything here
+                            // Check current successor
+                            if(currentNode.Successors[successorIndex] is ReturnNode returnNode && returnNode.SourceInstructionId == sourceInstructionId && returnNode.TargetInstructionId == targetInstructionId)
+                            {
+                                // The successor matches, we don't need to do anything here
 
-                            returnNode.TestcaseIds.Add(traceEntity.Id);
-                            if(nodeStack.Count == 0)
-                            {
-                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (1) Encountered return entry, but node stack is empty; continuing with root node");
-                                ++successorIndex;
-                            }
-                            else
-                            {
-                                (currentNode, successorIndex) = nodeStack.Pop();
-                            }
-                        }
-                        else
-                        {
-                            // Successor does not match, we need to split the current node at this point
-
-                            returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
-                            currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, returnNode);
-
-                            returnNode.TestcaseIds.Add(traceEntity.Id);
-                            if(nodeStack.Count == 0)
-                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (2) Encountered return entry, but node stack is empty; continuing with root node");
-                            else
-                            {
-                                (currentNode, successorIndex) = nodeStack.Pop();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // We ran out of successor nodes
-                        // Check whether another testcase already hit this particular path
-                        if(currentNode.TestcaseIds.Count == 1)
-                        {
-                            // No, this is purely ours. So just append another successor
-                            var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
-                            currentNode.Successors.Add(returnNode);
-
-                            returnNode.TestcaseIds.Add(traceEntity.Id);
-                            if(nodeStack.Count == 0)
-                            {
-                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (3) Encountered return entry, but node stack is empty; continuing with root node");
-                                ++successorIndex;
-                            }
-                            else
-                            {
-                                (currentNode, successorIndex) = nodeStack.Pop();
-                            }
-                        }
-                        else if(currentNode.SplitSuccessors.Count > 0)
-                        {
-                            // Is there a split successor that matches?
-                            bool found = false;
-                            foreach(var splitSuccessor in currentNode.SplitSuccessors)
-                            {
-                                if(splitSuccessor.Successors[0] is ReturnNode returnNode && returnNode.SourceInstructionId == sourceInstructionId && returnNode.TargetInstructionId == targetInstructionId)
+                                returnNode.TestcaseIds.Add(traceEntity.Id);
+                                if(nodeStack.Count == 0)
                                 {
-                                    // The split successor matches, we don't have to do anything here
+                                    await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (1) Encountered return entry, but node stack is empty; continuing with root node");
+                                    ++successorIndex;
+                                }
+                                else
+                                {
+                                    (currentNode, successorIndex) = nodeStack.Pop();
+                                }
+                            }
+                            else
+                            {
+                                // Successor does not match, we need to split the current node at this point
 
-                                    splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
+                                currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, returnNode);
+
+                                returnNode.TestcaseIds.Add(traceEntity.Id);
+                                if(nodeStack.Count == 0)
+                                    await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (2) Encountered return entry, but node stack is empty; continuing with root node");
+                                else
+                                {
+                                    (currentNode, successorIndex) = nodeStack.Pop();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // We ran out of successor nodes
+                            // Check whether another testcase already hit this particular path
+                            if(currentNode.TestcaseIds.Count == 1)
+                            {
+                                // No, this is purely ours. So just append another successor
+                                var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
+                                currentNode.Successors.Add(returnNode);
+
+                                returnNode.TestcaseIds.Add(traceEntity.Id);
+                                if(nodeStack.Count == 0)
+                                {
+                                    await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (3) Encountered return entry, but node stack is empty; continuing with root node");
+                                    ++successorIndex;
+                                }
+                                else
+                                {
+                                    (currentNode, successorIndex) = nodeStack.Pop();
+                                }
+                            }
+                            else if(currentNode.SplitSuccessors.Count > 0)
+                            {
+                                // Is there a split successor that matches?
+                                bool found = false;
+                                foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                                {
+                                    if(splitSuccessor.Successors[0] is ReturnNode returnNode && returnNode.SourceInstructionId == sourceInstructionId && returnNode.TargetInstructionId == targetInstructionId)
+                                    {
+                                        // The split successor matches, we don't have to do anything here
+
+                                        splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+
+                                        returnNode.TestcaseIds.Add(traceEntity.Id);
+                                        if(nodeStack.Count == 0)
+                                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (4) Encountered return entry, but node stack is empty; continuing with root node");
+                                        else
+                                        {
+                                            (currentNode, successorIndex) = nodeStack.Pop();
+                                        }
+
+                                        found = true;
+                                        break;
+                                    }
+                                }
+
+                                if(!found)
+                                {
+                                    // Add new split successor
+                                    var splitNode = new SplitNode();
+                                    var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
+
+                                    splitNode.Successors.Add(returnNode);
+                                    splitNode.TestcaseIds.Add(traceEntity.Id);
+                                    currentNode.SplitSuccessors.Add(splitNode);
 
                                     returnNode.TestcaseIds.Add(traceEntity.Id);
                                     if(nodeStack.Count == 0)
-                                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (4) Encountered return entry, but node stack is empty; continuing with root node");
+                                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (5) Encountered return entry, but node stack is empty; continuing with root node");
                                     else
                                     {
                                         (currentNode, successorIndex) = nodeStack.Pop();
                                     }
-
-                                    found = true;
-                                    break;
                                 }
                             }
-
-                            if(!found)
+                            else
                             {
-                                // Add new split successor
+                                // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
+                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for return entry");
+
                                 var splitNode = new SplitNode();
                                 var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
 
@@ -427,42 +452,214 @@ public class ControlFlowLeakage : AnalysisStage
 
                                 returnNode.TestcaseIds.Add(traceEntity.Id);
                                 if(nodeStack.Count == 0)
-                                    await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (5) Encountered return entry, but node stack is empty; continuing with root node");
+                                    await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (6) Encountered return entry, but node stack is empty; continuing with root node");
                                 else
                                 {
                                     (currentNode, successorIndex) = nodeStack.Pop();
                                 }
                             }
                         }
+
+                        // Restore call stack ID
+                        if(nodeStack.Count == 0)
+                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered return entry, but call stack is empty; continuing with root call stack ID");
+                        else
+                            currentCallStackId = callStackIds.Pop();
+
+                        break;
+                    }
+                }
+            }
+            else if(traceEntry.EntryType is TraceEntryTypes.ImageMemoryAccess or TraceEntryTypes.StackMemoryAccess or TraceEntryTypes.HeapMemoryAccess)
+            {
+                /*
+                 * Step 1: Extract memory access info
+                 */
+
+                // Extract and format address information
+                ulong instructionId = 0;
+                ulong targetAddressId = 0;
+                bool isWrite = false;
+                switch(traceEntry.EntryType)
+                {
+                    case TraceEntryTypes.ImageMemoryAccess:
+                    {
+                        var memoryAccess = (ImageMemoryAccess)traceEntry;
+
+                        instructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.InstructionImageId], memoryAccess.InstructionRelativeAddress);
+                        targetAddressId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.MemoryImageId], memoryAccess.MemoryRelativeAddress);
+
+                        isWrite = memoryAccess.IsWrite;
+
+                        break;
+                    }
+
+                    case TraceEntryTypes.StackMemoryAccess:
+                    {
+                        var memoryAccess = (StackMemoryAccess)traceEntry;
+
+                        instructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.InstructionImageId], memoryAccess.InstructionRelativeAddress);
+
+                        targetAddressId = _addressIdFlagMemory | ((((ulong)memoryAccess.StackAllocationBlockId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
+                        if(!_formattedMemoryAddresses.ContainsKey(targetAddressId))
+                            _formattedMemoryAddresses.Add(targetAddressId, $"S#{(memoryAccess.StackAllocationBlockId == -1 ? "?" : memoryAccess.StackAllocationBlockId)}+{memoryAccess.MemoryRelativeAddress:x8}");
+
+                        isWrite = memoryAccess.IsWrite;
+
+                        break;
+                    }
+
+                    case TraceEntryTypes.HeapMemoryAccess:
+                    {
+                        var memoryAccess = (HeapMemoryAccess)traceEntry;
+
+                        instructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.InstructionImageId], memoryAccess.InstructionRelativeAddress);
+
+                        targetAddressId = _addressIdFlagMemory | ((((ulong)memoryAccess.HeapAllocationBlockId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
+                        if(!_formattedMemoryAddresses.ContainsKey(targetAddressId))
+                            _formattedMemoryAddresses.Add(targetAddressId, $"H#{memoryAccess.HeapAllocationBlockId}+{memoryAccess.MemoryRelativeAddress:x8}");
+
+                        isWrite = memoryAccess.IsWrite;
+
+                        break;
+                    }
+                }
+
+                /*
+                 * Step 2: Handle individual cases, same as for branches.
+                 *
+                 * Contrary to branches, we don't split as long as the instruction ID is identical, since memory accesses do not affect control flow.
+                 * Instead, a memory access stores a record of all accessed addresses and the respective testcase IDs.
+                 */
+
+                // Are there successor nodes from previous testcases?
+                if(successorIndex < currentNode.Successors.Count)
+                {
+                    // Check current successor
+                    if(currentNode.Successors[successorIndex] is MemoryAccessNode memoryNode && memoryNode.InstructionId == instructionId)
+                    {
+                        // The successor matches, check whether our access target is recorded
+
+                        if(memoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
+                            targetTestcaseIdSet.Add(traceEntity.Id);
                         else
                         {
-                            // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
-                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for return entry");
+                            targetTestcaseIdSet = new TestcaseIdSet();
+                            targetTestcaseIdSet.Add(traceEntity.Id);
+                            memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                        }
 
+                        memoryNode.TestcaseIds.Add(traceEntity.Id);
+                        ++successorIndex;
+                    }
+                    else
+                    {
+                        // Successor does not match, we need to split the current node at this point
+                        // This is unlikely, as we should have seen a control flow deviation beforehand. But maybe this is some weird
+                        // kind of masked instruction or a conditional move, which sometimes does trigger a memory access and sometimes does not,
+                        // so we handle this case anyway.
+
+                        memoryNode = new MemoryAccessNode(instructionId, isWrite);
+                        var targetTestcaseIdSet = new TestcaseIdSet();
+                        targetTestcaseIdSet.Add(traceEntity.Id);
+                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+
+                        var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, memoryNode);
+
+                        // Continue with new split node
+                        memoryNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode = newSplitNode;
+                        successorIndex = 1;
+                    }
+                }
+                else
+                {
+                    // We ran out of successor nodes
+                    // Check whether another testcase already hit this particular path
+                    if(currentNode.TestcaseIds.Count == 1)
+                    {
+                        // No, this is purely ours. So just append another successor
+                        var memoryNode = new MemoryAccessNode(instructionId, isWrite);
+                        var targetTestcaseIdSet = new TestcaseIdSet();
+                        targetTestcaseIdSet.Add(traceEntity.Id);
+                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+
+                        currentNode.Successors.Add(memoryNode);
+
+                        // Next
+                        memoryNode.TestcaseIds.Add(traceEntity.Id);
+                        ++successorIndex;
+                    }
+                    else if(currentNode.SplitSuccessors.Count > 0)
+                    {
+                        // Is there a split successor that matches?
+                        bool found = false;
+                        foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                        {
+                            if(splitSuccessor.Successors[0] is MemoryAccessNode memoryNode && memoryNode.InstructionId == instructionId)
+                            {
+                                // The split successor matches, we can continue there
+
+                                // Check whether our access target is recorded
+                                if(memoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
+                                    targetTestcaseIdSet.Add(traceEntity.Id);
+                                else
+                                {
+                                    targetTestcaseIdSet = new TestcaseIdSet();
+                                    targetTestcaseIdSet.Add(traceEntity.Id);
+                                    memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                                }
+
+                                splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                memoryNode.TestcaseIds.Add(traceEntity.Id);
+
+                                currentNode = splitSuccessor;
+                                successorIndex = 1;
+
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if(!found)
+                        {
+                            // Add new split successor
                             var splitNode = new SplitNode();
-                            var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
+                            var memoryNode = new MemoryAccessNode(instructionId, isWrite);
+                            var targetTestcaseIdSet = new TestcaseIdSet();
+                            targetTestcaseIdSet.Add(traceEntity.Id);
+                            memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
 
-                            splitNode.Successors.Add(returnNode);
+                            splitNode.Successors.Add(memoryNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode.SplitSuccessors.Add(splitNode);
 
-                            returnNode.TestcaseIds.Add(traceEntity.Id);
-                            if(nodeStack.Count == 0)
-                                await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (6) Encountered return entry, but node stack is empty; continuing with root node");
-                            else
-                            {
-                                (currentNode, successorIndex) = nodeStack.Pop();
-                            }
+                            // Continue with new split node
+                            memoryNode.TestcaseIds.Add(traceEntity.Id);
+                            currentNode = splitNode;
+                            successorIndex = 1;
                         }
                     }
-
-                    // Restore call stack ID
-                    if(nodeStack.Count == 0)
-                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered return entry, but call stack is empty; continuing with root call stack ID");
                     else
-                        currentCallStackId = callStackIds.Pop();
+                    {
+                        // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
+                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for memory access entry");
 
-                    break;
+                        var splitNode = new SplitNode();
+                        var memoryNode = new MemoryAccessNode(instructionId, isWrite);
+                        var targetTestcaseIdSet = new TestcaseIdSet();
+                        targetTestcaseIdSet.Add(traceEntity.Id);
+                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+
+                        splitNode.Successors.Add(memoryNode);
+                        splitNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode.SplitSuccessors.Add(splitNode);
+
+                        // Continue with new split node
+                        memoryNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode = splitNode;
+                        successorIndex = 1;
+                    }
                 }
             }
         }
@@ -511,7 +708,7 @@ public class ControlFlowLeakage : AnalysisStage
                 }
                 else if(currentNode is CallNode callNode)
                 {
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedAddresses[callNode.SourceInstructionId]} -> {_formattedAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedImageAddresses[callNode.SourceInstructionId]} -> {_formattedImageAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
 
                     callStackEntries[callNode.CallStackId] = (currentCallStackId, callNode.SourceInstructionId, callNode.TargetInstructionId);
                     currentCallStackId = callNode.CallStackId;
@@ -594,12 +791,25 @@ public class ControlFlowLeakage : AnalysisStage
                     if(successorNode is ReturnNode returnNode)
                     {
                         // Print node
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedAddresses[returnNode.SourceInstructionId]} -> {_formattedAddresses[returnNode.TargetInstructionId]}");
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedImageAddresses[returnNode.SourceInstructionId]} -> {_formattedImageAddresses[returnNode.TargetInstructionId]}");
                     }
                     else if(successorNode is BranchNode branchNode)
                     {
                         // Print node
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedImageAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedImageAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
+                    }
+                    else if(successorNode is MemoryAccessNode memoryAccessNode)
+                    {
+                        // Print node
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
+                        foreach(var targetAddress in memoryAccessNode.Targets)
+                        {
+                            string formattedTargetAddress = (targetAddress.Key & _addressIdFlagsMask) == _addressIdFlagMemory
+                                ? _formattedMemoryAddresses[targetAddress.Key]
+                                : _formattedImageAddresses[targetAddress.Key];
+
+                            await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                        }
                     }
                 }
 
@@ -647,7 +857,7 @@ public class ControlFlowLeakage : AnalysisStage
             if(instructionResult.Value.TestcaseHashes.Count == 0)
                 continue;
 
-            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedAddresses[instructionResult.Key.InstructionId]}");
+            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedImageAddresses[instructionResult.Key.InstructionId]}");
             await instructionResultsWriter.WriteLineAsync($"  Unique hashes: {instructionResult.Value.TestcaseHashes.Count}");
 
             interestingCallStackIds.Add(instructionResult.Key.CallStackId);
@@ -675,8 +885,8 @@ public class ControlFlowLeakage : AnalysisStage
             for(int i = callStack.Count - 1; i >= 0; --i)
             {
                 var entry = callStack[i];
-                await callStacksWriter.WriteLineAsync($" ... {_formattedAddresses[entry.SourceInstructionId]}");
-                await callStacksWriter.WriteAsync($"  ${entry.CallStackId:X16}  {_formattedAddresses[entry.TargetInstructionId]}");
+                await callStacksWriter.WriteLineAsync($" ... {_formattedImageAddresses[entry.SourceInstructionId]}");
+                await callStacksWriter.WriteAsync($"  ${entry.CallStackId:X16}  {_formattedImageAddresses[entry.TargetInstructionId]}");
             }
 
             await callStacksWriter.WriteLineAsync();
@@ -711,14 +921,21 @@ public class ControlFlowLeakage : AnalysisStage
         return Task.CompletedTask;
     }
 
-    private void StoreFormattedAddress(ulong key, TracePrefixFile.ImageFileInfo imageFileInfo, uint address)
+    /// <summary>
+    /// Formats the given image address and returns a unique ID.
+    /// </summary>
+    /// <param name="imageFileInfo">Image information for the given address.</param>
+    /// <param name="address">Offset of the address relative to the image.</param>
+    private ulong StoreFormattedImageAddress(TracePrefixFile.ImageFileInfo imageFileInfo, uint address)
     {
-        // Address already known?
-        if(_formattedAddresses.ContainsKey(key))
-            return;
+        // Compute key
+        ulong key = _addressIdFlagImage | ((((ulong)imageFileInfo.Id << 32) | address) & ~_addressIdFlagsMask);
 
-        // Store formatted address
-        _formattedAddresses.TryAdd(key, _mapFileCollection.FormatAddress(imageFileInfo, address));
+        // Address already known?
+        if(!_formattedImageAddresses.ContainsKey(key))
+            _formattedImageAddresses.TryAdd(key, _mapFileCollection.FormatAddress(imageFileInfo, address));
+
+        return key;
     }
 
     /// <summary>
@@ -927,17 +1144,23 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class MemoryAccessNode : CallTreeNode
     {
+        public MemoryAccessNode(ulong instructionId, bool isWrite)
+        {
+            InstructionId = instructionId;
+            IsWrite = isWrite;
+        }
+
         /// <summary>
         /// Instruction ID of the memory access.
         /// </summary>
-        public ulong InstructionId { get; init; }
+        public ulong InstructionId { get; }
 
         /// <summary>
         /// Encoded target address of this memory accessing instruction, and the respective testcases.
         /// </summary>
         public Dictionary<ulong, TestcaseIdSet> Targets { get; } = new();
 
-        public bool IsWrite { get; init; }
+        public bool IsWrite { get; }
     }
 
     /// <summary>
