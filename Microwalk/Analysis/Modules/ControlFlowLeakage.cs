@@ -725,44 +725,57 @@ public class ControlFlowLeakage : AnalysisStage
                 await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
                 // Check split successors: If an instruction caused a split, record its testcase ID hashes
-                Dictionary<ulong, HashSet<ulong>> splitSuccessorHashes = new();
+                Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes)> splitSuccessorHashes = new();
                 foreach(var splitSuccessor in currentNode.SplitSuccessors)
                 {
                     var firstInstruction = splitSuccessor.Successors[0];
 
                     ulong firstInstructionId;
+                    AnalysisData.InstructionType firstInstructionType;
                     if(firstInstruction is BranchNode branchNode)
+                    {
                         firstInstructionId = branchNode.SourceInstructionId;
+                        firstInstructionType = AnalysisData.InstructionType.Jump;
+                    }
                     else if(firstInstruction is CallNode callNode)
+                    {
                         firstInstructionId = callNode.SourceInstructionId;
+                        firstInstructionType = AnalysisData.InstructionType.Call;
+                    }
                     else if(firstInstruction is ReturnNode returnNode)
+                    {
                         firstInstructionId = returnNode.SourceInstructionId;
+                        firstInstructionType = AnalysisData.InstructionType.Return;
+                    }
                     else
-                        continue; // Weird
+                        continue; // We only check control flow, as memory access splits are handled differently
 
                     if(!splitSuccessorHashes.TryGetValue(firstInstructionId, out var firstInstructionHashes))
                     {
-                        firstInstructionHashes = new HashSet<ulong>();
+                        firstInstructionHashes = (firstInstructionType, new HashSet<ulong>());
                         splitSuccessorHashes.Add(firstInstructionId, firstInstructionHashes);
                     }
 
-                    firstInstructionHashes.Add(splitSuccessor.TestcaseIds.GetHash());
+                    firstInstructionHashes.TestcaseIdHashes.Add(splitSuccessor.TestcaseIds.GetHash());
                 }
 
-                foreach(var splitSuccessorData in splitSuccessorHashes)
+                foreach(var (instructionId, (instructionType, testcaseIdHashes)) in splitSuccessorHashes)
                 {
-                    if(splitSuccessorData.Value.Count > 1)
+                    if(testcaseIdHashes.Count > 1)
                     {
                         // This instruction appeared more than once, record its hashes in the result list
 
                         // Get analysis data object for this instruction
-                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, splitSuccessorData.Key), out var analysisData))
+                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, instructionId), out var analysisData))
                         {
-                            analysisData = new AnalysisData();
-                            instructionAnalysisData.Add((currentCallStackId, splitSuccessorData.Key), analysisData);
+                            analysisData = new AnalysisData
+                            {
+                                Type = instructionType
+                            };
+                            instructionAnalysisData.Add((currentCallStackId, instructionId), analysisData);
                         }
 
-                        foreach(var hash in splitSuccessorData.Value)
+                        foreach(var hash in testcaseIdHashes)
                             analysisData.TestcaseHashes.Add(hash);
                     }
                 }
@@ -809,6 +822,24 @@ public class ControlFlowLeakage : AnalysisStage
                                 : _formattedImageAddresses[targetAddress.Key];
 
                             await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                        }
+
+                        // Record access target hashes, if there is more than one
+                        if(memoryAccessNode.Targets.Count > 1)
+                        {
+                            // Get analysis data object for this instruction
+                            if(!instructionAnalysisData.TryGetValue((currentCallStackId, memoryAccessNode.InstructionId), out var analysisData))
+                            {
+                                analysisData = new AnalysisData
+                                {
+                                    Type = AnalysisData.InstructionType.MemoryAccess
+                                };
+                                instructionAnalysisData.Add((currentCallStackId, memoryAccessNode.InstructionId), analysisData);
+                            }
+
+                            // Store hashes
+                            foreach(var target in memoryAccessNode.Targets)
+                                analysisData.TestcaseHashes.Add(target.Value.GetHash());
                         }
                     }
                 }
@@ -857,7 +888,15 @@ public class ControlFlowLeakage : AnalysisStage
             if(instructionResult.Value.TestcaseHashes.Count == 0)
                 continue;
 
-            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedImageAddresses[instructionResult.Key.InstructionId]}");
+            string instructionTypeName = instructionResult.Value.Type switch
+            {
+                AnalysisData.InstructionType.Call => "call",
+                AnalysisData.InstructionType.Return => "return",
+                AnalysisData.InstructionType.Jump => "jump",
+                AnalysisData.InstructionType.MemoryAccess => "memory access",
+                _ => throw new Exception("Unexpected instruction type")
+            };
+            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedImageAddresses[instructionResult.Key.InstructionId]} ({instructionTypeName})");
             await instructionResultsWriter.WriteLineAsync($"  Unique hashes: {instructionResult.Value.TestcaseHashes.Count}");
 
             interestingCallStackIds.Add(instructionResult.Key.CallStackId);
@@ -1270,6 +1309,17 @@ public class ControlFlowLeakage : AnalysisStage
 
     private class AnalysisData
     {
+        public InstructionType Type { get; init; }
+
         public HashSet<ulong> TestcaseHashes { get; } = new();
+
+
+        public enum InstructionType
+        {
+            Call,
+            Return,
+            Jump,
+            MemoryAccess
+        }
     }
 }

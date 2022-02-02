@@ -535,7 +535,6 @@ namespace Microwalk.Plugins.PinTracer
 
                                 if(!stackFrameFound)
                                 {
-                                    // TODO add dummy catch-all stack frame, in case stack tracking is disabled
                                     Logger.LogWarningAsync($"{logPrefix} Could not resolve stack frame of stack memory access {rawTraceEntry.Param1:x16} -> [{rawTraceEntry.Param2:x16}] ({(isWrite ? "write" : "read")}), skipping")
                                         .Wait();
 
