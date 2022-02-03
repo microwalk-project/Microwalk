@@ -85,28 +85,8 @@ namespace Microwalk.Plugins.PinTracer
         /// The last stack allocation ID used by the trace prefix.
         /// </summary>
         private int _tracePrefixLastStackAllocationId;
-
-        /// <summary>
-        /// The maximum size of a preprocessed trace entry.
-        /// This number is used to compute an estimation of the size of the resulting preprocessed trace.
-        /// </summary>
-        private readonly int _maxPreprocessedTraceEntrySize;
-
+        
         public override bool SupportsParallelism => true;
-
-        public PinTracePreprocessor()
-        {
-            _maxPreprocessedTraceEntrySize = new[]
-            {
-                Branch.EntrySize,
-                HeapAllocation.EntrySize,
-                HeapFree.EntrySize,
-                HeapMemoryAccess.EntrySize,
-                ImageMemoryAccess.EntrySize,
-                StackAllocation.EntrySize,
-                StackMemoryAccess.EntrySize
-            }.Max();
-        }
 
         public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
         {
@@ -237,7 +217,7 @@ namespace Microwalk.Plugins.PinTracer
             int rawTraceEntrySize = Marshal.SizeOf(typeof(RawTraceEntry));
 
             // Resize output buffer to avoid re-allocations
-            traceFileWriter.ResizeBuffer(_maxPreprocessedTraceEntrySize * inputFileLength / rawTraceEntrySize);
+            traceFileWriter.ResizeBuffer(MaxPreprocessedTraceEntrySize * inputFileLength / rawTraceEntrySize);
 
             // Parse trace entries
             var lastAllocationSizes = new Stack<uint>();

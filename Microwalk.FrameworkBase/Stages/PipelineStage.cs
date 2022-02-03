@@ -1,6 +1,8 @@
-﻿using System.Threading;
+﻿using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase.Configuration;
+using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 
 namespace Microwalk.FrameworkBase.Stages
 {
@@ -24,6 +26,20 @@ namespace Microwalk.FrameworkBase.Stages
         /// If this is cancelled, the respective pipeline stages should abort.
         /// </summary>
         protected CancellationToken PipelineToken { get; private set; }
+        
+        /// <summary>
+        /// The maximum size of a preprocessed trace entry.
+        /// </summary>
+        protected static readonly int MaxPreprocessedTraceEntrySize = new[]
+        {
+            Branch.EntrySize,
+            HeapAllocation.EntrySize,
+            HeapFree.EntrySize,
+            HeapMemoryAccess.EntrySize,
+            ImageMemoryAccess.EntrySize,
+            StackAllocation.EntrySize,
+            StackMemoryAccess.EntrySize
+        }.Max();
 
         /// <summary>
         /// Creates a new instance of this stage with the given configuration data.
