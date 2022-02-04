@@ -211,6 +211,8 @@ public class JsTracePreprocessor : PreprocessorStage
 
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
+        (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastCondEntry = null;
+        bool lastWasCond = false;
         foreach(var line in inputFile)
         {
             string[] parts = line.Split(';');
@@ -237,6 +239,23 @@ public class JsTracePreprocessor : PreprocessorStage
                     GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeStartAddress);
                     GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeEndAddress); // For Ret2-only returns (e.g., void functions)
 
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = source.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = source.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+
+                        lastCondEntry = null;
+                    }
+
                     // Record call
                     var entry = new Branch
                     {
@@ -259,6 +278,23 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     // Produce MAP entries
                     GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
+
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = source.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = source.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+
+                        lastCondEntry = null;
+                    }
 
                     // Remember for next Ret2 entry
                     lastRet1Entry = (source.ImageFileInfo, source.RelativeStartAddress);
@@ -312,6 +348,66 @@ public class JsTracePreprocessor : PreprocessorStage
 
                 case "Cond":
                 {
+                    // Resolve code locations
+                    var location = ResolveLineInfoToImage(parts[1]);
+
+                    // Produce MAP entries
+                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = location.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+                    }
+
+                    // We have to wait until the next line before we can produce a meaningful branch entry
+                    lastCondEntry = (location.ImageFileInfo, location.RelativeStartAddress);
+                    lastWasCond = true;
+
+                    break;
+                }
+
+                case "Expr":
+                {
+                    // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
+                    if(lastWasCond)
+                    {
+                        lastWasCond = false;
+                        break;
+                    }
+
+                    // Resolve code locations
+                    var location = ResolveLineInfoToImage(parts[1]);
+
+                    // Produce MAP entries
+                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = location.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+
+                        lastCondEntry = null;
+                    }
+
                     break;
                 }
             }
