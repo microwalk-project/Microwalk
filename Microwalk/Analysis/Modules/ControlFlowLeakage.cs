@@ -948,8 +948,17 @@ public class ControlFlowLeakage : AnalysisStage
         _mapFileCollection = new MapFileCollection(Logger);
         var mapFilesNode = moduleOptions.GetChildNodeOrDefault("map-files");
         if(mapFilesNode is ListNode mapFileListNode)
+        {
             foreach(var mapFileNode in mapFileListNode.Children)
                 await _mapFileCollection.LoadMapFileAsync(mapFileNode.AsString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+        }
+
+        var mapDirectory = moduleOptions.GetChildNodeOrDefault("map-directory")?.AsString();
+        if(mapDirectory != null)
+        {
+            foreach(var mapFile in Directory.EnumerateFiles(mapDirectory, "*.map"))
+                await _mapFileCollection.LoadMapFileAsync(mapFile);
+        }
 
         // Dump internal data?
         _dumpFullData = moduleOptions.GetChildNodeOrDefault("dump-full-data")?.AsBoolean() ?? false;
