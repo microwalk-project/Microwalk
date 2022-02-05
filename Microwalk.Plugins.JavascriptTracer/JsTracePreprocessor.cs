@@ -53,6 +53,11 @@ public class JsTracePreprocessor : PreprocessorStage
     private TracePrefixFile _tracePrefix = null!;
 
     /// <summary>
+    /// Next heap allocation offset after processing the trace prefix.
+    /// </summary>
+    private ulong _prefixNextHeapAllocationAddress = 0;
+
+    /// <summary>
     /// Image data of external functions ("[extern]").
     /// </summary>
     private TracePrefixFile.ImageFileInfo _externalFunctionsImage = null!;
@@ -212,6 +217,9 @@ public class JsTracePreprocessor : PreprocessorStage
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastCondEntry = null;
+        Dictionary<int, HeapObjectData> heapObjects = new();
+        ulong nextHeapAllocationAddress = _prefixNextHeapAllocationAddress;
+        const uint heapAllocationChunkSize = 0x100000;
         bool lastWasCond = false;
         foreach(var line in inputFile)
         {
@@ -410,7 +418,152 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     break;
                 }
+
+                case "Get":
+                {
+                    // Resolve code locations
+                    var location = ResolveLineInfoToImage(parts[1]);
+
+                    // Produce MAP entries
+                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = location.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+                    }
+
+                    // Extract access data
+                    int objectId = int.Parse(parts[2]);
+                    string offset = parts[3];
+
+                    // Did we already encounter this object?
+                    if(!heapObjects.TryGetValue(objectId, out var objectData))
+                    {
+                        objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
+                        heapObjects.Add(objectId, objectData);
+
+                        var heapAllocation = new HeapAllocation
+                        {
+                            Id = objectId,
+                            Address = nextHeapAllocationAddress,
+                            Size = 2 * heapAllocationChunkSize
+                        };
+                        heapAllocation.Store(traceFileWriter);
+
+                        nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+                    }
+
+                    // Did we already encounter this offset?
+                    if(!objectData.PropertyAddressMapping.TryGetValue(offset, out uint offsetRelativeAddress))
+                    {
+                        if(uint.TryParse(offset, out uint offsetInt))
+                            offsetRelativeAddress = offsetInt;
+                        else
+                            offsetRelativeAddress = objectData.NextPropertyAddress++;
+
+                        objectData.PropertyAddressMapping.Add(offset, offsetRelativeAddress);
+                    }
+
+                    // Create memory access
+                    var memoryAccess = new HeapMemoryAccess
+                    {
+                        InstructionImageId = location.ImageFileInfo.Id,
+                        InstructionRelativeAddress = location.RelativeStartAddress,
+                        HeapAllocationBlockId = objectId,
+                        MemoryRelativeAddress = offsetRelativeAddress,
+                        Size = 1,
+                        IsWrite = false
+                    };
+                    memoryAccess.Store(traceFileWriter);
+
+                    break;
+                }
+
+                case "Put":
+                {
+                    // Resolve code locations
+                    var location = ResolveLineInfoToImage(parts[1]);
+
+                    // Produce MAP entries
+                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+
+                    // Create branch entry, if there is a pending conditional
+                    if(lastCondEntry != null)
+                    {
+                        var branchEntry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Jump,
+                            Taken = true,
+                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                            DestinationImageId = location.ImageFileInfo.Id,
+                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                        };
+                        branchEntry.Store(traceFileWriter);
+                    }
+
+                    // Extract access data
+                    int objectId = int.Parse(parts[2]);
+                    string offset = parts[3];
+
+                    // Did we already encounter this object?
+                    if(!heapObjects.TryGetValue(objectId, out var objectData))
+                    {
+                        objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
+                        heapObjects.Add(objectId, objectData);
+
+                        var heapAllocation = new HeapAllocation
+                        {
+                            Id = objectId,
+                            Address = nextHeapAllocationAddress,
+                            Size = 2 * heapAllocationChunkSize
+                        };
+                        heapAllocation.Store(traceFileWriter);
+
+                        nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+                    }
+
+                    // Did we already encounter this offset?
+                    if(!objectData.PropertyAddressMapping.TryGetValue(offset, out uint offsetRelativeAddress))
+                    {
+                        if(uint.TryParse(offset, out uint offsetInt))
+                            offsetRelativeAddress = offsetInt;
+                        else
+                            offsetRelativeAddress = objectData.NextPropertyAddress++;
+
+                        objectData.PropertyAddressMapping.Add(offset, offsetRelativeAddress);
+                    }
+
+                    // Create memory access
+                    var memoryAccess = new HeapMemoryAccess
+                    {
+                        InstructionImageId = location.ImageFileInfo.Id,
+                        InstructionRelativeAddress = location.RelativeStartAddress,
+                        HeapAllocationBlockId = objectId,
+                        MemoryRelativeAddress = offsetRelativeAddress,
+                        Size = 1,
+                        IsWrite = true
+                    };
+                    memoryAccess.Store(traceFileWriter);
+
+                    break;
+                }
             }
+        }
+
+        if(isPrefix)
+        {
+            _prefixNextHeapAllocationAddress = nextHeapAllocationAddress;
         }
     }
 
@@ -530,10 +683,12 @@ public class JsTracePreprocessor : PreprocessorStage
 
     public override async Task UnInitAsync()
     {
+        List<char> replaceChars = Path.GetInvalidPathChars().Append('/').Append('\\').Append('.').ToList();
+            
         // Save MAP data
         foreach(var (imageFileName, imageFileInfo) in _imageFiles)
         {
-            string mapFileName = Path.Join(_mapDirectory.FullName, Path.GetInvalidPathChars().Aggregate(imageFileName, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
+            string mapFileName = Path.Join(_mapDirectory.FullName, replaceChars.Aggregate(imageFileName, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
             await using var mapFileWriter = new StreamWriter(File.Open(mapFileName, FileMode.Create));
 
             await mapFileWriter.WriteLineAsync(imageFileName);
@@ -544,5 +699,12 @@ public class JsTracePreprocessor : PreprocessorStage
                 await mapFileWriter.WriteLineAsync($"{addressData.Key:x8}\t{addressData.Value}");
             }
         }
+    }
+
+    private class HeapObjectData
+    {
+        public uint NextPropertyAddress { get; set; }
+
+        public Dictionary<string, uint> PropertyAddressMapping { get; } = new();
     }
 }
