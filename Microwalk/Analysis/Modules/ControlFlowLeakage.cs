@@ -22,7 +22,8 @@ public class ControlFlowLeakage : AnalysisStage
 {
     private const ulong _addressIdFlagImage = 0x0000_0000_0000_0000;
     private const ulong _addressIdFlagMemory = 0x8000_0000_0000_0000;
-    private const ulong _addressIdFlagsMask = 0x8000_0000_0000_0000;
+    private const ulong _addressIdFlagHeap = 0x4000_0000_0000_0000;
+    private const ulong _addressIdFlagsMask = 0xC000_0000_0000_0000;
 
     /// <summary>
     /// Call stack ID of the root node (base value for call stack ID hashing)
@@ -60,6 +61,21 @@ public class ControlFlowLeakage : AnalysisStage
     /// Lookup for formatted heap/stack addresses.
     /// </summary>
     private readonly Dictionary<ulong, string> _formattedMemoryAddresses = new();
+
+    /// <summary>
+    /// Allocation ID which is used for all stack memory accesses which could not be resolved to an allocation.
+    /// </summary>
+    private const int _unmappedStackAllocationId = 0;
+
+    /// <summary>
+    /// Allocation ID which is used for all heap memory accesses which could not be resolved to an allocation.
+    /// </summary>
+    private const int _unmappedHeapAllocationId = 1;
+
+    /// <summary>
+    /// Next ID for an allocation node.
+    /// </summary>
+    private int _nextSharedAllocationId = 2;
 
     public override async Task AddTraceAsync(TraceEntity traceEntity)
     {
@@ -102,6 +118,10 @@ public class ControlFlowLeakage : AnalysisStage
         var callStackBufferHash = callStackBuffer.AsMemory(0..8);
         var callStackBufferSource = callStackBuffer.AsMemory(8..16);
         var callStackBufferTarget = callStackBuffer.AsMemory(16..24);
+
+        // Mapping for trace allocation IDs to call tree allocation IDs
+        Dictionary<int, int> heapAllocationIdMapping = new();
+        Dictionary<int, int> stackAllocationIdMapping = new();
 
         // Run through trace entries
         Stack<(SplitNode node, int successorIndex)> nodeStack = new();
@@ -470,6 +490,155 @@ public class ControlFlowLeakage : AnalysisStage
                     }
                 }
             }
+            else if(traceEntry.EntryType is TraceEntryTypes.HeapAllocation or TraceEntryTypes.StackAllocation)
+            {
+                /*
+                 * Step 1: Extract allocation data
+                 */
+
+                int id = 0;
+                uint size = 0;
+                bool isHeap = false;
+                switch(traceEntry.EntryType)
+                {
+                    case TraceEntryTypes.HeapAllocation:
+                    {
+                        var alloc = (HeapAllocation)traceEntry;
+
+                        id = alloc.Id;
+                        size = alloc.Size;
+                        isHeap = true;
+
+                        break;
+                    }
+
+                    case TraceEntryTypes.StackAllocation:
+                    {
+                        var alloc = (StackAllocation)traceEntry;
+
+                        id = alloc.Id;
+                        size = alloc.Size;
+                        isHeap = false;
+
+                        break;
+                    }
+                }
+
+                /*
+                * Step 2: Handle individual cases, same as for branches.
+                *
+                * We split when the allocation size differs; else we re-use existing allocation nodes, and map all subsequent memory accesses
+                * to its unique ID.
+                */
+
+                var allocationIdMapping = isHeap ? heapAllocationIdMapping : stackAllocationIdMapping;
+
+                // Are there successor nodes from previous testcases?
+                if(successorIndex < currentNode.Successors.Count)
+                {
+                    // Check current successor
+                    if(currentNode.Successors[successorIndex] is AllocationNode allocationNode && allocationNode.Size == size && allocationNode.IsHeap == isHeap)
+                    {
+                        // The successor matches, nothing to do here
+
+                        allocationIdMapping.Add(id, allocationNode.Id);
+
+                        allocationNode.TestcaseIds.Add(traceEntity.Id);
+                        ++successorIndex;
+                    }
+                    else
+                    {
+                        // Successor does not match, we need to split the current node at this point
+
+                        allocationNode = new AllocationNode(_nextSharedAllocationId++, size, isHeap);
+                        var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, allocationNode);
+
+                        allocationIdMapping.Add(id, allocationNode.Id);
+
+                        // Continue with new split node
+                        allocationNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode = newSplitNode;
+                        successorIndex = 1;
+                    }
+                }
+                else
+                {
+                    // We ran out of successor nodes
+                    // Check whether another testcase already hit this particular path
+                    if(currentNode.TestcaseIds.Count == 1)
+                    {
+                        // No, this is purely ours. So just append another successor
+                        var allocationNode = new AllocationNode(_nextSharedAllocationId++, size, isHeap);
+                        currentNode.Successors.Add(allocationNode);
+
+                        allocationIdMapping.Add(id, allocationNode.Id);
+
+                        // Next
+                        allocationNode.TestcaseIds.Add(traceEntity.Id);
+                        ++successorIndex;
+                    }
+                    else if(currentNode.SplitSuccessors.Count > 0)
+                    {
+                        // Is there a split successor that matches?
+                        bool found = false;
+                        foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                        {
+                            if(splitSuccessor.Successors[0] is AllocationNode allocationNode && allocationNode.Size == size && allocationNode.IsHeap == isHeap)
+                            {
+                                // The split successor matches, we can continue there
+
+                                splitSuccessor.TestcaseIds.Add(traceEntity.Id);
+                                allocationNode.TestcaseIds.Add(traceEntity.Id);
+
+                                allocationIdMapping.Add(id, allocationNode.Id);
+
+                                currentNode = splitSuccessor;
+                                successorIndex = 1;
+
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if(!found)
+                        {
+                            // Add new split successor
+                            var splitNode = new SplitNode();
+                            var allocationNode = new AllocationNode(_nextSharedAllocationId++, size, isHeap);
+
+                            allocationIdMapping.Add(id, allocationNode.Id);
+
+                            splitNode.Successors.Add(allocationNode);
+                            splitNode.TestcaseIds.Add(traceEntity.Id);
+                            currentNode.SplitSuccessors.Add(splitNode);
+
+                            // Continue with new split node
+                            allocationNode.TestcaseIds.Add(traceEntity.Id);
+                            currentNode = splitNode;
+                            successorIndex = 1;
+                        }
+                    }
+                    else
+                    {
+                        // Another testcase already hit this branch and ended just before ours, which is weird, but we handle it anyway by creating a dummy split
+                        await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for allocation entry");
+
+                        var splitNode = new SplitNode();
+                        var allocationNode = new AllocationNode(_nextSharedAllocationId++, size, isHeap);
+
+                        allocationIdMapping.Add(id, allocationNode.Id);
+
+                        splitNode.Successors.Add(allocationNode);
+                        splitNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode.SplitSuccessors.Add(splitNode);
+
+                        // Continue with new split node
+                        allocationNode.TestcaseIds.Add(traceEntity.Id);
+                        currentNode = splitNode;
+                        successorIndex = 1;
+                    }
+                }
+            }
             else if(traceEntry.EntryType is TraceEntryTypes.ImageMemoryAccess or TraceEntryTypes.StackMemoryAccess or TraceEntryTypes.HeapMemoryAccess)
             {
                 /*
@@ -500,9 +669,19 @@ public class ControlFlowLeakage : AnalysisStage
 
                         instructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.InstructionImageId], memoryAccess.InstructionRelativeAddress);
 
-                        targetAddressId = _addressIdFlagMemory | ((((ulong)memoryAccess.StackAllocationBlockId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
+                        // Resolve shared allocation ID
+                        int allocationId;
+                        if(memoryAccess.StackAllocationBlockId == -1)
+                            allocationId = _unmappedStackAllocationId;
+                        else if(!stackAllocationIdMapping.TryGetValue(memoryAccess.StackAllocationBlockId, out allocationId))
+                        {
+                            allocationId = _unmappedStackAllocationId;
+                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Could not find shared stack allocation node, using default unmapped allocation ID");
+                        }
+
+                        targetAddressId = _addressIdFlagMemory | ((((ulong)allocationId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
                         if(!_formattedMemoryAddresses.ContainsKey(targetAddressId))
-                            _formattedMemoryAddresses.Add(targetAddressId, $"S#{(memoryAccess.StackAllocationBlockId == -1 ? "?" : memoryAccess.StackAllocationBlockId)}+{memoryAccess.MemoryRelativeAddress:x8}");
+                            _formattedMemoryAddresses.Add(targetAddressId, $"S#{(allocationId == _unmappedStackAllocationId ? "?" : allocationId)}+{memoryAccess.MemoryRelativeAddress:x8}");
 
                         isWrite = memoryAccess.IsWrite;
 
@@ -515,9 +694,16 @@ public class ControlFlowLeakage : AnalysisStage
 
                         instructionId = StoreFormattedImageAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[memoryAccess.InstructionImageId], memoryAccess.InstructionRelativeAddress);
 
-                        targetAddressId = _addressIdFlagMemory | ((((ulong)memoryAccess.HeapAllocationBlockId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
+                        // Resolve shared allocation ID
+                        if(!heapAllocationIdMapping.TryGetValue(memoryAccess.HeapAllocationBlockId, out var allocationId))
+                        {
+                            allocationId = _unmappedHeapAllocationId;
+                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Could not find shared heap allocation node, using default unmapped allocation ID");
+                        }
+
+                        targetAddressId = _addressIdFlagMemory | _addressIdFlagHeap | ((((ulong)allocationId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
                         if(!_formattedMemoryAddresses.ContainsKey(targetAddressId))
-                            _formattedMemoryAddresses.Add(targetAddressId, $"H#{memoryAccess.HeapAllocationBlockId}+{memoryAccess.MemoryRelativeAddress:x8}");
+                            _formattedMemoryAddresses.Add(targetAddressId, $"H#{allocationId}+{memoryAccess.MemoryRelativeAddress:x8}");
 
                         isWrite = memoryAccess.IsWrite;
 
@@ -811,13 +997,21 @@ public class ControlFlowLeakage : AnalysisStage
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedImageAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedImageAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
                     }
+                    else if(successorNode is AllocationNode allocationNode)
+                    {
+                        // Print node
+                        if(allocationNode.IsHeap)
+                            await callTreeDumpWriter.WriteLineAsync($"{indentation}    #heapalloc H#{allocationNode.Id}, {allocationNode.Size:x8} bytes");
+                        else
+                            await callTreeDumpWriter.WriteLineAsync($"{indentation}    #stackalloc S#{allocationNode.Id}, {allocationNode.Size:x8} bytes");
+                    }
                     else if(successorNode is MemoryAccessNode memoryAccessNode)
                     {
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
                         foreach(var targetAddress in memoryAccessNode.Targets)
                         {
-                            string formattedTargetAddress = (targetAddress.Key & _addressIdFlagsMask) == _addressIdFlagMemory
+                            string formattedTargetAddress = (targetAddress.Key & _addressIdFlagMemory) != 0
                                 ? _formattedMemoryAddresses[targetAddress.Key]
                                 : _formattedImageAddresses[targetAddress.Key];
 
@@ -845,7 +1039,8 @@ public class ControlFlowLeakage : AnalysisStage
                 }
 
                 // Done, move to split successors
-                await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
+                if(currentNode.SplitSuccessors.Count > 0) // Only print this when there actually _are_ split successors
+                    await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
                 successorIndex = null;
                 splitSuccessorIndex = 0;
             }
@@ -1209,6 +1404,28 @@ public class ControlFlowLeakage : AnalysisStage
         public Dictionary<ulong, TestcaseIdSet> Targets { get; } = new();
 
         public bool IsWrite { get; }
+    }
+
+    private class AllocationNode : CallTreeNode
+    {
+        public AllocationNode(int id, uint size, bool isHeap)
+        {
+            IsHeap = isHeap;
+            Size = size;
+            Id = id;
+        }
+
+        /// <summary>
+        /// Unique allocation ID of this node, which all testcase-specific IDs map to. 
+        /// </summary>
+        public int Id { get; }
+
+        public bool IsHeap { get; }
+
+        /// <summary>
+        /// Allocation size.
+        /// </summary>
+        public uint Size { get; }
     }
 
     /// <summary>
