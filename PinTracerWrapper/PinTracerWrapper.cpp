@@ -165,6 +165,7 @@ _EXPORT _NOINLINE void RunTarget(FILE* input)
 extern "C" _EXPORT _NOINLINE int PinNotifyTestcaseStart(int t) { return t + 42; }
 extern "C" _EXPORT _NOINLINE int PinNotifyTestcaseEnd() { return 42; }
 extern "C" _EXPORT _NOINLINE int PinNotifyStackPointer(uint64_t spMin, uint64_t spMax) { return static_cast<int>(spMin + spMax + 42); }
+extern "C" _EXPORT _NOINLINE int PinNotifyAllocation(uint64_t address, uint64_t size) { return (int)(address + 23 * size); }
 #pragma optimize("", on)
 
 // Reads the stack pointer base value and transmits it to Pin.

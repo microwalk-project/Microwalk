@@ -593,6 +593,39 @@ VOID InstrumentImage(IMG img, VOID* v)
 		std::cerr << "    PinNotifyStackPointer() instrumented." << std::endl;
 	}
 
+	// Find the Pin allocation notification function
+	RTN notifyAllocationRtn = RTN_FindByName(img, "PinNotifyAllocation");
+	if(RTN_Valid(notifyAllocationRtn))
+	{
+		// Send allocation info
+		RTN_Open(notifyAllocationRtn);
+		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+			IARG_REG_VALUE, _nextBufferEntryReg,
+			IARG_REG_VALUE, _entryBufferEndReg,
+			IARG_THREAD_ID,
+			IARG_RETURN_REGS, _nextBufferEntryReg,
+			IARG_END);
+		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+        RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
+            IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_REG_VALUE, _entryBufferEndReg,
+            IARG_THREAD_ID,
+            IARG_RETURN_REGS, _nextBufferEntryReg,
+            IARG_END);
+		RTN_Close(notifyAllocationRtn);
+
+		std::cerr << "    PinNotifyAllocation() instrumented." << std::endl;
+	}
+
 	// Find allocation and free functions to log allocation sizes and addresses
 #if defined(_WIN32)
 	RTN mallocRtn = RTN_FindByName(img, "RtlAllocateHeap");
@@ -794,9 +827,9 @@ TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEn
 		TraceWriter* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 		traceWriter->WriteBufferToFile(entryBufferEnd);
 		return traceWriter->Begin();
-		}
-	return nextEntry;
-	}
+    }
+    return nextEntry;
+}
 
 // Handles the beginning of a testcase.
 TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextEntry)
