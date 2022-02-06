@@ -130,7 +130,7 @@ public class ControlFlowLeakage : AnalysisStage
         int successorIndex = 0;
         ulong currentCallStackId = _rootNodeCallStackId;
         int traceEntryId = -1;
-        foreach(var traceEntry in traceEntity.PreprocessedTraceFile)
+        foreach(var traceEntry in traceEntity.PreprocessedTraceFile.GetEntriesWithPrefix())
         {
             ++traceEntryId;
 
@@ -676,7 +676,7 @@ public class ControlFlowLeakage : AnalysisStage
                         else if(!stackAllocationIdMapping.TryGetValue(memoryAccess.StackAllocationBlockId, out allocationId))
                         {
                             allocationId = _unmappedStackAllocationId;
-                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Could not find shared stack allocation node, using default unmapped allocation ID");
+                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Could not find shared stack allocation node S#{memoryAccess.StackAllocationBlockId}, using default unmapped allocation ID");
                         }
 
                         targetAddressId = _addressIdFlagMemory | ((((ulong)allocationId << 32) | memoryAccess.MemoryRelativeAddress) & ~_addressIdFlagsMask);
@@ -890,25 +890,32 @@ public class ControlFlowLeakage : AnalysisStage
 
                 if(currentNode == _rootNode)
                 {
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
+                    if(_dumpFullData)
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
                 }
                 else if(currentNode is CallNode callNode)
                 {
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedImageAddresses[callNode.SourceInstructionId]} -> {_formattedImageAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
+                    if(_dumpFullData)
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedImageAddresses[callNode.SourceInstructionId]} -> {_formattedImageAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
 
+                    // Trace call stacks
                     callStackEntries[callNode.CallStackId] = (currentCallStackId, callNode.SourceInstructionId, callNode.TargetInstructionId);
                     currentCallStackId = callNode.CallStackId;
                 }
                 else
                 {
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}@split");
+                    if(_dumpFullData)
+                    {
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}@split");
 
-                    // Testcase IDs
-                    // We print testcase IDs only for pure split nodes, to improve readability of the output file
-                    await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {FormatIntegerSequence(currentNode.TestcaseIds.AsEnumerable())} ({currentNode.TestcaseIds.Count} total)");
+                        // Testcase IDs
+                        // We print testcase IDs only for pure split nodes, to improve readability of the output file
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {FormatIntegerSequence(currentNode.TestcaseIds.AsEnumerable())} ({currentNode.TestcaseIds.Count} total)");
+                    }
                 }
 
-                await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
+                if(_dumpFullData)
+                    await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
                 // Check split successors: If an instruction caused a split, record its testcase ID hashes
                 Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes)> splitSuccessorHashes = new();
@@ -987,17 +994,17 @@ public class ControlFlowLeakage : AnalysisStage
                         goto nextIteration;
                     }
 
-                    if(successorNode is ReturnNode returnNode)
+                    if(_dumpFullData && successorNode is ReturnNode returnNode)
                     {
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedImageAddresses[returnNode.SourceInstructionId]} -> {_formattedImageAddresses[returnNode.TargetInstructionId]}");
                     }
-                    else if(successorNode is BranchNode branchNode)
+                    else if(_dumpFullData && successorNode is BranchNode branchNode)
                     {
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedImageAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedImageAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
                     }
-                    else if(successorNode is AllocationNode allocationNode)
+                    else if(_dumpFullData && successorNode is AllocationNode allocationNode)
                     {
                         // Print node
                         if(allocationNode.IsHeap)
@@ -1008,14 +1015,17 @@ public class ControlFlowLeakage : AnalysisStage
                     else if(successorNode is MemoryAccessNode memoryAccessNode)
                     {
                         // Print node
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
-                        foreach(var targetAddress in memoryAccessNode.Targets)
+                        if(_dumpFullData)
                         {
-                            string formattedTargetAddress = (targetAddress.Key & _addressIdFlagMemory) != 0
-                                ? _formattedMemoryAddresses[targetAddress.Key]
-                                : _formattedImageAddresses[targetAddress.Key];
+                            await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
+                            foreach(var targetAddress in memoryAccessNode.Targets)
+                            {
+                                string formattedTargetAddress = (targetAddress.Key & _addressIdFlagMemory) != 0
+                                    ? _formattedMemoryAddresses[targetAddress.Key]
+                                    : _formattedImageAddresses[targetAddress.Key];
 
-                            await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                                await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                            }
                         }
 
                         // Record access target hashes, if there is more than one
@@ -1039,7 +1049,7 @@ public class ControlFlowLeakage : AnalysisStage
                 }
 
                 // Done, move to split successors
-                if(currentNode.SplitSuccessors.Count > 0) // Only print this when there actually _are_ split successors
+                if(_dumpFullData && currentNode.SplitSuccessors.Count > 0) // Only print this when there actually _are_ split successors
                     await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
                 successorIndex = null;
                 splitSuccessorIndex = 0;
