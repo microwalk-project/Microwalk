@@ -27,11 +27,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 5.0.x
+          dotnet-version: 6.0.x
       - name: Build & Pack
         run: |
           dotnet publish Microwalk/Microwalk.csproj --configuration Release --output publish --no-self-contained
           dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj --configuration Release --output publish --no-self-contained
+          dotnet publish Microwalk.Plugins.JavascriptTracer/Microwalk.Plugins.JavascriptTracer.csproj --configuration Release --output publish --no-self-contained
+          dotnet publish Microwalk.Plugins.QemuKernelTracer/Microwalk.Plugins.QemuKernelTracer.csproj --configuration Release --output publish --no-self-contained
           cd publish
           zip -r Microwalk.zip .
       - name: Upload asset
