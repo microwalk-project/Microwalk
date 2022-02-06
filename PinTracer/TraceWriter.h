@@ -114,6 +114,9 @@ private:
 private:
     // Determines whether the program is currently tracing the trace prefix.
     static bool _prefixMode;
+    
+    // Determines whether the first return entry after testcase begin has been observed.
+    static bool _sawFirstReturn;
 
     // The file where some additional trace prefix meta data is stored.
     static std::ofstream _prefixDataFileStream;

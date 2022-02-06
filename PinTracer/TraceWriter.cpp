@@ -10,6 +10,7 @@
 
 bool TraceWriter::_prefixMode;
 std::ofstream TraceWriter::_prefixDataFileStream;
+bool TraceWriter::_sawFirstReturn;
 
 
 /* TYPES */
@@ -34,6 +35,7 @@ void TraceWriter::InitPrefixMode(const std::string& filenamePrefix)
 {
     // Start trace prefix mode
     _prefixMode = true;
+    _sawFirstReturn = true;
 
     // Open prefix metadata output file
     _prefixDataFileStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -85,6 +87,7 @@ void TraceWriter::TestcaseStart(int testcaseId, TraceEntry* nextEntry)
 
     // Remember new testcase ID
     _testcaseId = testcaseId;
+    _sawFirstReturn = false;
 
     // Open file for writing
     std::stringstream filenameStream;
@@ -226,6 +229,13 @@ TraceEntry* TraceWriter::InsertBranchEntry(TraceEntry* nextEntry, ADDRINT source
 
 TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, CONTEXT* contextAfterRet)
 {
+    // Skip the very first return after testcase begin (else we get an invalid call stack)
+    if(!_sawFirstReturn)
+    {
+        _sawFirstReturn = true;
+        return nextEntry;
+    }
+    
     // Create entry
     ADDRINT retAddress;
     PIN_GetContextRegval(contextAfterRet, REG_INST_PTR, reinterpret_cast<UINT8*>(&retAddress));
