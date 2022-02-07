@@ -866,22 +866,19 @@ public class ControlFlowLeakage : AnalysisStage
         await using var callTreeDumpWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-tree-dump.txt")));
 
         // Store analysis results for each instruction and each call stack
-        Dictionary<(ulong CallStackId, ulong InstructionId), AnalysisData> instructionAnalysisData = new();
-
-        // Record all call stack entries, so we can stitch together the full stacks later
-        Dictionary<ulong, (ulong ParentCallStackId, ulong SourceInstructionId, ulong TargetInstructionId)> callStackEntries = new();
+        CallStackNode rootCallStackNode = new CallStackNode { Id = _rootNodeCallStackId };
 
         // Track call stack entries which we would like to dump later
         HashSet<ulong> interestingCallStackIds = new();
 
         // Iterate call tree
-        Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex, ulong CallStackId)> nodeStack = new();
+        Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex, CallStackNode CallStackNode)> nodeStack = new();
         SplitNode currentNode = _rootNode;
         int level = 0;
         string indentation = "";
         int? successorIndex = null;
         int? splitSuccessorIndex = null;
-        ulong currentCallStackId = _rootNodeCallStackId;
+        CallStackNode currentCallStackNode = rootCallStackNode;
         while(true)
         {
             if(successorIndex == null && splitSuccessorIndex == null)
@@ -898,9 +895,23 @@ public class ControlFlowLeakage : AnalysisStage
                     if(_dumpFullData)
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedImageAddresses[callNode.SourceInstructionId]} -> {_formattedImageAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
 
-                    // Trace call stacks
-                    callStackEntries[callNode.CallStackId] = (currentCallStackId, callNode.SourceInstructionId, callNode.TargetInstructionId);
-                    currentCallStackId = callNode.CallStackId;
+                    // Switch to corresponding child node
+                    var childIndex = currentCallStackNode.Children.FindIndex(c => c.Id == callNode.CallStackId);
+                    if(childIndex < 0)
+                    {
+                        var newCallStackNode = new CallStackNode
+                        {
+                            Id = callNode.CallStackId,
+                            SourceInstructionId = callNode.SourceInstructionId,
+                            TargetInstructionId = callNode.TargetInstructionId
+                        };
+                        currentCallStackNode.Children.Add(newCallStackNode);
+                        currentCallStackNode = newCallStackNode;
+                    }
+                    else
+                    {
+                        currentCallStackNode = currentCallStackNode.Children[childIndex];
+                    }
                 }
                 else
                 {
@@ -959,17 +970,22 @@ public class ControlFlowLeakage : AnalysisStage
                         // This instruction appeared more than once, record its hashes in the result list
 
                         // Get analysis data object for this instruction
-                        if(!instructionAnalysisData.TryGetValue((currentCallStackId, instructionId), out var analysisData))
+                        if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(instructionId, out var analysisData))
                         {
                             analysisData = new AnalysisData
                             {
                                 Type = instructionType
                             };
-                            instructionAnalysisData.Add((currentCallStackId, instructionId), analysisData);
+                            currentCallStackNode.InstructionAnalysisData.Add(instructionId, analysisData);
                         }
 
                         foreach(var hash in testcaseIdHashes)
                             analysisData.TestcaseHashes.Add(hash);
+
+                        // Record this instruction's entire call stack so it gets included in the analysis result
+                        interestingCallStackIds.Add(currentCallStackNode.Id);
+                        foreach(var entry in nodeStack)
+                            interestingCallStackIds.Add(entry.CallStackNode.Id);
                     }
                 }
 
@@ -984,7 +1000,7 @@ public class ControlFlowLeakage : AnalysisStage
                     if(successorNode is SplitNode splitNode)
                     {
                         // Dive into split node
-                        nodeStack.Push((currentNode, level, i + 1, null, currentCallStackId));
+                        nodeStack.Push((currentNode, level, i + 1, null, currentCallStackNode));
                         currentNode = splitNode;
                         ++level;
                         indentation = new string(' ', 4 * level);
@@ -1032,18 +1048,23 @@ public class ControlFlowLeakage : AnalysisStage
                         if(memoryAccessNode.Targets.Count > 1)
                         {
                             // Get analysis data object for this instruction
-                            if(!instructionAnalysisData.TryGetValue((currentCallStackId, memoryAccessNode.InstructionId), out var analysisData))
+                            if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(memoryAccessNode.InstructionId, out var analysisData))
                             {
                                 analysisData = new AnalysisData
                                 {
                                     Type = AnalysisData.InstructionType.MemoryAccess
                                 };
-                                instructionAnalysisData.Add((currentCallStackId, memoryAccessNode.InstructionId), analysisData);
+                                currentCallStackNode.InstructionAnalysisData.Add(memoryAccessNode.InstructionId, analysisData);
                             }
 
                             // Store hashes
                             foreach(var target in memoryAccessNode.Targets)
                                 analysisData.TestcaseHashes.Add(target.Value.GetHash());
+
+                            // Record this instruction's entire call stack so it gets included in the analysis result
+                            interestingCallStackIds.Add(currentCallStackNode.Id);
+                            foreach(var entry in nodeStack)
+                                interestingCallStackIds.Add(entry.CallStackNode.Id);
                         }
                     }
                 }
@@ -1062,7 +1083,7 @@ public class ControlFlowLeakage : AnalysisStage
                 if(splitSuccessorIndex.Value < currentNode.SplitSuccessors.Count)
                 {
                     // Dive into split node
-                    nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1, currentCallStackId));
+                    nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1, currentCallStackNode));
                     currentNode = currentNode.SplitSuccessors[splitSuccessorIndex.Value];
                     ++level;
                     indentation = new string(' ', 4 * level);
@@ -1075,7 +1096,7 @@ public class ControlFlowLeakage : AnalysisStage
                 // Done, move back up to the parent node, if there is any
                 if(nodeStack.Count == 0)
                     break;
-                (currentNode, level, successorIndex, splitSuccessorIndex, currentCallStackId) = nodeStack.Pop();
+                (currentNode, level, successorIndex, splitSuccessorIndex, currentCallStackNode) = nodeStack.Pop();
                 indentation = new string(' ', 4 * level);
             }
 
@@ -1085,56 +1106,61 @@ public class ControlFlowLeakage : AnalysisStage
 
         await Logger.LogInfoAsync($"{logMessagePrefix} Control flow leakage analysis completed, writing results");
 
-        // Write instruction analysis results
-        await Logger.LogInfoAsync($"{logMessagePrefix} Writing results for instruction analysis");
-        await using var instructionResultsWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "instructions.txt")));
-        foreach(var instructionResult in instructionAnalysisData.OrderBy(i => i.Key.InstructionId))
-        {
-            if(instructionResult.Value.TestcaseHashes.Count == 0)
-                continue;
-
-            string instructionTypeName = instructionResult.Value.Type switch
-            {
-                AnalysisData.InstructionType.Call => "call",
-                AnalysisData.InstructionType.Return => "return",
-                AnalysisData.InstructionType.Jump => "jump",
-                AnalysisData.InstructionType.MemoryAccess => "memory access",
-                _ => throw new Exception("Unexpected instruction type")
-            };
-            await instructionResultsWriter.WriteLineAsync($"${instructionResult.Key.CallStackId:X16} {_formattedImageAddresses[instructionResult.Key.InstructionId]} ({instructionTypeName})");
-            await instructionResultsWriter.WriteLineAsync($"  Unique hashes: {instructionResult.Value.TestcaseHashes.Count}");
-
-            interestingCallStackIds.Add(instructionResult.Key.CallStackId);
-        }
-
         // Write call stacks
-        await Logger.LogInfoAsync($"{logMessagePrefix} Writing interesting call stacks");
+        await Logger.LogInfoAsync($"{logMessagePrefix} Writing analysis result");
         await using var callStacksWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.txt")));
-        foreach(var interestingCallStackId in interestingCallStackIds)
+        Stack<(int Level, CallStackNode Node, int ChildIndex)> callStack = new();
+        int currentChildIndex = 0;
+        currentCallStackNode = rootCallStackNode;
+        level = -1; // Ignore root node for indentation
+        indentation = "";
+        while(true)
         {
-            await callStacksWriter.WriteLineAsync($"${interestingCallStackId:X16}");
+            bool nodeIsInteresting = interestingCallStackIds.Contains(currentCallStackNode.Id);
 
-            // Collect involved call stack IDs
-            List<(ulong CallStackId, ulong SourceInstructionId, ulong TargetInstructionId)> callStack = new();
-            ulong curId = interestingCallStackId;
-            while(curId != _rootNodeCallStackId)
+            if(nodeIsInteresting && currentChildIndex == 0 && currentCallStackNode.Id != _rootNodeCallStackId)
             {
-                var entry = callStackEntries[curId];
-                callStack.Add((curId, entry.SourceInstructionId, entry.TargetInstructionId));
-                curId = entry.ParentCallStackId;
+                // Write call stack entry info
+                await callStacksWriter.WriteLineAsync($"{indentation}{_formattedImageAddresses[currentCallStackNode.SourceInstructionId]} -> {_formattedImageAddresses[currentCallStackNode.TargetInstructionId]} (${currentCallStackNode.Id:X16})");
+
+                // Write analysis results
+                foreach(var analysisResult in currentCallStackNode.InstructionAnalysisData)
+                {
+                    string instructionTypeName = analysisResult.Value.Type switch
+                    {
+                        AnalysisData.InstructionType.Call => "call",
+                        AnalysisData.InstructionType.Return => "return",
+                        AnalysisData.InstructionType.Jump => "jump",
+                        AnalysisData.InstructionType.MemoryAccess => "memory access",
+                        _ => throw new Exception("Unexpected instruction type")
+                    };
+                    await callStacksWriter.WriteLineAsync($"{indentation} L {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
+                    await callStacksWriter.WriteLineAsync($"{indentation}  - Unique hashes: {analysisResult.Value.TestcaseHashes.Count}");
+                }
             }
 
-            // Write call stack
-            await callStacksWriter.WriteAsync($"   {new string(' ', 16)}  <root>");
-            for(int i = callStack.Count - 1; i >= 0; --i)
+            // Iterate through children
+            if(nodeIsInteresting && currentChildIndex < currentCallStackNode.Children.Count)
             {
-                var entry = callStack[i];
-                await callStacksWriter.WriteLineAsync($" ... {_formattedImageAddresses[entry.SourceInstructionId]}");
-                await callStacksWriter.WriteAsync($"  ${entry.CallStackId:X16}  {_formattedImageAddresses[entry.TargetInstructionId]}");
-            }
+                callStack.Push((level, currentCallStackNode, currentChildIndex + 1));
 
-            await callStacksWriter.WriteLineAsync();
-            await callStacksWriter.WriteLineAsync();
+                currentCallStackNode = currentCallStackNode.Children[currentChildIndex];
+                currentChildIndex = 0;
+
+                ++level;
+                indentation = new string(' ', 2 * level);
+            }
+            else
+            {
+                // All children are processed, go back up by one level, if there is any
+                if(callStack.Any())
+                {
+                    (level, currentCallStackNode, currentChildIndex) = callStack.Pop();
+                    indentation = level > 0 ? new string(' ', 2 * level) : "";
+                }
+                else
+                    break;
+            }
         }
     }
 
@@ -1557,5 +1583,22 @@ public class ControlFlowLeakage : AnalysisStage
             Jump,
             MemoryAccess
         }
+    }
+
+    /// <summary>
+    /// Used for producing tree-like call stacks in the final analysis step.
+    /// </summary>
+    private class CallStackNode
+    {
+        public ulong Id { get; init; }
+        public ulong SourceInstructionId { get; init; }
+        public ulong TargetInstructionId { get; init; }
+
+        public List<CallStackNode> Children { get; } = new();
+
+        /// <summary>
+        /// Maps instruction IDs to analysis data.
+        /// </summary>
+        public Dictionary<ulong, AnalysisData> InstructionAnalysisData { get; } = new();
     }
 }
