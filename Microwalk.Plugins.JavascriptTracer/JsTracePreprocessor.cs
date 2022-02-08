@@ -58,6 +58,11 @@ public class JsTracePreprocessor : PreprocessorStage
     private ulong _prefixNextHeapAllocationAddress = 0;
 
     /// <summary>
+    /// Heap allocations from the trace prefix.
+    /// </summary>
+    private Dictionary<int, HeapObjectData>? _prefixHeapObjects = null;
+
+    /// <summary>
     /// Image data of external functions ("[extern]").
     /// </summary>
     private TracePrefixFile.ImageFileInfo _externalFunctionsImage = null!;
@@ -217,7 +222,7 @@ public class JsTracePreprocessor : PreprocessorStage
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastCondEntry = null;
-        Dictionary<int, HeapObjectData> heapObjects = new();
+        Dictionary<int, HeapObjectData> heapObjects = _prefixHeapObjects == null ? new() : new(_prefixHeapObjects);
         ulong nextHeapAllocationAddress = _prefixNextHeapAllocationAddress;
         const uint heapAllocationChunkSize = 0x100000;
         bool lastWasCond = false;
@@ -564,6 +569,7 @@ public class JsTracePreprocessor : PreprocessorStage
         if(isPrefix)
         {
             _prefixNextHeapAllocationAddress = nextHeapAllocationAddress;
+            _prefixHeapObjects = heapObjects;
         }
     }
 
@@ -684,7 +690,7 @@ public class JsTracePreprocessor : PreprocessorStage
     public override async Task UnInitAsync()
     {
         List<char> replaceChars = Path.GetInvalidPathChars().Append('/').Append('\\').Append('.').ToList();
-            
+
         // Save MAP data
         foreach(var (imageFileName, imageFileInfo) in _imageFiles)
         {
