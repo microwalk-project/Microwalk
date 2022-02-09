@@ -114,6 +114,8 @@ public class JsTracePreprocessor : PreprocessorStage
         {
             if(_firstTestcase)
             {
+                await Logger.LogDebugAsync("[preprocess] Preprocessing prefix");
+                
                 // Paths
                 string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath) ?? throw new Exception($"Could not determine directory: {traceEntity.RawTraceFilePath}");
                 string scriptsFilePath = Path.Combine(rawTraceFileDirectory, "scripts.txt");
@@ -191,6 +193,7 @@ public class JsTracePreprocessor : PreprocessorStage
 
         // Preprocess trace data
         using var traceFileWriter = new FastBinaryWriter(1);
+        await Logger.LogDebugAsync($"[preprocess:{traceEntity.Id}] Preprocessing trace");
         await PreprocessFileAsync(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
 
         // Create trace file object

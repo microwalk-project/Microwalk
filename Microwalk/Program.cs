@@ -142,7 +142,7 @@ namespace Microwalk
                 // Done
                 return;
             }
-            
+
             // Our working directory is where the configuration resides
             Environment.CurrentDirectory = Path.GetDirectoryName(commandLineOptions.ConfigurationFile) ?? throw new Exception("Could not determine working directory.");
 
@@ -152,11 +152,11 @@ namespace Microwalk
             {
                 Console.WriteLine("Received exit signal, performing cleanup...");
                 args.Cancel = true;
-                
+
                 // ReSharper disable once AccessToDisposedClosure
                 globalCancellationToken.Cancel();
             };
-            
+
             // Load configuration file
             try
             {
@@ -170,7 +170,7 @@ namespace Microwalk
                 // Initialize logger
                 _logger = new Logger(generalConfigurationNode?.Children.GetValueOrDefault("logger") as MappingNode);
                 await _logger.LogDebugAsync("Loaded configuration file, initialized logger");
-                
+
                 // Read stages
                 await _logger.LogDebugAsync("Reading pipeline configuration");
                 foreach(var rootNode in configurationParser.RootNodes)
@@ -184,7 +184,7 @@ namespace Microwalk
 
                             if(rootNode.Value is not MappingNode mappingNode)
                                 throw new ConfigurationException("Could not parse root node for 'testcase' stage configuration.");
-                            
+
                             // There must be a module name node
                             string moduleName = mappingNode.GetChildNodeOrDefault("module")?.AsString() ?? throw new ConfigurationException("Missing testcase module name.");
 
@@ -288,10 +288,12 @@ namespace Microwalk
                 });
                 var traceStage = new TransformBlock<TraceEntity, TraceEntity>(TraceStageFunc, new ExecutionDataflowBlockOptions
                 {
-                    BoundedCapacity = 1,
                     CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.TraceStageModule.SupportsParallelism
+                        ? _moduleConfiguration.TraceStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
+                        : 1,
+                    BoundedCapacity = _moduleConfiguration.TraceStageModule.SupportsParallelism
                         ? _moduleConfiguration.TraceStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
@@ -303,10 +305,12 @@ namespace Microwalk
                 });
                 var preprocessorStage = new TransformBlock<TraceEntity, TraceEntity>(PreprocessorStageFunc, new ExecutionDataflowBlockOptions
                 {
-                    BoundedCapacity = 1,
                     CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism
+                        ? _moduleConfiguration.PreprocessorStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
+                        : 1,
+                    BoundedCapacity = _moduleConfiguration.PreprocessorStageModule.SupportsParallelism
                         ? _moduleConfiguration.PreprocessorStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
@@ -318,10 +322,12 @@ namespace Microwalk
                 });
                 var analysisStage = new ActionBlock<TraceEntity>(AnalysisStageFunc, new ExecutionDataflowBlockOptions
                 {
-                    BoundedCapacity = 1,
                     CancellationToken = globalCancellationToken.Token,
                     EnsureOrdered = true,
                     MaxDegreeOfParallelism = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism)
+                        ? _moduleConfiguration.AnalysisStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
+                        : 1,
+                    BoundedCapacity = _moduleConfiguration.AnalysesStageModules.All(asm => asm.SupportsParallelism)
                         ? _moduleConfiguration.AnalysisStageOptions?.GetChildNodeOrDefault("max-parallel-threads")?.AsInteger() ?? 1
                         : 1
                 });
@@ -410,7 +416,7 @@ namespace Microwalk
                     Console.WriteLine("A general error occured:");
                     Console.WriteLine(FormatException(ex));
                 }
-                
+
                 // Stop pipeline
                 globalCancellationToken.Cancel();
             }
