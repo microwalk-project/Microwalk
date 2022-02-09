@@ -872,13 +872,14 @@ public class ControlFlowLeakage : AnalysisStage
         HashSet<ulong> interestingCallStackIds = new();
 
         // Iterate call tree
-        Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex, CallStackNode CallStackNode)> nodeStack = new();
+        Stack<(SplitNode Node, int Level, int? SuccessorIndex, int? SplitSuccessorIndex, CallStackNode CallStackNode, Dictionary<ulong, AnalysisData.TestcaseIdTreeNode> InstructionTestcaseTrees)> nodeStack = new();
         SplitNode currentNode = _rootNode;
         int level = 0;
         string indentation = "";
         int? successorIndex = null;
         int? splitSuccessorIndex = null;
         CallStackNode currentCallStackNode = rootCallStackNode;
+        Dictionary<ulong, AnalysisData.TestcaseIdTreeNode> instructionTestcaseTrees = new(); // Indexed by instruction ID
         while(true)
         {
             if(successorIndex == null && splitSuccessorIndex == null)
@@ -929,9 +930,10 @@ public class ControlFlowLeakage : AnalysisStage
                     await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
                 // Check split successors: If an instruction caused a split, record its testcase ID hashes
-                Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes)> splitSuccessorHashes = new();
-                foreach(var splitSuccessor in currentNode.SplitSuccessors)
+                Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorHashes = new();
+                for(var s = 0; s < currentNode.SplitSuccessors.Count; s++)
                 {
+                    var splitSuccessor = currentNode.SplitSuccessors[s];
                     var firstInstruction = splitSuccessor.Successors[0];
 
                     ulong firstInstructionId;
@@ -956,14 +958,15 @@ public class ControlFlowLeakage : AnalysisStage
 
                     if(!splitSuccessorHashes.TryGetValue(firstInstructionId, out var firstInstructionHashes))
                     {
-                        firstInstructionHashes = (firstInstructionType, new HashSet<ulong>());
+                        firstInstructionHashes = (firstInstructionType, new HashSet<ulong>(), new Dictionary<int, TestcaseIdSet>());
                         splitSuccessorHashes.Add(firstInstructionId, firstInstructionHashes);
                     }
 
                     firstInstructionHashes.TestcaseIdHashes.Add(splitSuccessor.TestcaseIds.GetHash());
+                    firstInstructionHashes.TestcaseIds.Add(s, splitSuccessor.TestcaseIds);
                 }
 
-                foreach(var (instructionId, (instructionType, testcaseIdHashes)) in splitSuccessorHashes)
+                foreach(var (instructionId, (instructionType, testcaseIdHashes, testcaseIds)) in splitSuccessorHashes)
                 {
                     if(testcaseIdHashes.Count > 1)
                     {
@@ -986,6 +989,39 @@ public class ControlFlowLeakage : AnalysisStage
                         interestingCallStackIds.Add(currentCallStackNode.Id);
                         foreach(var entry in nodeStack)
                             interestingCallStackIds.Add(entry.CallStackNode.Id);
+
+                        // Build testcase ID tree
+                        if(instructionTestcaseTrees.TryGetValue(instructionId, out var currentInstructionTestcaseIdTreeNode))
+                        {
+                            // We already entered a testcase ID tree for the current call stack and instruction, create children for the current node
+
+                            foreach(var (s, testcaseIdSet) in testcaseIds)
+                            {
+                                currentInstructionTestcaseIdTreeNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
+                                {
+                                    TestcaseIds = testcaseIdSet
+                                });
+                            }
+                        }
+                        else
+                        {
+                            // This is the first split for this instruction
+                            var newTestcaseIdTreeRootNode = new AnalysisData.TestcaseIdTreeNode
+                            {
+                                TestcaseIds = currentNode.TestcaseIds
+                            };
+                            foreach(var (s, testcaseIdSet) in testcaseIds)
+                            {
+                                newTestcaseIdTreeRootNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
+                                {
+                                    TestcaseIds = testcaseIdSet
+                                });
+                            }
+
+                            analysisData.TestcaseIdTrees.Add(newTestcaseIdTreeRootNode);
+
+                            instructionTestcaseTrees.Add(instructionId, newTestcaseIdTreeRootNode);
+                        }
                     }
                 }
 
@@ -1000,12 +1036,13 @@ public class ControlFlowLeakage : AnalysisStage
                     if(successorNode is SplitNode splitNode)
                     {
                         // Dive into split node
-                        nodeStack.Push((currentNode, level, i + 1, null, currentCallStackNode));
+                        nodeStack.Push((currentNode, level, i + 1, null, currentCallStackNode, instructionTestcaseTrees));
                         currentNode = splitNode;
                         ++level;
                         indentation = new string(' ', 4 * level);
                         successorIndex = null;
                         splitSuccessorIndex = null;
+                        instructionTestcaseTrees = splitNode is CallNode ? new() : new(instructionTestcaseTrees);
 
                         goto nextIteration;
                     }
@@ -1083,8 +1120,29 @@ public class ControlFlowLeakage : AnalysisStage
                 if(splitSuccessorIndex.Value < currentNode.SplitSuccessors.Count)
                 {
                     // Dive into split node
-                    nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1, currentCallStackNode));
+                    nodeStack.Push((currentNode, level, null, splitSuccessorIndex.Value + 1, currentCallStackNode, instructionTestcaseTrees));
                     currentNode = currentNode.SplitSuccessors[splitSuccessorIndex.Value];
+
+                    if(currentNode is CallNode)
+                    {
+                        // We record an entire new testcase ID tree for each call
+                        instructionTestcaseTrees = new();
+                    }
+                    else
+                    {
+                        // Switch to appropriate successor child node
+                        var newInstructionTestcaseTrees = new Dictionary<ulong, AnalysisData.TestcaseIdTreeNode>();
+                        foreach(var (instructionId, testcaseIdNode) in instructionTestcaseTrees)
+                        {
+                            if(testcaseIdNode.Children.ContainsKey(splitSuccessorIndex.Value))
+                                newInstructionTestcaseTrees.Add(instructionId, testcaseIdNode.Children[splitSuccessorIndex.Value]);
+                            else
+                                newInstructionTestcaseTrees.Add(instructionId, testcaseIdNode);
+                        }
+
+                        instructionTestcaseTrees = newInstructionTestcaseTrees;
+                    }
+
                     ++level;
                     indentation = new string(' ', 4 * level);
                     successorIndex = null;
@@ -1096,7 +1154,7 @@ public class ControlFlowLeakage : AnalysisStage
                 // Done, move back up to the parent node, if there is any
                 if(nodeStack.Count == 0)
                     break;
-                (currentNode, level, successorIndex, splitSuccessorIndex, currentCallStackNode) = nodeStack.Pop();
+                (currentNode, level, successorIndex, splitSuccessorIndex, currentCallStackNode, instructionTestcaseTrees) = nodeStack.Pop();
                 indentation = new string(' ', 4 * level);
             }
 
@@ -1105,6 +1163,8 @@ public class ControlFlowLeakage : AnalysisStage
         }
 
         await Logger.LogInfoAsync($"{logMessagePrefix} Control flow leakage analysis completed, writing results");
+
+        StringBuilder stringBuilder = new();
 
         // Write call stacks
         await Logger.LogInfoAsync($"{logMessagePrefix} Writing analysis result");
@@ -1136,6 +1196,15 @@ public class ControlFlowLeakage : AnalysisStage
                     };
                     await callStacksWriter.WriteLineAsync($"{indentation} L {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
                     await callStacksWriter.WriteLineAsync($"{indentation}  - Unique hashes: {analysisResult.Value.TestcaseHashes.Count}");
+
+                    await callStacksWriter.WriteLineAsync($"{indentation}  - Testcase IDs:");
+                    foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
+                    {
+                        testcaseIdTree.Render(stringBuilder, indentation + "      ", indentation + "      ");
+                        await callStacksWriter.WriteAsync(stringBuilder.ToString());
+
+                        stringBuilder.Clear();
+                    }
                 }
             }
 
@@ -1226,7 +1295,7 @@ public class ControlFlowLeakage : AnalysisStage
     /// </summary>
     /// <param name="sequence">Number sequence, in ascending order.</param>
     /// <returns></returns>
-    private string FormatIntegerSequence(IEnumerable<int> sequence)
+    private static string FormatIntegerSequence(IEnumerable<int> sequence)
     {
         StringBuilder result = new();
 
@@ -1575,6 +1644,7 @@ public class ControlFlowLeakage : AnalysisStage
 
         public HashSet<ulong> TestcaseHashes { get; } = new();
 
+        public List<TestcaseIdTreeNode> TestcaseIdTrees { get; } = new();
 
         public enum InstructionType
         {
@@ -1582,6 +1652,38 @@ public class ControlFlowLeakage : AnalysisStage
             Return,
             Jump,
             MemoryAccess
+        }
+
+        public class TestcaseIdTreeNode
+        {
+            public TestcaseIdSet TestcaseIds { get; init; } = null!;
+
+            /// <summary>
+            /// Maps split successor indexes to testcase ID subtrees.
+            /// </summary>
+            public Dictionary<int, TestcaseIdTreeNode> Children { get; } = new();
+
+            /// <summary>
+            /// Writes the current node and its children into the given <see cref="StringBuilder"/>, recursively.
+            /// </summary>
+            /// <param name="stringBuilder">String builder.</param>
+            /// <param name="indentationFirst">Line prefix and indentation of the first line.</param>
+            /// <param name="indentationOther">Line prefix and indentation of all other lines.</param>
+            public void Render(StringBuilder stringBuilder, string indentationFirst, string indentationOther)
+            {
+                stringBuilder.AppendLine($"{indentationFirst}─ {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
+
+                var childrenList = Children.OrderBy(c => c.Key).ToList(); // We need indexed lookup for pretty printing
+                for(int i = 0; i < childrenList.Count; ++i)
+                {
+                    var child = childrenList[i];
+
+                    if(i == childrenList.Count - 1)
+                        child.Value.Render(stringBuilder, indentationOther + "  └", indentationOther + "   ");
+                    else
+                        child.Value.Render(stringBuilder, indentationOther + "  ├", indentationOther + "  │");
+                }
+            }
         }
     }
 
