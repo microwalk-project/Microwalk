@@ -5,7 +5,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     /// <summary>
     /// A stack allocation.
     /// </summary>
-    public struct StackAllocation : ITraceEntry
+    public class StackAllocation : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.StackAllocation;
         public const int EntrySize = 1 + 4 + 4 + 4 + 4 + 8;

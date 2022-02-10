@@ -5,7 +5,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
     /// <summary>
     /// A memory allocation.
     /// </summary>
-    public struct HeapAllocation : ITraceEntry
+    public class HeapAllocation : ITraceEntry
     {
         public TraceEntryTypes EntryType => TraceEntryTypes.HeapAllocation;
         public const int EntrySize = 1 + 4 + 4 + 8;
