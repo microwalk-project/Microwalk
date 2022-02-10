@@ -934,10 +934,10 @@ public class ControlFlowLeakage : AnalysisStage
                 if(_dumpCallTree)
                     await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
-                // Check split successors: If an instruction caused a split, record its testcase ID hashes
+                // Check split successors: If an instruction caused a split, record the testcase IDs of its split successors
                 // _Usually_ the splitting instruction should be the same for all split successors.
                 // However, we support several split successor instructions here, so we get results even when the traces are a bit weird.
-                Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorHashes = new();
+                Dictionary<ulong, (AnalysisData.InstructionType Type, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorHashes = new();
                 for(var s = 0; s < currentNode.SplitSuccessors.Count; s++)
                 {
                     var splitSuccessor = currentNode.SplitSuccessors[s];
@@ -965,17 +965,16 @@ public class ControlFlowLeakage : AnalysisStage
 
                     if(!splitSuccessorHashes.TryGetValue(firstInstructionId, out var firstInstructionHashes))
                     {
-                        firstInstructionHashes = (firstInstructionType, new HashSet<ulong>(), new Dictionary<int, TestcaseIdSet>());
+                        firstInstructionHashes = (firstInstructionType, new Dictionary<int, TestcaseIdSet>());
                         splitSuccessorHashes.Add(firstInstructionId, firstInstructionHashes);
                     }
 
-                    firstInstructionHashes.TestcaseIdHashes.Add(splitSuccessor.TestcaseIds.GetHash());
                     firstInstructionHashes.TestcaseIds.Add(s, splitSuccessor.TestcaseIds);
                 }
 
-                foreach(var (instructionId, (instructionType, testcaseIdHashes, testcaseIds)) in splitSuccessorHashes)
+                foreach(var (instructionId, (instructionType, testcaseIds)) in splitSuccessorHashes)
                 {
-                    if(testcaseIdHashes.Count <= 1)
+                    if(testcaseIds.Count <= 1)
                         continue;
 
                     // This instruction appeared more than once, record its hashes in the result list
@@ -989,9 +988,6 @@ public class ControlFlowLeakage : AnalysisStage
                         };
                         currentCallStackNode.InstructionAnalysisData.Add(instructionId, analysisData);
                     }
-
-                    foreach(var hash in testcaseIdHashes)
-                        analysisData.TestcaseHashes.Add(hash);
 
                     // Record this instruction's entire call stack so it gets included in the analysis result
                     interestingCallStackIds.Add(currentCallStackNode.Id);
@@ -1102,8 +1098,9 @@ public class ControlFlowLeakage : AnalysisStage
                             }
 
                             // Store hashes
-                            foreach(var target in memoryAccessNode.Targets)
-                                analysisData.TestcaseHashes.Add(target.Value.GetHash());
+                            // TODO Replace this by testcase ID list
+                            //foreach(var target in memoryAccessNode.Targets)
+                            //    analysisData.TestcaseHashes.Add(target.Value.GetHash());
 
                             // Record this instruction's entire call stack so it gets included in the analysis result
                             interestingCallStackIds.Add(currentCallStackNode.Id);
@@ -1210,7 +1207,6 @@ public class ControlFlowLeakage : AnalysisStage
                         _ => throw new Exception("Unexpected instruction type")
                     };
                     await callStacksWriter.WriteLineAsync($"{indentation}  [L] {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
-                    await callStacksWriter.WriteLineAsync($"{indentation}    - Unique hashes: {analysisResult.Value.TestcaseHashes.Count}");
                     await callStacksWriter.WriteLineAsync($"{indentation}    - Number of calls: {analysisResult.Value.TestcaseIdTrees.Count}");
 
                     await callStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
@@ -1659,8 +1655,6 @@ public class ControlFlowLeakage : AnalysisStage
     {
         public InstructionType Type { get; init; }
 
-        public HashSet<ulong> TestcaseHashes { get; } = new();
-
         public List<TestcaseIdTreeNode> TestcaseIdTrees { get; } = new();
 
         public enum InstructionType
@@ -1693,10 +1687,8 @@ public class ControlFlowLeakage : AnalysisStage
             /// <param name="indentationOther">Line prefix and indentation of all other lines.</param>
             public void Render(StringBuilder stringBuilder, string indentationFirst, string indentationOther)
             {
-                if(IsDummyNode)
-                    stringBuilder.AppendLine($"{indentationFirst}─[M] {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
-                else
-                    stringBuilder.AppendLine($"{indentationFirst}─ {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
+                string testcaseIdListPrefix = IsDummyNode ? "[M]" : "";
+                stringBuilder.AppendLine($"{indentationFirst}─{testcaseIdListPrefix} {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
 
                 var childrenList = Children.OrderBy(c => c.Key).ToList(); // We need indexed lookup for pretty printing
                 for(int i = 0; i < childrenList.Count; ++i)
