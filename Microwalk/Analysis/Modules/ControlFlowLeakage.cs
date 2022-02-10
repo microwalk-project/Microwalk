@@ -1648,7 +1648,17 @@ public class ControlFlowLeakage : AnalysisStage
         /// <summary>
         /// Returns the number of IDs contained in this object.
         /// </summary>
-        public int Count => _testcaseIdBitField.Sum(BitOperations.PopCount);
+        public int Count
+        {
+            get
+            {
+                // This is much faster than _testcaseIdBitField.Sum(BitOperations.PopCount), probably due to better inlining
+                int count = 0;
+                foreach(var b in _testcaseIdBitField)
+                    count += BitOperations.PopCount(b);
+                return count;
+            }
+        }
     }
 
     private class AnalysisData
