@@ -115,7 +115,7 @@ public class JsTracePreprocessor : PreprocessorStage
             if(_firstTestcase)
             {
                 await Logger.LogDebugAsync("[preprocess] Preprocessing prefix");
-                
+
                 // Paths
                 string rawTraceFileDirectory = Path.GetDirectoryName(traceEntity.RawTraceFilePath) ?? throw new Exception($"Could not determine directory: {traceEntity.RawTraceFilePath}");
                 string scriptsFilePath = Path.Combine(rawTraceFileDirectory, "scripts.txt");
@@ -255,6 +255,10 @@ public class JsTracePreprocessor : PreprocessorStage
                     GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeStartAddress);
                     GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeEndAddress); // For Ret2-only returns (e.g., void functions)
 
+                    // Do not trace branches in prefix mode
+                    if(isPrefix)
+                        break;
+
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
                     {
@@ -295,6 +299,10 @@ public class JsTracePreprocessor : PreprocessorStage
                     // Produce MAP entries
                     GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
 
+                    // Do not trace branches in prefix mode
+                    if(isPrefix)
+                        break;
+
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
                     {
@@ -327,6 +335,10 @@ public class JsTracePreprocessor : PreprocessorStage
                     // Produce MAP entries
                     GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
                     GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeStartAddress);
+
+                    // Do not trace branches in prefix mode
+                    if(isPrefix)
+                        break;
 
                     // Did we see a Ret1 entry? -> more accurate location info
                     Branch entry;
@@ -370,6 +382,10 @@ public class JsTracePreprocessor : PreprocessorStage
                     // Produce MAP entries
                     GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
 
+                    // Do not trace branches in prefix mode
+                    if(isPrefix)
+                        break;
+
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
                     {
@@ -406,6 +422,10 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     // Produce MAP entries
                     GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+
+                    // Do not trace branches in prefix mode
+                    if(isPrefix)
+                        break;
 
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
@@ -472,15 +492,21 @@ public class JsTracePreprocessor : PreprocessorStage
                     }
 
                     // Did we already encounter this offset?
-                    if(!objectData.PropertyAddressMapping.TryGetValue(offset, out uint offsetRelativeAddress))
+                    uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
                     {
-                        if(uint.TryParse(offset, out uint offsetInt))
-                            offsetRelativeAddress = offsetInt;
-                        else
-                            offsetRelativeAddress = objectData.NextPropertyAddress++;
+                        // No, create new entry
 
-                        objectData.PropertyAddressMapping.Add(offset, offsetRelativeAddress);
-                    }
+                        // Numeric index?
+                        if(uint.TryParse(offset, out uint offsetInt))
+                            return offsetInt;
+
+                        // Named property
+                        return objectData.NextPropertyAddress++;
+                    });
+
+                    // Do not memory accesses in prefix mode
+                    if(isPrefix)
+                        break;
 
                     // Create memory access
                     var memoryAccess = new HeapMemoryAccess
@@ -542,15 +568,21 @@ public class JsTracePreprocessor : PreprocessorStage
                     }
 
                     // Did we already encounter this offset?
-                    if(!objectData.PropertyAddressMapping.TryGetValue(offset, out uint offsetRelativeAddress))
+                    uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
                     {
-                        if(uint.TryParse(offset, out uint offsetInt))
-                            offsetRelativeAddress = offsetInt;
-                        else
-                            offsetRelativeAddress = objectData.NextPropertyAddress++;
+                        // No, create new entry
 
-                        objectData.PropertyAddressMapping.Add(offset, offsetRelativeAddress);
-                    }
+                        // Numeric index?
+                        if(uint.TryParse(offset, out uint offsetInt))
+                            return offsetInt;
+
+                        // Named property
+                        return objectData.NextPropertyAddress++;
+                    });
+
+                    // Do not memory accesses in prefix mode
+                    if(isPrefix)
+                        break;
 
                     // Create memory access
                     var memoryAccess = new HeapMemoryAccess
@@ -714,6 +746,6 @@ public class JsTracePreprocessor : PreprocessorStage
     {
         public uint NextPropertyAddress { get; set; }
 
-        public Dictionary<string, uint> PropertyAddressMapping { get; } = new();
+        public ConcurrentDictionary<string, uint> PropertyAddressMapping { get; } = new();
     }
 }
