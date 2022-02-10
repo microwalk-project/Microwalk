@@ -43,9 +43,14 @@ public class ControlFlowLeakage : AnalysisStage
     private MapFileCollection _mapFileCollection = null!;
 
     /// <summary>
-    /// Controls whether the entire final state should be written to a dump file.
+    /// Controls whether the call tree should be written to a dump file.
     /// </summary>
-    private bool _dumpFullData = false;
+    private bool _dumpCallTree = false;
+
+    /// <summary>
+    /// Controls whether the call tree dump should also include memory accesses.
+    /// </summary>
+    private bool _includeMemoryAccessesInCallTreeDump = false;
 
     /// <summary>
     /// Root node of merged call tree.
@@ -888,12 +893,12 @@ public class ControlFlowLeakage : AnalysisStage
 
                 if(currentNode == _rootNode)
                 {
-                    if(_dumpFullData)
+                    if(_dumpCallTree)
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
                 }
                 else if(currentNode is CallNode callNode)
                 {
-                    if(_dumpFullData)
+                    if(_dumpCallTree)
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}#call {_formattedImageAddresses[callNode.SourceInstructionId]} -> {_formattedImageAddresses[callNode.TargetInstructionId]} (${callNode.CallStackId:X16})");
 
                     // Switch to corresponding child node
@@ -916,7 +921,7 @@ public class ControlFlowLeakage : AnalysisStage
                 }
                 else
                 {
-                    if(_dumpFullData)
+                    if(_dumpCallTree)
                     {
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}@split");
 
@@ -926,10 +931,12 @@ public class ControlFlowLeakage : AnalysisStage
                     }
                 }
 
-                if(_dumpFullData)
+                if(_dumpCallTree)
                     await callTreeDumpWriter.WriteLineAsync($"{indentation}  Successors:");
 
                 // Check split successors: If an instruction caused a split, record its testcase ID hashes
+                // _Usually_ the splitting instruction should be the same for all split successors.
+                // However, we support several split successor instructions here, so we get results even when the traces are a bit weird.
                 Dictionary<ulong, (AnalysisData.InstructionType Type, HashSet<ulong> TestcaseIdHashes, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorHashes = new();
                 for(var s = 0; s < currentNode.SplitSuccessors.Count; s++)
                 {
@@ -968,60 +975,60 @@ public class ControlFlowLeakage : AnalysisStage
 
                 foreach(var (instructionId, (instructionType, testcaseIdHashes, testcaseIds)) in splitSuccessorHashes)
                 {
-                    if(testcaseIdHashes.Count > 1)
+                    if(testcaseIdHashes.Count <= 1)
+                        continue;
+
+                    // This instruction appeared more than once, record its hashes in the result list
+
+                    // Get analysis data object for this instruction
+                    if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(instructionId, out var analysisData))
                     {
-                        // This instruction appeared more than once, record its hashes in the result list
-
-                        // Get analysis data object for this instruction
-                        if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(instructionId, out var analysisData))
+                        analysisData = new AnalysisData
                         {
-                            analysisData = new AnalysisData
+                            Type = instructionType
+                        };
+                        currentCallStackNode.InstructionAnalysisData.Add(instructionId, analysisData);
+                    }
+
+                    foreach(var hash in testcaseIdHashes)
+                        analysisData.TestcaseHashes.Add(hash);
+
+                    // Record this instruction's entire call stack so it gets included in the analysis result
+                    interestingCallStackIds.Add(currentCallStackNode.Id);
+                    foreach(var entry in nodeStack)
+                        interestingCallStackIds.Add(entry.CallStackNode.Id);
+
+                    // Build testcase ID tree
+                    if(instructionTestcaseTrees.TryGetValue(instructionId, out var currentInstructionTestcaseIdTreeNode))
+                    {
+                        // We already entered a testcase ID tree for the current call stack and instruction, create children for the current node
+
+                        foreach(var (s, testcaseIdSet) in testcaseIds)
+                        {
+                            currentInstructionTestcaseIdTreeNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
                             {
-                                Type = instructionType
-                            };
-                            currentCallStackNode.InstructionAnalysisData.Add(instructionId, analysisData);
+                                TestcaseIds = testcaseIdSet
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // This is the first split for this instruction in the current call subtree
+                        var newTestcaseIdTreeRootNode = new AnalysisData.TestcaseIdTreeNode
+                        {
+                            TestcaseIds = currentNode.TestcaseIds
+                        };
+                        foreach(var (s, testcaseIdSet) in testcaseIds)
+                        {
+                            newTestcaseIdTreeRootNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
+                            {
+                                TestcaseIds = testcaseIdSet
+                            });
                         }
 
-                        foreach(var hash in testcaseIdHashes)
-                            analysisData.TestcaseHashes.Add(hash);
+                        analysisData.TestcaseIdTrees.Add(newTestcaseIdTreeRootNode);
 
-                        // Record this instruction's entire call stack so it gets included in the analysis result
-                        interestingCallStackIds.Add(currentCallStackNode.Id);
-                        foreach(var entry in nodeStack)
-                            interestingCallStackIds.Add(entry.CallStackNode.Id);
-
-                        // Build testcase ID tree
-                        if(instructionTestcaseTrees.TryGetValue(instructionId, out var currentInstructionTestcaseIdTreeNode))
-                        {
-                            // We already entered a testcase ID tree for the current call stack and instruction, create children for the current node
-
-                            foreach(var (s, testcaseIdSet) in testcaseIds)
-                            {
-                                currentInstructionTestcaseIdTreeNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
-                                {
-                                    TestcaseIds = testcaseIdSet
-                                });
-                            }
-                        }
-                        else
-                        {
-                            // This is the first split for this instruction
-                            var newTestcaseIdTreeRootNode = new AnalysisData.TestcaseIdTreeNode
-                            {
-                                TestcaseIds = currentNode.TestcaseIds
-                            };
-                            foreach(var (s, testcaseIdSet) in testcaseIds)
-                            {
-                                newTestcaseIdTreeRootNode.Children.Add(s, new AnalysisData.TestcaseIdTreeNode
-                                {
-                                    TestcaseIds = testcaseIdSet
-                                });
-                            }
-
-                            analysisData.TestcaseIdTrees.Add(newTestcaseIdTreeRootNode);
-
-                            instructionTestcaseTrees.Add(instructionId, newTestcaseIdTreeRootNode);
-                        }
+                        instructionTestcaseTrees.Add(instructionId, newTestcaseIdTreeRootNode);
                     }
                 }
 
@@ -1033,31 +1040,31 @@ public class ControlFlowLeakage : AnalysisStage
                 for(int i = successorIndex.Value; i < currentNode.Successors.Count; ++i)
                 {
                     CallTreeNode successorNode = currentNode.Successors[i];
-                    if(successorNode is SplitNode splitNode)
+                    if(successorNode is CallNode callNode)
                     {
                         // Dive into split node
                         nodeStack.Push((currentNode, level, i + 1, null, currentCallStackNode, instructionTestcaseTrees));
-                        currentNode = splitNode;
+                        currentNode = callNode;
                         ++level;
                         indentation = new string(' ', 4 * level);
                         successorIndex = null;
                         splitSuccessorIndex = null;
-                        instructionTestcaseTrees = splitNode is CallNode ? new() : new(instructionTestcaseTrees);
+                        instructionTestcaseTrees = new Dictionary<ulong, AnalysisData.TestcaseIdTreeNode>();
 
                         goto nextIteration;
                     }
 
-                    if(_dumpFullData && successorNode is ReturnNode returnNode)
+                    if(_dumpCallTree && successorNode is ReturnNode returnNode)
                     {
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #return {_formattedImageAddresses[returnNode.SourceInstructionId]} -> {_formattedImageAddresses[returnNode.TargetInstructionId]}");
                     }
-                    else if(_dumpFullData && successorNode is BranchNode branchNode)
+                    else if(_dumpCallTree && successorNode is BranchNode branchNode)
                     {
                         // Print node
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}    #branch {_formattedImageAddresses[branchNode.SourceInstructionId]} -> {(branchNode.Taken ? _formattedImageAddresses[branchNode.TargetInstructionId] : "<?> (not taken)")}");
                     }
-                    else if(_dumpFullData && successorNode is AllocationNode allocationNode)
+                    else if(_dumpCallTree && _includeMemoryAccessesInCallTreeDump && successorNode is AllocationNode allocationNode)
                     {
                         // Print node
                         if(allocationNode.IsHeap)
@@ -1068,7 +1075,7 @@ public class ControlFlowLeakage : AnalysisStage
                     else if(successorNode is MemoryAccessNode memoryAccessNode)
                     {
                         // Print node
-                        if(_dumpFullData)
+                        if(_dumpCallTree && _includeMemoryAccessesInCallTreeDump)
                         {
                             await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
                             foreach(var targetAddress in memoryAccessNode.Targets)
@@ -1107,7 +1114,7 @@ public class ControlFlowLeakage : AnalysisStage
                 }
 
                 // Done, move to split successors
-                if(_dumpFullData && currentNode.SplitSuccessors.Count > 0) // Only print this when there actually _are_ split successors
+                if(_dumpCallTree && currentNode.SplitSuccessors.Count > 0) // Only print this when there actually _are_ split successors
                     await callTreeDumpWriter.WriteLineAsync(indentation + "  SplitSuccessors:");
                 successorIndex = null;
                 splitSuccessorIndex = 0;
@@ -1134,10 +1141,18 @@ public class ControlFlowLeakage : AnalysisStage
                         var newInstructionTestcaseTrees = new Dictionary<ulong, AnalysisData.TestcaseIdTreeNode>();
                         foreach(var (instructionId, testcaseIdNode) in instructionTestcaseTrees)
                         {
-                            if(testcaseIdNode.Children.ContainsKey(splitSuccessorIndex.Value))
-                                newInstructionTestcaseTrees.Add(instructionId, testcaseIdNode.Children[splitSuccessorIndex.Value]);
-                            else
-                                newInstructionTestcaseTrees.Add(instructionId, testcaseIdNode);
+                            if(!testcaseIdNode.Children.TryGetValue(splitSuccessorIndex.Value, out var testcaseIdSplitSuccessorNode))
+                            {
+                                // Create corresponding dummy node
+                                testcaseIdSplitSuccessorNode = new AnalysisData.TestcaseIdTreeNode
+                                {
+                                    IsDummyNode = true,
+                                    TestcaseIds = currentNode.TestcaseIds
+                                };
+                                testcaseIdNode.Children.Add(splitSuccessorIndex.Value, testcaseIdSplitSuccessorNode);
+                            }
+
+                            newInstructionTestcaseTrees.Add(instructionId, testcaseIdSplitSuccessorNode);
                         }
 
                         instructionTestcaseTrees = newInstructionTestcaseTrees;
@@ -1194,13 +1209,14 @@ public class ControlFlowLeakage : AnalysisStage
                         AnalysisData.InstructionType.MemoryAccess => "memory access",
                         _ => throw new Exception("Unexpected instruction type")
                     };
-                    await callStacksWriter.WriteLineAsync($"{indentation} L {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
-                    await callStacksWriter.WriteLineAsync($"{indentation}  - Unique hashes: {analysisResult.Value.TestcaseHashes.Count}");
+                    await callStacksWriter.WriteLineAsync($"{indentation}  [L] {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
+                    await callStacksWriter.WriteLineAsync($"{indentation}    - Unique hashes: {analysisResult.Value.TestcaseHashes.Count}");
+                    await callStacksWriter.WriteLineAsync($"{indentation}    - Number of calls: {analysisResult.Value.TestcaseIdTrees.Count}");
 
-                    await callStacksWriter.WriteLineAsync($"{indentation}  - Testcase IDs:");
+                    await callStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
                     foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
                     {
-                        testcaseIdTree.Render(stringBuilder, indentation + "      ", indentation + "      ");
+                        testcaseIdTree.Render(stringBuilder, $"{indentation}     ", $"{indentation}     ");
                         await callStacksWriter.WriteAsync(stringBuilder.ToString());
 
                         stringBuilder.Clear();
@@ -1261,7 +1277,8 @@ public class ControlFlowLeakage : AnalysisStage
         }
 
         // Dump internal data?
-        _dumpFullData = moduleOptions.GetChildNodeOrDefault("dump-full-data")?.AsBoolean() ?? false;
+        _dumpCallTree = moduleOptions.GetChildNodeOrDefault("dump-call-tree")?.AsBoolean() ?? false;
+        _includeMemoryAccessesInCallTreeDump = moduleOptions.GetChildNodeOrDefault("include-memory-accesses-in-dump")?.AsBoolean() ?? true;
     }
 
     public override Task UnInitAsync()
@@ -1656,6 +1673,11 @@ public class ControlFlowLeakage : AnalysisStage
 
         public class TestcaseIdTreeNode
         {
+            /// <summary>
+            /// Determines whether this node is a dummy, generated by a tree split from another instruction that is higher up in the tree.
+            /// </summary>
+            public bool IsDummyNode { get; init; }
+
             public TestcaseIdSet TestcaseIds { get; init; } = null!;
 
             /// <summary>
@@ -1671,7 +1693,10 @@ public class ControlFlowLeakage : AnalysisStage
             /// <param name="indentationOther">Line prefix and indentation of all other lines.</param>
             public void Render(StringBuilder stringBuilder, string indentationFirst, string indentationOther)
             {
-                stringBuilder.AppendLine($"{indentationFirst}─ {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
+                if(IsDummyNode)
+                    stringBuilder.AppendLine($"{indentationFirst}─[M] {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
+                else
+                    stringBuilder.AppendLine($"{indentationFirst}─ {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
 
                 var childrenList = Children.OrderBy(c => c.Key).ToList(); // We need indexed lookup for pretty printing
                 for(int i = 0; i < childrenList.Count; ++i)
