@@ -88,19 +88,15 @@ public class JsTracePreprocessor : PreprocessorStage
     private readonly Dictionary<int, ConcurrentDictionary<string, (uint start, uint end)>> _relativeAddressLookup = new();
 
     /// <summary>
-    /// Maps encoded start and end addresses to function names. Protected by <see cref="_functionNameLookupLock"/>.
+    /// For each image ID, maps encoded start and end addresses to function names.
     /// </summary>
-    private readonly SortedList<(uint start, uint end), string> _functionNameLookup = new();
+    private readonly Dictionary<int, ConcurrentDictionary<(uint start, uint end), string>> _functionNameLookup = new();
 
     /// <summary>
-    /// Map file entries, indexed by image ID and relative address.
+    /// Requested MAP entries, which will be generated after preprocessing is done.
+    /// This is dictionary is used as a set, so the value is always ignored.
     /// </summary>
-    private readonly Dictionary<int, ConcurrentDictionary<uint, string>> _mapEntries = new();
-
-    /// <summary>
-    /// Used for locking the <see cref="_functionNameLookup"/> list.
-    /// </summary>
-    private readonly object _functionNameLookupLock = new();
+    private readonly ConcurrentDictionary<(int imageId, uint relativeAddress), object?> _requestedMapEntries = new();
 
     public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
     {
@@ -139,7 +135,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     };
                     imageFiles.Add(imageFile);
                     _relativeAddressLookup.Add(imageFile.Id, new ConcurrentDictionary<string, (uint start, uint end)>());
-                    _mapEntries.Add(imageFile.Id, new ConcurrentDictionary<uint, string>());
+                    _functionNameLookup.Add(imageFile.Id, new ConcurrentDictionary<(uint start, uint end), string>());
 
                     if(imageFile.Name.Length > maxImageNameLength)
                         maxImageNameLength = imageFile.Name.Length;
@@ -158,7 +154,7 @@ public class JsTracePreprocessor : PreprocessorStage
                 };
                 imageFiles.Add(_externalFunctionsImage);
                 _relativeAddressLookup.Add(_externalFunctionsImage.Id, new ConcurrentDictionary<string, (uint start, uint end)>());
-                _mapEntries.Add(_externalFunctionsImage.Id, new ConcurrentDictionary<uint, string>());
+                _functionNameLookup.Add(_externalFunctionsImage.Id, new ConcurrentDictionary<(uint start, uint end), string>());
 
                 // Prepare writer for serializing trace data
                 using var tracePrefixFileWriter = new FastBinaryWriter(imageFiles.Count * (32 + maxImageNameLength));
@@ -219,7 +215,6 @@ public class JsTracePreprocessor : PreprocessorStage
 
         // Resize output buffer to avoid re-allocations
         // As an upper bound, we just take the number of raw trace entries
-        // TODO this is probably way too much
         traceFileWriter.ResizeBuffer(MaxPreprocessedTraceEntrySize * inputFile.Length);
 
         // Parse trace entries
@@ -243,17 +238,12 @@ public class JsTracePreprocessor : PreprocessorStage
                     var destination = ResolveLineInfoToImage(parts[2]);
 
                     // Record function name, if it is not already known
-                    // TODO Lots of potential for optimization here, if performance becomes a problem
-                    lock(_functionNameLookupLock)
-                    {
-                        if(!_functionNameLookup.ContainsKey((destination.RelativeStartAddress, destination.RelativeEndAddress)))
-                            _functionNameLookup.Add((destination.RelativeStartAddress, destination.RelativeEndAddress), parts[3]);
-                    }
+                    _functionNameLookup[destination.ImageFileInfo.Id].TryAdd((destination.RelativeStartAddress, destination.RelativeEndAddress), parts[3]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
-                    GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeStartAddress);
-                    GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeEndAddress); // For Ret2-only returns (e.g., void functions)
+                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
+                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
+                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeEndAddress), null); // For Ret2-only returns (e.g., void functions)
 
                     // Do not trace branches in prefix mode
                     if(isPrefix)
@@ -297,7 +287,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     var source = ResolveLineInfoToImage(parts[1]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
 
                     // Do not trace branches in prefix mode
                     if(isPrefix)
@@ -333,8 +323,8 @@ public class JsTracePreprocessor : PreprocessorStage
                     var destination = ResolveLineInfoToImage(parts[2]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(source.ImageFileInfo.Id, source.RelativeStartAddress);
-                    GenerateMapEntry(destination.ImageFileInfo.Id, destination.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
+                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
 
                     // Do not trace branches in prefix mode
                     if(isPrefix)
@@ -380,7 +370,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     var location = ResolveLineInfoToImage(parts[1]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
 
                     // Do not trace branches in prefix mode
                     if(isPrefix)
@@ -421,7 +411,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     var location = ResolveLineInfoToImage(parts[1]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
 
                     // Do not trace branches in prefix mode
                     if(isPrefix)
@@ -453,7 +443,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     var location = ResolveLineInfoToImage(parts[1]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
 
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
@@ -529,7 +519,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     var location = ResolveLineInfoToImage(parts[1]);
 
                     // Produce MAP entries
-                    GenerateMapEntry(location.ImageFileInfo.Id, location.RelativeStartAddress);
+                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
 
                     // Create branch entry, if there is a pending conditional
                     if(lastCondEntry != null)
@@ -653,39 +643,6 @@ public class JsTracePreprocessor : PreprocessorStage
         return (image, addressData.start, addressData.end);
     }
 
-    /// <summary>
-    /// Generates a MAP file entry for the given code fragment.
-    /// </summary>
-    /// <param name="imageId">Image ID.</param>
-    /// <param name="relativeAddress">Encoded address of the code fragment</param>
-    private void GenerateMapEntry(int imageId, uint relativeAddress)
-    {
-        // Generate entry, if it does not yet exist
-        var imageMapEntries = _mapEntries[imageId];
-        imageMapEntries.GetOrAdd(relativeAddress, _ =>
-        {
-            // Find enclosing function
-            string enclosingName;
-            lock(_functionNameLookupLock)
-            {
-                // Find maximum start address which still includes the given address, to avoid accidentally matching a parent function
-                // The collection is sorted in ascending order. Start == End is possible (some external functions do not have line numbers).
-                // TODO This is not very efficient
-                enclosingName = _functionNameLookup.LastOrDefault(functionData => functionData.Key.start <= relativeAddress && relativeAddress <= functionData.Key.end, new KeyValuePair<(uint start, uint end), string>((0, 0), "")).Value;
-            }
-
-            // Handle [extern] function separately
-            if(imageId == _externalFunctionsImage.Id)
-                return enclosingName;
-
-            // Extract column/line data from address
-            int column = (int)(relativeAddress & _columnMask);
-            int line = (int)(relativeAddress >> _columnsBits);
-
-            return $"{enclosingName}:{line}:{column}";
-        });
-    }
-
     protected override Task InitAsync(MappingNode? moduleOptions)
     {
         if(moduleOptions == null)
@@ -727,6 +684,15 @@ public class JsTracePreprocessor : PreprocessorStage
         List<char> replaceChars = Path.GetInvalidPathChars().Append('/').Append('\\').Append('.').ToList();
 
         // Save MAP data
+        Dictionary<int, List<uint>> requestedMapEntriesPerImage = _requestedMapEntries
+            .GroupBy(m => m.Key.imageId)
+            .ToDictionary(m => m.Key, m => m
+                .Select(n => n.Key.relativeAddress)
+                .OrderBy(n => n)
+                .ToList()
+            );
+        Dictionary<int, SortedList<(uint start, uint end), string>> sortedFunctionNameLookup = _functionNameLookup
+            .ToDictionary(fnl => fnl.Key, fnl => new SortedList<(uint start, uint end), string>(fnl.Value));
         foreach(var (imageFileName, imageFileInfo) in _imageFiles)
         {
             string mapFileName = Path.Join(_mapDirectory.FullName, replaceChars.Aggregate(imageFileName, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
@@ -734,10 +700,22 @@ public class JsTracePreprocessor : PreprocessorStage
 
             await mapFileWriter.WriteLineAsync(imageFileName);
 
-            var mapEntries = _mapEntries[imageFileInfo.Id];
-            foreach(var addressData in mapEntries.OrderBy(e => e.Key))
+            // Create MAP entries
+            foreach(uint relativeAddress in requestedMapEntriesPerImage[imageFileInfo.Id])
             {
-                await mapFileWriter.WriteLineAsync($"{addressData.Key:x8}\t{addressData.Value}");
+                string name = sortedFunctionNameLookup[imageFileInfo.Id].LastOrDefault(functionData => functionData.Key.start <= relativeAddress && relativeAddress <= functionData.Key.end, new KeyValuePair<(uint start, uint end), string>((0, 0), "")).Value;
+
+                // Handle [extern] functions separately
+                if(imageFileInfo.Id == _externalFunctionsImage.Id)
+                    await mapFileWriter.WriteLineAsync($"{relativeAddress:x8}\t{name}");
+                else
+                {
+                    // Extract column/line data from address
+                    int column = (int)(relativeAddress & _columnMask);
+                    int line = (int)(relativeAddress >> _columnsBits);
+
+                    await mapFileWriter.WriteLineAsync($"{relativeAddress:x8}\t{name}:{line}:{column}");
+                }
             }
         }
     }

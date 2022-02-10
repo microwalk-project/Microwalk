@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
 using YamlDotNet.RepresentationModel;

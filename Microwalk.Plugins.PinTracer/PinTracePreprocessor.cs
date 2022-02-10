@@ -568,7 +568,7 @@ namespace Microwalk.Plugins.PinTracer
                                         InstructionImageId = instructionImageId,
                                         InstructionRelativeAddress = (uint)(rawTraceEntry.Param1 - instructionImage.StartAddress),
                                         HeapAllocationBlockId = allocationBlockId,
-                                        MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - allocationBlock.Address)
+                                        MemoryRelativeAddress = (uint)(rawTraceEntry.Param2 - allocationBlock!.Address)
                                     };
                                     entry.Store(traceFileWriter);
                                 }
@@ -620,7 +620,7 @@ namespace Microwalk.Plugins.PinTracer
         /// <param name="allocationLookup">List containing all heap allocations, sorted by start address in ascending order.</param>
         /// <param name="address">The address to be searched.</param>
         /// <returns></returns>
-        private (int, HeapAllocation) FindAllocation(SortedList<ulong, HeapAllocation> allocationLookup, ulong address)
+        private (int, HeapAllocation?) FindAllocation(SortedList<ulong, HeapAllocation> allocationLookup, ulong address)
         {
             // Use binary search to find allocation block with start address <= address
             var startAddresses = allocationLookup.Keys;
