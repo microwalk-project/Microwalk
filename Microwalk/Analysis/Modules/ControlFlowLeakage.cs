@@ -1084,7 +1084,7 @@ public class ControlFlowLeakage : AnalysisStage
                             }
                         }
 
-                        // Record access target hashes, if there is more than one
+                        // Record access target testcase IDs, if there is more than one
                         if(memoryAccessNode.Targets.Count > 1)
                         {
                             // Get analysis data object for this instruction
@@ -1096,12 +1096,16 @@ public class ControlFlowLeakage : AnalysisStage
                                 };
                                 currentCallStackNode.InstructionAnalysisData.Add(memoryAccessNode.InstructionId, analysisData);
                             }
+                            
+                            // We can't really build a testcase ID tree for this instruction, as it does not split the call tree.
+                            // So we just create a new node each time the instruction is encountered.
+                            var newTestcaseIdRootNode = new AnalysisData.TestcaseIdTreeNode { TestcaseIds = memoryAccessNode.TestcaseIds };
+                            int targetIndex = 0;
+                            foreach(var target in memoryAccessNode.Targets)
+                                newTestcaseIdRootNode.Children.Add(targetIndex++, new AnalysisData.TestcaseIdTreeNode { TestcaseIds = target.Value });
 
-                            // Store hashes
-                            // TODO Replace this by testcase ID list
-                            //foreach(var target in memoryAccessNode.Targets)
-                            //    analysisData.TestcaseHashes.Add(target.Value.GetHash());
-
+                            analysisData.TestcaseIdTrees.Add(newTestcaseIdRootNode);
+                            
                             // Record this instruction's entire call stack so it gets included in the analysis result
                             interestingCallStackIds.Add(currentCallStackNode.Id);
                             foreach(var entry in nodeStack)
