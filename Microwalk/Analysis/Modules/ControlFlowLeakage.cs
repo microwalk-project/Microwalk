@@ -937,7 +937,7 @@ public class ControlFlowLeakage : AnalysisStage
                 // Check split successors: If an instruction caused a split, record the testcase IDs of its split successors
                 // _Usually_ the splitting instruction should be the same for all split successors.
                 // However, we support several split successor instructions here, so we get results even when the traces are a bit weird.
-                Dictionary<ulong, (AnalysisData.InstructionType Type, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorHashes = new();
+                Dictionary<ulong, (AnalysisData.InstructionType Type, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorTestcases = new();
                 for(var s = 0; s < currentNode.SplitSuccessors.Count; s++)
                 {
                     var splitSuccessor = currentNode.SplitSuccessors[s];
@@ -963,16 +963,16 @@ public class ControlFlowLeakage : AnalysisStage
                     else
                         continue; // We only check control flow, as memory access splits are handled differently
 
-                    if(!splitSuccessorHashes.TryGetValue(firstInstructionId, out var firstInstructionHashes))
+                    if(!splitSuccessorTestcases.TryGetValue(firstInstructionId, out var firstInstructionTestcases))
                     {
-                        firstInstructionHashes = (firstInstructionType, new Dictionary<int, TestcaseIdSet>());
-                        splitSuccessorHashes.Add(firstInstructionId, firstInstructionHashes);
+                        firstInstructionTestcases = (firstInstructionType, new Dictionary<int, TestcaseIdSet>());
+                        splitSuccessorTestcases.Add(firstInstructionId, firstInstructionTestcases);
                     }
 
-                    firstInstructionHashes.TestcaseIds.Add(s, splitSuccessor.TestcaseIds);
+                    firstInstructionTestcases.TestcaseIds.Add(s, splitSuccessor.TestcaseIds);
                 }
 
-                foreach(var (instructionId, (instructionType, testcaseIds)) in splitSuccessorHashes)
+                foreach(var (instructionId, (instructionType, testcaseIds)) in splitSuccessorTestcases)
                 {
                     if(testcaseIds.Count <= 1)
                         continue;
@@ -1643,6 +1643,11 @@ public class ControlFlowLeakage : AnalysisStage
             Buffer.BlockCopy(_testcaseIdBitField, 0, _hashBuffer, 0, byteCount);
 
             return xxHash64.ComputeHash(_hashBuffer, byteCount);
+        }
+
+        public override string ToString()
+        {
+            return FormatIntegerSequence(AsEnumerable());
         }
 
         /// <summary>
