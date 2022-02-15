@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -45,12 +46,17 @@ public class ControlFlowLeakage : AnalysisStage
     /// <summary>
     /// Controls whether the call tree should be written to a dump file.
     /// </summary>
-    private bool _dumpCallTree = false;
+    private bool _dumpCallTree;
 
     /// <summary>
     /// Controls whether the call tree dump should also include memory accesses.
     /// </summary>
-    private bool _includeMemoryAccessesInCallTreeDump = false;
+    private bool _includeMemoryAccessesInCallTreeDump;
+
+    /// <summary>
+    /// Controls whether the call stacks file should include testcase ID trees.
+    /// </summary>
+    private bool _includeTestcasesInCallStacks;
 
     /// <summary>
     /// Root node of merged call tree.
@@ -1096,7 +1102,7 @@ public class ControlFlowLeakage : AnalysisStage
                                 };
                                 currentCallStackNode.InstructionAnalysisData.Add(memoryAccessNode.InstructionId, analysisData);
                             }
-                            
+
                             // We can't really build a testcase ID tree for this instruction, as it does not split the call tree.
                             // So we just create a new node each time the instruction is encountered.
                             var newTestcaseIdRootNode = new AnalysisData.TestcaseIdTreeNode { TestcaseIds = memoryAccessNode.TestcaseIds };
@@ -1105,7 +1111,7 @@ public class ControlFlowLeakage : AnalysisStage
                                 newTestcaseIdRootNode.Children.Add(targetIndex++, new AnalysisData.TestcaseIdTreeNode { TestcaseIds = target.Value });
 
                             analysisData.TestcaseIdTrees.Add(newTestcaseIdRootNode);
-                            
+
                             // Record this instruction's entire call stack so it gets included in the analysis result
                             interestingCallStackIds.Add(currentCallStackNode.Id);
                             foreach(var entry in nodeStack)
@@ -1182,6 +1188,13 @@ public class ControlFlowLeakage : AnalysisStage
 
         StringBuilder stringBuilder = new();
 
+        // Compute some constants for leakage measures
+        int totalTestcaseCount = _rootNode.TestcaseIds.Count;
+        double idealConditionalGuessingEntropy = 0.5 * (totalTestcaseCount + 1);
+
+        (double mean, double standardDeviation) ComputeConditionalGuessingEntropyScore((double mean, double standardDeviation) entropy) =>
+            (100 - 100 * (entropy.mean - 1) / (idealConditionalGuessingEntropy - 1), 100 * entropy.standardDeviation / (idealConditionalGuessingEntropy - 1));
+
         // Write call stacks
         await Logger.LogInfoAsync($"{logMessagePrefix} Writing analysis result");
         await using var callStacksWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.txt")));
@@ -1213,13 +1226,62 @@ public class ControlFlowLeakage : AnalysisStage
                     await callStacksWriter.WriteLineAsync($"{indentation}  [L] {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
                     await callStacksWriter.WriteLineAsync($"{indentation}    - Number of calls: {analysisResult.Value.TestcaseIdTrees.Count}");
 
-                    await callStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
+                    // Compute measures
+                    List<int> treeDepths = new();
+                    List<double> conditionalGuessingEntropies = new();
+                    List<double> minConditionalGuessingEntropies = new();
                     foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
                     {
-                        testcaseIdTree.Render(stringBuilder, $"{indentation}     ", $"{indentation}     ");
-                        await callStacksWriter.WriteAsync(stringBuilder.ToString());
+                        List<int> leafTestcaseCounts = new();
+                        testcaseIdTree.Measure(leafTestcaseCounts, out var treeDepth);
 
-                        stringBuilder.Clear();
+                        // Conditional guessing entropy for leaves
+                        double conditionalGuessingEntropy = 0;
+                        double minimumConditionalGuessingEntropy = double.MaxValue;
+                        foreach(var leaf in leafTestcaseCounts)
+                        {
+                            // Probability for this specific trace
+                            double py = (double)leaf / totalTestcaseCount;
+
+                            // We want to get the remaining guessing entropy for the testcases X' ⊂ X in this leaf
+                            // Since those are uniformly distributed ( Pr[X'=x] = 1/n ), we can use the Gaussian sum formula
+                            // to simplify the term: G[X'] = Σ[k= 1...|X'|] k * 1/|X'| = (|X'| + 1) / 2
+                            double gX2 = 0.5 * (leaf + 1);
+                            conditionalGuessingEntropy += py * gX2;
+
+                            if(gX2 < minimumConditionalGuessingEntropy)
+                                minimumConditionalGuessingEntropy = gX2;
+                        }
+
+                        conditionalGuessingEntropies.Add(conditionalGuessingEntropy);
+                        minConditionalGuessingEntropies.Add(minimumConditionalGuessingEntropy);
+                        treeDepths.Add(treeDepth);
+                    }
+
+                    // Print individual measures
+                    {
+                        var subtreeDepth = ComputeMean(treeDepths.Select(v => (double)v));
+                        await callStacksWriter.WriteLineAsync($"{indentation}    - Tree depth: {subtreeDepth.mean:F2} +/- {subtreeDepth.standardDeviation:F2}, min {treeDepths.Min()}, max {treeDepths.Max()}");
+
+                        var conditionalGuessingEntropy = ComputeMean(conditionalGuessingEntropies);
+                        var conditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(conditionalGuessingEntropy));
+                        await callStacksWriter.WriteLineAsync($"{indentation}    - Cond. guessing entropy: {conditionalGuessingEntropy.mean:F2} +/- {conditionalGuessingEntropy.standardDeviation:F2}, min {conditionalGuessingEntropies.Min():F2}, max {conditionalGuessingEntropies.Max():F2}, score {conditionalGuessingEntropyScore.mean:F2} +/- {conditionalGuessingEntropyScore.standardDeviation:F2}");
+
+                        var minConditionalGuessingEntropy = ComputeMean(minConditionalGuessingEntropies);
+                        var minConditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(minConditionalGuessingEntropy));
+                        await callStacksWriter.WriteLineAsync($"{indentation}    - Min. cond. guessing entropy: {minConditionalGuessingEntropy.mean:F2} +/- {minConditionalGuessingEntropy.standardDeviation:F2}, min {minConditionalGuessingEntropies.Min():F2}, max {minConditionalGuessingEntropies.Max():F2}, score {minConditionalGuessingEntropyScore.mean:F2} +/- {minConditionalGuessingEntropyScore.standardDeviation:F2}");
+                    }
+
+                    if(_includeTestcasesInCallStacks)
+                    {
+                        await callStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
+                        foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
+                        {
+                            testcaseIdTree.Render(stringBuilder, $"{indentation}     ", $"{indentation}     ", testcaseIdTree.TestcaseIds.Count);
+                            await callStacksWriter.WriteAsync(stringBuilder.ToString());
+
+                            stringBuilder.Clear();
+                        }
                     }
                 }
             }
@@ -1279,6 +1341,7 @@ public class ControlFlowLeakage : AnalysisStage
         // Dump internal data?
         _dumpCallTree = moduleOptions.GetChildNodeOrDefault("dump-call-tree")?.AsBoolean() ?? false;
         _includeMemoryAccessesInCallTreeDump = moduleOptions.GetChildNodeOrDefault("include-memory-accesses-in-dump")?.AsBoolean() ?? true;
+        _includeTestcasesInCallStacks = moduleOptions.GetChildNodeOrDefault("include-testcases-in-call-stacks")?.AsBoolean() ?? true;
     }
 
     public override Task UnInitAsync()
@@ -1370,6 +1433,35 @@ public class ControlFlowLeakage : AnalysisStage
             result.Remove(result.Length - 1, 1);
 
         return result.ToString();
+    }
+
+    /// <summary>
+    /// Computes the mean and standard deviation of the given list of values.
+    /// </summary>
+    /// <param name="values">Values.</param>
+    /// <returns></returns>
+    private static (double mean, double standardDeviation) ComputeMean(IEnumerable<double> values)
+    {
+        // Welford's method
+
+        double mean = 0.0;
+        double sum = 0.0;
+        int i = 0;
+        foreach(var v in values)
+        {
+            ++i;
+
+            double delta = v - mean;
+
+            mean += delta / i;
+            sum += delta * (v - mean);
+        }
+
+        double standardDeviation = 0.0;
+        if(i > 1)
+            standardDeviation = Math.Sqrt(sum / i);
+
+        return (mean, standardDeviation);
     }
 
     private abstract class CallTreeNode
@@ -1699,25 +1791,95 @@ public class ControlFlowLeakage : AnalysisStage
             public Dictionary<int, TestcaseIdTreeNode> Children { get; } = new();
 
             /// <summary>
+            /// Caches whether all children have been identified as dummy nodes.
+            /// Filled by <see cref="Measure"/>.
+            /// </summary>
+            private bool _allChildrenAreDummyNodes;
+
+            /// <summary>
+            /// Computes various measures over the current node's subtree.
+            /// </summary>
+            /// <param name="leafTestcaseCounts">Number of testcases per leaf.</param>
+            /// <param name="subtreeDepth">Depth of this node's subtree (including the current node).</param>
+            public void Measure(List<int> leafTestcaseCounts, out int subtreeDepth)
+            {
+                // Dive into child nodes
+                subtreeDepth = 1;
+                _allChildrenAreDummyNodes = true;
+                foreach(var child in Children)
+                {
+                    child.Value.Measure(leafTestcaseCounts, out int childSubtreeDepth);
+
+                    if(!child.Value._allChildrenAreDummyNodes || !child.Value.IsDummyNode)
+                    {
+                        subtreeDepth = Math.Max(subtreeDepth, 1 + childSubtreeDepth);
+                        _allChildrenAreDummyNodes = false;
+                    }
+                }
+
+                // Measures for non-dummy leaf nodes
+                // We also consider nodes as leaves if their subtree only consists of dummy nodes
+                if((Children.Count == 0 || _allChildrenAreDummyNodes) && !IsDummyNode)
+                {
+                    leafTestcaseCounts.Add(TestcaseIds.Count);
+                }
+            }
+
+            /// <summary>
             /// Writes the current node and its children into the given <see cref="StringBuilder"/>, recursively.
+            /// <see cref="Measure"/> needs to be executed first, as this function relies on some of its results.
             /// </summary>
             /// <param name="stringBuilder">String builder.</param>
             /// <param name="indentationFirst">Line prefix and indentation of the first line.</param>
             /// <param name="indentationOther">Line prefix and indentation of all other lines.</param>
-            public void Render(StringBuilder stringBuilder, string indentationFirst, string indentationOther)
+            /// <param name="totalCount">Number of testcase IDs of the top most parent node. Used for computing this node's leakage.</param>
+            public void Render(StringBuilder stringBuilder, string indentationFirst, string indentationOther, int totalCount)
             {
-                string testcaseIdListPrefix = IsDummyNode ? "[M]" : "";
-                stringBuilder.AppendLine($"{indentationFirst}─{testcaseIdListPrefix} {FormatIntegerSequence(TestcaseIds.AsEnumerable())}");
-
-                var childrenList = Children.OrderBy(c => c.Key).ToList(); // We need indexed lookup for pretty printing
-                for(int i = 0; i < childrenList.Count; ++i)
+                if(IsDummyNode)
                 {
-                    var child = childrenList[i];
-
-                    if(i == childrenList.Count - 1)
-                        child.Value.Render(stringBuilder, indentationOther + "  └", indentationOther + "   ");
+                    stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
+                            "{0}─[M] {1} ({2} total)",
+                            indentationFirst,
+                            FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                            TestcaseIds.Count)
+                        .AppendLine();
+                }
+                else
+                {
+                    // Handle leaf nodes separately
+                    if(Children.Count == 0 || _allChildrenAreDummyNodes)
+                    {
+                        stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
+                                "{0}─ {1} ({2} total) ({3:F2} bits global leakage)",
+                                indentationFirst,
+                                FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                                TestcaseIds.Count,
+                                Math.Log2((double)totalCount / TestcaseIds.Count))
+                            .AppendLine();
+                    }
                     else
-                        child.Value.Render(stringBuilder, indentationOther + "  ├", indentationOther + "  │");
+                    {
+                        stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
+                                "{0}─ {1} ({2} total)",
+                                indentationFirst,
+                                FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                                TestcaseIds.Count)
+                            .AppendLine();
+                    }
+                }
+
+                if(!_allChildrenAreDummyNodes)
+                {
+                    var childrenList = Children.OrderBy(c => c.Key).ToList(); // We need indexed lookup for pretty printing
+                    for(int i = 0; i < childrenList.Count; ++i)
+                    {
+                        var child = childrenList[i];
+
+                        string childIndentationFirst = indentationOther + (i == childrenList.Count - 1 ? "  └" : "  ├");
+                        string childIndentationOther = indentationOther + (i == childrenList.Count - 1 ? "   " : "  │");
+
+                        child.Value.Render(stringBuilder, childIndentationFirst, childIndentationOther, totalCount);
+                    }
                 }
             }
         }
