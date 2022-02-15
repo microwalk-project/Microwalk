@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -36,6 +37,9 @@ namespace Microwalk
         /// <param name="args">Command line.</param>
         public static void Main(string[] args)
         {
+            // Force default culture to avoid problems with formatting decimal numbers
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
             // Register generic modules
             {
                 // Testcase generation
