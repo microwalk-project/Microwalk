@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\elftools\src\ElfTools\ElfTools.csproj" />
+      <PackageReference Include="ElfTools" Version="0.1.0" />
     </ItemGroup>
 
 </Project>

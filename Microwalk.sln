@@ -15,8 +15,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.FrameworkBase", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.PinTracer", "Microwalk.Plugins.PinTracer\Microwalk.Plugins.PinTracer.csproj", "{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElfTools", "..\elftools\src\ElfTools\ElfTools.csproj", "{F5516F6C-470B-435B-8E40-4359B1D4FCEB}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFileGenerator", "Tools\MapFileGenerator\MapFileGenerator.csproj", "{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.QemuKernelTracer", "Microwalk.Plugins.QemuKernelTracer\Microwalk.Plugins.QemuKernelTracer.csproj", "{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}"
@@ -105,18 +103,6 @@ Global
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x64.Build.0 = Release|Any CPU
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.ActiveCfg = Release|Any CPU
 		{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}.Release|x86.Build.0 = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|x64.Build.0 = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Debug|x86.Build.0 = Debug|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|x64.ActiveCfg = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|x64.Build.0 = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|x86.ActiveCfg = Release|Any CPU
-		{F5516F6C-470B-435B-8E40-4359B1D4FCEB}.Release|x86.Build.0 = Release|Any CPU
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}.Debug|x64.ActiveCfg = Debug|Any CPU
