@@ -39,10 +39,13 @@ ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
 WORKDIR /mw
 RUN wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.21-98484-ge7cd811fd-gcc-linux.tar.gz
 RUN mkdir -p pin && tar -xf pin-3* -C pin --strip-components 1 && rm pin-3*
+ENV PIN_PATH=/mw/pin
 
 # Build Pin tool
 WORKDIR /mw/pintool
-COPY PinTracer PinTracer
+COPY PinTracer .
+RUN make PIN_ROOT=/mw/pin obj-intel64/PinTracer.so
+ENV PINTOOL=/mw/pintool/obj-intel64/PinTracer.so
 
 # Prepare working directory
 RUN mkdir -p /mw/work
