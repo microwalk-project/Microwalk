@@ -1,0 +1,47 @@
+
+## BUILD ##
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+
+WORKDIR /src
+
+COPY Microwalk Microwalk
+COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
+COPY Microwalk.Plugins.PinTracer Microwalk.Plugins.PinTracer
+COPY Tools/MapFileGenerator MapFileGenerator
+
+RUN dotnet publish Microwalk/Microwalk.csproj -c Release -o /publish/microwalk
+RUN dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj -c Release -o /publish/microwalk
+RUN dotnet publish MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
+
+
+
+## RUNTIME ##
+
+FROM mcr.microsoft.com/dotnet/runtime:6.0-focal
+
+# Get some dependencies
+RUN apt-get update -y && apt-get install -y \
+  wget \
+  make \
+  g++
+
+# Copy Microwalk binaries
+WORKDIR /mw/microwalk
+COPY --from=build /publish/microwalk .
+ENV MICROWALK_PATH=/mw/microwalk
+
+# Copy MAP file generator binaries
+WORKDIR /mw/mapfilegenerator
+COPY --from=build /publish/mapfilegenerator .
+ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
+
+# Get Pin SDK
+WORKDIR /mw
+RUN wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.21-98484-ge7cd811fd-gcc-linux.tar.gz
+RUN mkdir pin && tar -xf pin-3* -C pin --strip-components 1 && rm pin-3*
+
+# Build Pin tool
+WORKDIR /mw/pintool
+COPY PinTracer PinTracer
+
+ENTRYPOINT ["/bin/bash"]
