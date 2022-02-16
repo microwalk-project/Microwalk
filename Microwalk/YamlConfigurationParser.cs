@@ -200,7 +200,7 @@ public class YamlConfigurationParser
         RootNodes = new Dictionary<string, Node>();
         Constants = new Dictionary<string, string>
         {
-            { "$$CONFIG_PATH$$", Path.GetDirectoryName(path) ?? throw new Exception("Could not resolve configuration directory.") },
+            { "$$CONFIG_PATH$$", Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new Exception("Could not resolve configuration directory.") },
             { "$$CONFIG_FILENAME$$", Path.GetFileNameWithoutExtension(path) }
         };
 
