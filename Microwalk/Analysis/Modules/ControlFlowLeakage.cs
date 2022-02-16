@@ -492,9 +492,8 @@ public class ControlFlowLeakage : AnalysisStage
                         }
 
                         // Restore call stack ID
-                        if(nodeStack.Count == 0)
-                            await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered return entry, but call stack is empty; continuing with root call stack ID");
-                        else
+                        // We do not emit an extra warning when the call stack is empty, as the node stack is already checked
+                        if(callStackIds.Count > 0)
                             currentCallStackId = callStackIds.Pop();
 
                         break;

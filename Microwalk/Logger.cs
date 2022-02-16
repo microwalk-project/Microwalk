@@ -82,11 +82,12 @@ namespace Microwalk
                     case "file":
                     {
                         // Parse file name
-                        if(optionNode.Value is not ValueNode valueNode)
+                        if(optionNode.Value is not ValueNode valueNode || valueNode.Value == null)
                             throw new ConfigurationException($"Invalid node value for \"{optionNode.Key}\"");
 
                         // Initialize file stream
                         // Exceptions will be handled by caller
+                        Directory.CreateDirectory(Path.GetDirectoryName(valueNode.Value)!);
                         _outputFileWriter = new StreamWriter(File.Open(valueNode.Value!, FileMode.Create, FileAccess.Write, FileShare.Read));
                         break;
                     }
