@@ -660,11 +660,7 @@ namespace Microwalk.Plugins.PinTracer
             // Extract optional configuration values
             string? outputDirectoryPath = moduleOptions?.GetChildNodeOrDefault("output-directory")?.AsString();
             if(outputDirectoryPath != null)
-            {
-                _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-                if(!_outputDirectory.Exists)
-                    _outputDirectory.Create();
-            }
+                _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
 
             _storeTraces = moduleOptions?.GetChildNodeOrDefault("store-traces")?.AsBoolean() ?? false;
             if(_storeTraces && outputDirectoryPath == null)

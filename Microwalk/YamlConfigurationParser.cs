@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -203,6 +204,10 @@ public class YamlConfigurationParser
             { "$$CONFIG_PATH$$", Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new Exception("Could not resolve configuration directory.") },
             { "$$CONFIG_FILENAME$$", Path.GetFileNameWithoutExtension(path) }
         };
+        
+        // Load environment variables as constants as well
+        foreach(DictionaryEntry variable in Environment.GetEnvironmentVariables())
+            Constants.Add($"$$${(string)variable.Key}$$$", (string?)variable.Value ?? "");
 
         // Load passed configuration file
         ParseConfigurationFile(path);

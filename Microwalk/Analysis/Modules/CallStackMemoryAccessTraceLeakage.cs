@@ -570,9 +570,7 @@ namespace Microwalk.Analysis.Modules
             
             // Extract output path
             string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory for analysis results.");
-            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-            if(!_outputDirectory.Exists)
-                _outputDirectory.Create();
+            _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);

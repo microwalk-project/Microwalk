@@ -62,9 +62,7 @@ namespace Microwalk.TestcaseGeneration.Modules
 
             // Make sure output directory exists
             var outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
-            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-            if(!_outputDirectory.Exists)
-                _outputDirectory.Create();
+            _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
         }
 
         public override async Task<TraceEntity> NextTestcaseAsync(CancellationToken token)

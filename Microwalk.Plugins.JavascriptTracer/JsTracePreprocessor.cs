@@ -649,17 +649,11 @@ public class JsTracePreprocessor : PreprocessorStage
             throw new ConfigurationException("Missing module configuration.");
 
         string mapDirectoryPath = moduleOptions.GetChildNodeOrDefault("map-directory")?.AsString() ?? throw new ConfigurationException("Missing MAP file directory.");
-        _mapDirectory = new DirectoryInfo(mapDirectoryPath);
-        if(!_mapDirectory.Exists)
-            _mapDirectory.Create();
+        _mapDirectory = Directory.CreateDirectory(mapDirectoryPath);
 
         string? outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString();
         if(outputDirectoryPath != null)
-        {
-            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-            if(!_outputDirectory.Exists)
-                _outputDirectory.Create();
-        }
+            _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
 
         _storeTraces = moduleOptions.GetChildNodeOrDefault("store-traces")?.AsBoolean() ?? false;
         if(_storeTraces && outputDirectoryPath == null)

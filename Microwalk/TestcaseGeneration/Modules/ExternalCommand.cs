@@ -97,9 +97,7 @@ namespace Microwalk.TestcaseGeneration.Modules
 
             // Make sure output directory exists
             var outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
-            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-            if(!_outputDirectory.Exists)
-                _outputDirectory.Create();
+            _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
 
             // Print example command for debugging
             await Logger.LogDebugAsync("Loaded command based testcase generator. Example command: \n> "

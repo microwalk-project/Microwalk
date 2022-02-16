@@ -33,7 +33,7 @@ namespace Microwalk.Plugins.PinTracer
         public override async Task GenerateTraceAsync(TraceEntity traceEntity)
         {
             string logMessagePrefix = $"[trace:pin:{traceEntity.Id}]";
-            
+
             // Debug
             await Logger.LogDebugAsync($"{logMessagePrefix} Trace #" + traceEntity.Id);
 
@@ -72,9 +72,7 @@ namespace Microwalk.Plugins.PinTracer
 
             // Check output directory
             string outputDirectoryPath = moduleOptions.GetChildNodeOrDefault("output-directory")?.AsString() ?? throw new ConfigurationException("Missing output directory.");
-            _outputDirectory = new DirectoryInfo(outputDirectoryPath);
-            if(!_outputDirectory.Exists)
-                _outputDirectory.Create();
+            _outputDirectory = Directory.CreateDirectory(outputDirectoryPath);
 
             // Load image list
             var imagesNode = moduleOptions.GetChildNodeOrDefault("images");
