@@ -50,5 +50,3 @@ ENV PINTOOL=/mw/pintool/obj-intel64/PinTracer.so
 # Prepare working directory
 RUN mkdir -p /mw/work
 ENV WORK_DIR=/mw/work
-
-ENTRYPOINT ["/bin/bash"]
