@@ -8,10 +8,12 @@ COPY Microwalk Microwalk
 COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
 COPY Microwalk.Plugins.PinTracer Microwalk.Plugins.PinTracer
 COPY Tools/MapFileGenerator MapFileGenerator
+COPY Tools/CodeQualityReportGenerator CodeQualityReportGenerator
 
 RUN dotnet publish Microwalk/Microwalk.csproj -c Release -o /publish/microwalk
 RUN dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj -c Release -o /publish/microwalk
 RUN dotnet publish MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
+RUN dotnet publish CodeQualityReportGenerator/CodeQualityReportGenerator.csproj -c Release -o /publish/codequalityreportgenerator
 
 
 
@@ -23,7 +25,9 @@ FROM mcr.microsoft.com/dotnet/runtime:6.0-focal
 RUN apt-get update -y && apt-get install -y \
   wget \
   make \
-  g++
+  g++ \
+  dwarfdump \
+  jq
 
 # Copy Microwalk binaries
 WORKDIR /mw/microwalk
@@ -34,6 +38,11 @@ ENV MICROWALK_PATH=/mw/microwalk
 WORKDIR /mw/mapfilegenerator
 COPY --from=build /publish/mapfilegenerator .
 ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
+
+# Copy cody quality report generator binaries
+WORKDIR /mw/codequalityreportgenerator
+COPY --from=build /publish/codequalityreportgenerator .
+ENV CQR_GENERATOR_PATH=/mw/codequalityreportgenerator
 
 # Get Pin SDK
 WORKDIR /mw

@@ -69,6 +69,11 @@ public class ControlFlowLeakage : AnalysisStage
     private readonly Dictionary<ulong, string> _formattedImageAddresses = new();
 
     /// <summary>
+    /// Lookup for image addresses (used for machine-readable call stack dump, which needs to preserve image offsets).
+    /// </summary>
+    private readonly Dictionary<ulong, (string imageName, uint offset)> _imageAddresses = new();
+
+    /// <summary>
     /// Lookup for formatted heap/stack addresses.
     /// </summary>
     private readonly Dictionary<ulong, string> _formattedMemoryAddresses = new();
@@ -1194,9 +1199,15 @@ public class ControlFlowLeakage : AnalysisStage
         (double mean, double standardDeviation) ComputeConditionalGuessingEntropyScore((double mean, double standardDeviation) entropy) =>
             (100 - 100 * (entropy.mean - 1) / (idealConditionalGuessingEntropy - 1), 100 * entropy.standardDeviation / (idealConditionalGuessingEntropy - 1));
 
+        // Writer for human-readable, formatted call stack
+        await using var formattedCallStacksWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.txt")));
+
+        // Write for machine-readable call stack
+        await using var callStacksWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.json")));
+        await callStacksWriter.WriteAsync("{\"CallStack\":[");
+
         // Write call stacks
         await Logger.LogInfoAsync($"{logMessagePrefix} Writing analysis result");
-        await using var callStacksWriter = new StreamWriter(File.Create(Path.Combine(_outputDirectory.FullName, "call-stacks.txt")));
         Stack<(int Level, CallStackNode Node, int ChildIndex)> callStack = new();
         int currentChildIndex = 0;
         currentCallStackNode = rootCallStackNode;
@@ -1209,7 +1220,17 @@ public class ControlFlowLeakage : AnalysisStage
             if(nodeIsInteresting && currentChildIndex == 0 && currentCallStackNode.Id != _rootNodeCallStackId)
             {
                 // Write call stack entry info
-                await callStacksWriter.WriteLineAsync($"{indentation}{_formattedImageAddresses[currentCallStackNode.SourceInstructionId]} -> {_formattedImageAddresses[currentCallStackNode.TargetInstructionId]} (${currentCallStackNode.Id:X16})");
+                await formattedCallStacksWriter.WriteLineAsync($"{indentation}{_formattedImageAddresses[currentCallStackNode.SourceInstructionId]} -> {_formattedImageAddresses[currentCallStackNode.TargetInstructionId]} (${currentCallStackNode.Id:X16})");
+                await callStacksWriter.WriteAsync($"{{" +
+                                                  $"\"CallStackId\":\"{currentCallStackNode.Id:X16}\"," +
+                                                  $"\"SourceInstructionImageName\":\"{_imageAddresses[currentCallStackNode.SourceInstructionId].imageName}\"," +
+                                                  $"\"SourceInstructionOffset\":{_imageAddresses[currentCallStackNode.SourceInstructionId].offset}," +
+                                                  $"\"SourceInstructionFormatted\":\"{_formattedImageAddresses[currentCallStackNode.SourceInstructionId]}\"," +
+                                                  $"\"TargetInstructionImageName\":\"{_imageAddresses[currentCallStackNode.TargetInstructionId].imageName}\"," +
+                                                  $"\"TargetInstructionOffset\":{_imageAddresses[currentCallStackNode.TargetInstructionId].offset}," +
+                                                  $"\"TargetInstructionFormatted\":\"{_formattedImageAddresses[currentCallStackNode.TargetInstructionId]}\"," +
+                                                  $"\"LeakageEntries\":["
+                );
 
                 // Write analysis results
                 foreach(var analysisResult in currentCallStackNode.InstructionAnalysisData)
@@ -1222,8 +1243,14 @@ public class ControlFlowLeakage : AnalysisStage
                         AnalysisData.InstructionType.MemoryAccess => "memory access",
                         _ => throw new Exception("Unexpected instruction type")
                     };
-                    await callStacksWriter.WriteLineAsync($"{indentation}  [L] {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
-                    await callStacksWriter.WriteLineAsync($"{indentation}    - Number of calls: {analysisResult.Value.TestcaseIdTrees.Count}");
+                    await formattedCallStacksWriter.WriteLineAsync($"{indentation}  [L] {_formattedImageAddresses[analysisResult.Key]} ({instructionTypeName})");
+                    await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Number of calls: {analysisResult.Value.TestcaseIdTrees.Count}");
+                    await callStacksWriter.WriteAsync($"{{" +
+                                                      $"\"ImageName\":\"{_imageAddresses[analysisResult.Key].imageName}\"," +
+                                                      $"\"Offset\":{_imageAddresses[analysisResult.Key].offset}," +
+                                                      $"\"Type\":\"{instructionTypeName}\"," +
+                                                      $"\"NumberOfCalls\":{analysisResult.Value.TestcaseIdTrees.Count},"
+                    );
 
                     // Compute measures
                     List<int> treeDepths = new();
@@ -1260,29 +1287,59 @@ public class ControlFlowLeakage : AnalysisStage
                     // Print individual measures
                     {
                         var subtreeDepth = ComputeMean(treeDepths.Select(v => (double)v));
-                        await callStacksWriter.WriteLineAsync($"{indentation}    - Tree depth: {subtreeDepth.mean:F2} +/- {subtreeDepth.standardDeviation:F2}, min {treeDepths.Min()}, max {treeDepths.Max()}");
+                        await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Tree depth: {subtreeDepth.mean:F2} +/- {subtreeDepth.standardDeviation:F2}, min {treeDepths.Min()}, max {treeDepths.Max()}");
+                        await callStacksWriter.WriteAsync($"\"TreeDepth\":{{" +
+                                                          $"\"Mean\":{subtreeDepth.mean:F2}," +
+                                                          $"\"StandardDeviation\":{subtreeDepth.standardDeviation:F2}," +
+                                                          $"\"Minimum\":{treeDepths.Min()}," +
+                                                          $"\"Maximum\":{treeDepths.Max()}" +
+                                                          $"}},"
+                        );
 
                         var conditionalGuessingEntropy = ComputeMean(conditionalGuessingEntropies);
                         var conditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(conditionalGuessingEntropy));
-                        await callStacksWriter.WriteLineAsync($"{indentation}    - Cond. guessing entropy: {conditionalGuessingEntropy.mean:F2} +/- {conditionalGuessingEntropy.standardDeviation:F2}, min {conditionalGuessingEntropies.Min():F2}, max {conditionalGuessingEntropies.Max():F2}, score {conditionalGuessingEntropyScore.mean:F2} +/- {conditionalGuessingEntropyScore.standardDeviation:F2}");
+                        await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Cond. guessing entropy: {conditionalGuessingEntropy.mean:F2} +/- {conditionalGuessingEntropy.standardDeviation:F2}, min {conditionalGuessingEntropies.Min():F2}, max {conditionalGuessingEntropies.Max():F2}, score {conditionalGuessingEntropyScore.mean:F2} +/- {conditionalGuessingEntropyScore.standardDeviation:F2}");
+                        await callStacksWriter.WriteAsync($"\"ConditionalGuessingEntropy\":{{" +
+                                                          $"\"Mean\":{conditionalGuessingEntropy.mean:F2}," +
+                                                          $"\"StandardDeviation\":{conditionalGuessingEntropy.standardDeviation:F2}," +
+                                                          $"\"Minimum\":{conditionalGuessingEntropies.Min():F2}," +
+                                                          $"\"Maximum\":{conditionalGuessingEntropies.Max():F2}," +
+                                                          $"\"Score\":{conditionalGuessingEntropyScore.mean:F2}," +
+                                                          $"\"ScoreStandardDeviation\":{conditionalGuessingEntropyScore.standardDeviation:F2}" +
+                                                          $"}},"
+                        );
 
                         var minConditionalGuessingEntropy = ComputeMean(minConditionalGuessingEntropies);
                         var minConditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(minConditionalGuessingEntropy));
-                        await callStacksWriter.WriteLineAsync($"{indentation}    - Min. cond. guessing entropy: {minConditionalGuessingEntropy.mean:F2} +/- {minConditionalGuessingEntropy.standardDeviation:F2}, min {minConditionalGuessingEntropies.Min():F2}, max {minConditionalGuessingEntropies.Max():F2}, score {minConditionalGuessingEntropyScore.mean:F2} +/- {minConditionalGuessingEntropyScore.standardDeviation:F2}");
+                        await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Min. cond. guessing entropy: {minConditionalGuessingEntropy.mean:F2} +/- {minConditionalGuessingEntropy.standardDeviation:F2}, min {minConditionalGuessingEntropies.Min():F2}, max {minConditionalGuessingEntropies.Max():F2}, score {minConditionalGuessingEntropyScore.mean:F2} +/- {minConditionalGuessingEntropyScore.standardDeviation:F2}");
+                        await callStacksWriter.WriteAsync($"\"MinimumConditionalGuessingEntropy\":{{" +
+                                                          $"\"Mean\":{minConditionalGuessingEntropy.mean:F2}," +
+                                                          $"\"StandardDeviation\":{minConditionalGuessingEntropy.standardDeviation:F2}," +
+                                                          $"\"Minimum\":{minConditionalGuessingEntropies.Min():F2}," +
+                                                          $"\"Maximum\":{minConditionalGuessingEntropies.Max():F2}," +
+                                                          $"\"Score\":{minConditionalGuessingEntropyScore.mean:F2}," +
+                                                          $"\"ScoreStandardDeviation\":{minConditionalGuessingEntropyScore.standardDeviation:F2}" +
+                                                          $"}},"
+                        );
                     }
 
                     if(_includeTestcasesInCallStacks)
                     {
-                        await callStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
+                        await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Testcase IDs:");
                         foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
                         {
                             testcaseIdTree.Render(stringBuilder, $"{indentation}     ", $"{indentation}     ", testcaseIdTree.TestcaseIds.Count);
-                            await callStacksWriter.WriteAsync(stringBuilder.ToString());
+                            await formattedCallStacksWriter.WriteAsync(stringBuilder.ToString());
 
                             stringBuilder.Clear();
                         }
                     }
+
+                    await callStacksWriter.WriteAsync("},");
                 }
+
+                await callStacksWriter.WriteAsync($"]," +
+                                                  $"\"Children\":[");
             }
 
             // Iterate through children
@@ -1298,7 +1355,11 @@ public class ControlFlowLeakage : AnalysisStage
             }
             else
             {
-                // All children are processed, go back up by one level, if there is any
+                // All children are processed
+                if(nodeIsInteresting && currentChildIndex == currentCallStackNode.Children.Count && currentCallStackNode.Id != _rootNodeCallStackId)
+                    await callStacksWriter.WriteAsync("]},");
+
+                // Go back up by one level, if there is any
                 if(callStack.Any())
                 {
                     (level, currentCallStackNode, currentChildIndex) = callStack.Pop();
@@ -1308,6 +1369,8 @@ public class ControlFlowLeakage : AnalysisStage
                     break;
             }
         }
+        
+        await callStacksWriter.WriteAsync("]}");
     }
 
     protected override async Task InitAsync(MappingNode? moduleOptions)
@@ -1359,6 +1422,8 @@ public class ControlFlowLeakage : AnalysisStage
         // Address already known?
         if(!_formattedImageAddresses.ContainsKey(key))
             _formattedImageAddresses.TryAdd(key, _mapFileCollection.FormatAddress(imageFileInfo, address));
+        if(!_imageAddresses.ContainsKey(key))
+            _imageAddresses.Add(key, (imageFileInfo.Name, address));
 
         return key;
     }
