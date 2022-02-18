@@ -12,7 +12,7 @@ namespace Microwalk.FrameworkBase.Utilities
     /// </summary>
     public class MapFile
     {
-        private readonly ILogger _logger;
+        private readonly ILogger? _logger;
 
         /// <summary>
         /// Sorted symbol addresses, used for finding the nearest match of a given address.
@@ -27,13 +27,13 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <summary>
         /// Returns the name of the associated image file.
         /// </summary>
-        public string? ImageName{ get; private set; }
+        public string? ImageName { get; private set; }
 
         /// <summary>
         /// Creates a new empty MAP file object. Load a MAP file using the <see cref="InitializeFromFileAsync"/> method.
         /// </summary>
-        /// <param name="logger">Logger instance.</param>
-        public MapFile(ILogger logger)
+        /// <param name="logger">Logger instance. If none is given, logging is disabled.</param>
+        public MapFile(ILogger? logger)
         {
             _logger = logger;
 
@@ -62,9 +62,11 @@ namespace Microwalk.FrameworkBase.Utilities
             // Read image name
             if(mapFileLines.Length < 1 || string.IsNullOrWhiteSpace(mapFileLines[0]))
             {
-                await _logger.LogErrorAsync("Invalid MAP file. A MAP file has to contain the associated image name in the very first line.");
+                if(_logger != null)
+                    await _logger.LogErrorAsync("Invalid MAP file. A MAP file has to contain the associated image name in the very first line.");
                 throw new InvalidDataException("Invalid MAP file.");
             }
+
             ImageName = mapFileLines[0];
 
             // Parse entries
@@ -81,18 +83,21 @@ namespace Microwalk.FrameworkBase.Utilities
                    || match.Groups.Count != 3
                    || !uint.TryParse(match.Groups[1].Value, NumberStyles.HexNumber, null, out uint entryAddress))
                 {
-                    await _logger.LogWarningAsync($"Ignoring unrecognized line in MAP file: {line}");
+                    if(_logger != null)
+                        await _logger.LogWarningAsync($"Ignoring unrecognized line in MAP file: {line}");
                     continue;
                 }
+
                 string entrySymbolName = match.Groups[2].Value.TrimEnd();
-                
+
                 // Check whether address is already known
                 if(_symbolNames.ContainsKey(entryAddress))
                 {
-                    await _logger.LogWarningAsync($"Ignoring duplicate MAP entry for address {entryAddress:x8}");
+                    if(_logger != null)
+                        await _logger.LogWarningAsync($"Ignoring duplicate MAP entry for address {entryAddress:x8}");
                     continue;
                 }
-                    
+
                 // Store entry in lookup tables
                 _addresses.Add(entryAddress);
                 _symbolNames.Add(entryAddress, entrySymbolName);
