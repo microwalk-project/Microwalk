@@ -7,13 +7,13 @@ WORKDIR /src
 COPY Microwalk Microwalk
 COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
 COPY Microwalk.Plugins.PinTracer Microwalk.Plugins.PinTracer
-COPY Tools/MapFileGenerator MapFileGenerator
-COPY Tools/CodeQualityReportGenerator CodeQualityReportGenerator
+COPY Tools/MapFileGenerator Tools/MapFileGenerator
+COPY Tools/CodeQualityReportGenerator Tools/CodeQualityReportGenerator
 
 RUN dotnet publish Microwalk/Microwalk.csproj -c Release -o /publish/microwalk
 RUN dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj -c Release -o /publish/microwalk
-RUN dotnet publish MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
-RUN dotnet publish CodeQualityReportGenerator/CodeQualityReportGenerator.csproj -c Release -o /publish/codequalityreportgenerator
+RUN dotnet publish Tools/MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
+RUN dotnet publish Tools/CodeQualityReportGenerator/CodeQualityReportGenerator.csproj -c Release -o /publish/codequalityreportgenerator
 
 
 
