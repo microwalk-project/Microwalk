@@ -1,0 +1,60 @@
+
+## BUILD ##
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+
+WORKDIR /src
+
+COPY Microwalk Microwalk
+COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
+COPY Microwalk.Plugins.JavascriptTracer Microwalk.Plugins.JavascriptTracer
+COPY Tools/MapFileGenerator MapFileGenerator
+COPY Tools/CodeQualityReportGenerator CodeQualityReportGenerator
+
+RUN dotnet publish Microwalk/Microwalk.csproj -c Release -o /publish/microwalk
+RUN dotnet publish Microwalk.Plugins.JavascriptTracer/Microwalk.Plugins.JavascriptTracer.csproj -c Release -o /publish/microwalk
+RUN dotnet publish MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
+RUN dotnet publish CodeQualityReportGenerator/CodeQualityReportGenerator.csproj -c Release -o /publish/codequalityreportgenerator
+
+
+## RUNTIME ##
+
+FROM mcr.microsoft.com/dotnet/runtime:6.0-focal
+
+# Get some dependencies
+RUN apt-get update -y && apt-get install -y \
+  wget \
+  git \
+  jq
+RUN wget -q -O - https://deb.nodesource.com/setup_17.x | bash -
+RUN apt-get install -y nodejs
+
+# Copy Microwalk binaries
+WORKDIR /mw/microwalk
+COPY --from=build /publish/microwalk .
+ENV MICROWALK_PATH=/mw/microwalk
+
+# Copy MAP file generator binaries
+WORKDIR /mw/mapfilegenerator
+COPY --from=build /publish/mapfilegenerator .
+ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
+
+# Copy cody quality report generator binaries
+WORKDIR /mw/codequalityreportgenerator
+COPY --from=build /publish/codequalityreportgenerator .
+ENV CQR_GENERATOR_PATH=/mw/codequalityreportgenerator
+
+# Get Jalangi2 code
+WORKDIR /mw
+RUN git clone --depth 1 https://github.com/Samsung/jalangi2.git
+WORKDIR /mw/jalangi2
+RUN npm install
+ENV JALANGI2_PATH=/mw/jalangi2
+
+# Copy analysis script
+WORKDIR /mw/jstracer
+COPY JavascriptTracer .
+ENV TRACE_TOOL=/mw/jstracer/analysis.js
+
+# Prepare working directory
+RUN mkdir -p /mw/work
+ENV WORK_DIR=/mw/work
