@@ -17,17 +17,17 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <summary>
         /// Sorted symbol addresses, used for finding the nearest match of a given address.
         /// </summary>
-        private List<uint> _addresses;
+        private readonly List<uint> _addresses = new();
 
         /// <summary>
         /// Maps symbol addresses to symbol names.
         /// </summary>
-        private Dictionary<uint, string> _symbolNames;
+        public Dictionary<uint, string> SymbolNames { get; } = new();
 
         /// <summary>
         /// Returns the name of the associated image file.
         /// </summary>
-        public string? ImageName { get; private set; }
+        public string ImageName { get; private set; } = ""; // Will be initialized when loading the MAP file
 
         /// <summary>
         /// Creates a new empty MAP file object. Load a MAP file using the <see cref="InitializeFromFileAsync"/> method.
@@ -36,9 +36,6 @@ namespace Microwalk.FrameworkBase.Utilities
         public MapFile(ILogger? logger)
         {
             _logger = logger;
-
-            _addresses = new List<uint>();
-            _symbolNames = new Dictionary<uint, string>();
         }
 
         /// <summary>
@@ -52,10 +49,6 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <returns></returns>
         public async Task InitializeFromFileAsync(string mapFileName)
         {
-            // Initialize state
-            _addresses = new List<uint>();
-            _symbolNames = new Dictionary<uint, string>();
-
             // Read entire map file
             var mapFileLines = await File.ReadAllLinesAsync(mapFileName);
 
@@ -91,7 +84,7 @@ namespace Microwalk.FrameworkBase.Utilities
                 string entrySymbolName = match.Groups[2].Value.TrimEnd();
 
                 // Check whether address is already known
-                if(_symbolNames.ContainsKey(entryAddress))
+                if(SymbolNames.ContainsKey(entryAddress))
                 {
                     if(_logger != null)
                         await _logger.LogWarningAsync($"Ignoring duplicate MAP entry for address {entryAddress:x8}");
@@ -100,7 +93,7 @@ namespace Microwalk.FrameworkBase.Utilities
 
                 // Store entry in lookup tables
                 _addresses.Add(entryAddress);
-                _symbolNames.Add(entryAddress, entrySymbolName);
+                SymbolNames.Add(entryAddress, entrySymbolName);
             }
 
             // Sort address lookup, to allow binary search
@@ -119,7 +112,7 @@ namespace Microwalk.FrameworkBase.Utilities
             if(index >= 0)
             {
                 // Found, this is a symbol base address
-                return (address, _symbolNames[address]);
+                return (address, SymbolNames[address]);
             }
 
             // Not a base address, but BinarySearch yields the negated index of the next larger element
@@ -132,7 +125,7 @@ namespace Microwalk.FrameworkBase.Utilities
 
             // Get the index of the next smaller element
             --index;
-            return (_addresses[index], _symbolNames[_addresses[index]]);
+            return (_addresses[index], SymbolNames[_addresses[index]]);
         }
     }
 }

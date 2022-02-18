@@ -7,4 +7,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj" />
+    </ItemGroup>
+
 </Project>
