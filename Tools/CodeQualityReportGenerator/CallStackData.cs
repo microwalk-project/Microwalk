@@ -40,7 +40,7 @@ public class CallStackEntry
             // We may have to look at earlier instructions, if a statement spans more than one
             (string fileName, int lineNumber, int columnNumber) statementInfo = ("", 0, 0);
             bool found = false;
-            for(uint i = 0; i < 16; ++i)
+            for(uint i = 0; i < 4096; ++i)
             {
                 if(statements.TryGetValue((leakageEntry.ImageName, leakageEntry.Offset - i), out statementInfo))
                 {

@@ -38,7 +38,7 @@ WORKDIR /mw/mapfilegenerator
 COPY --from=build /publish/mapfilegenerator .
 ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
 
-# Copy cody quality report generator binaries
+# Copy code quality report generator binaries
 WORKDIR /mw/codequalityreportgenerator
 COPY --from=build /publish/codequalityreportgenerator .
 ENV CQR_GENERATOR_PATH=/mw/codequalityreportgenerator
