@@ -162,6 +162,7 @@ namespace Microwalk
             };
 
             // Load configuration file
+            ProcessMonitor? processMonitor = null;
             try
             {
                 // Load configuration file
@@ -174,6 +175,14 @@ namespace Microwalk
                 // Initialize logger
                 _logger = new Logger(generalConfigurationNode?.Children.GetValueOrDefault("logger") as MappingNode);
                 await _logger.LogDebugAsync("Loaded configuration file, initialized logger");
+
+                // Run process monitor?
+                var monitorConfigurationNode = generalConfigurationNode?.GetChildNodeOrDefault("monitor") as MappingNode;
+                if(monitorConfigurationNode?.GetChildNodeOrDefault("enable")?.AsBoolean() ?? false)
+                {
+                    await _logger.LogInfoAsync("Enabling process monitor");
+                    processMonitor = new ProcessMonitor(monitorConfigurationNode, _logger);
+                }
 
                 // Read stages
                 await _logger.LogDebugAsync("Reading pipeline configuration");
@@ -404,6 +413,10 @@ namespace Microwalk
                 await _moduleConfiguration.PreprocessorStageModule.UnInitAsync();
                 await Task.WhenAll(_moduleConfiguration.AnalysesStageModules.Select(module => module.UnInitAsync()));
 
+                // Statistics       
+                if(processMonitor != null)
+                    await processMonitor.ConcludeAsync();
+
                 // Done
                 await _logger.LogInfoAsync("Program completed.");
             }
@@ -426,6 +439,7 @@ namespace Microwalk
             }
             finally
             {
+                processMonitor?.Dispose();
                 _logger?.Dispose();
                 globalCancellationToken.Dispose();
             }
