@@ -94,6 +94,7 @@ public class LeakageInfo
     public int NumberOfCalls { get; set; }
 
     public StatisticsEntry TreeDepth { get; set; }
+    public StatisticsEntry MutualInformation { get; set; }
     public StatisticsEntry ConditionalGuessingEntropy { get; set; }
     public StatisticsEntry MinimumConditionalGuessingEntropy { get; set; }
 }

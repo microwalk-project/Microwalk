@@ -1254,6 +1254,7 @@ public class ControlFlowLeakage : AnalysisStage
 
                     // Compute measures
                     List<int> treeDepths = new();
+                    List<double> mutualInformations = new();
                     List<double> conditionalGuessingEntropies = new();
                     List<double> minConditionalGuessingEntropies = new();
                     foreach(var testcaseIdTree in analysisResult.Value.TestcaseIdTrees)
@@ -1262,25 +1263,28 @@ public class ControlFlowLeakage : AnalysisStage
                         testcaseIdTree.Measure(leafTestcaseCounts, out var treeDepth);
 
                         // Conditional guessing entropy for leaves
-                        double conditionalGuessingEntropy = 0;
-                        double minimumConditionalGuessingEntropy = double.MaxValue;
+                        double mutualInformation = 0;
+                        long conditionalGuessingEntropy = 0;
+                        long minimumConditionalGuessingEntropy = long.MaxValue;
                         foreach(var leaf in leafTestcaseCounts)
                         {
-                            // Probability for this specific trace
-                            double py = (double)leaf / totalTestcaseCount;
+                            mutualInformation += leaf * Math.Log2((double)totalTestcaseCount / leaf);
 
                             // We want to get the remaining guessing entropy for the testcases X' ⊂ X in this leaf
                             // Since those are uniformly distributed ( Pr[X'=x] = 1/n ), we can use the Gaussian sum formula
                             // to simplify the term: G[X'] = Σ[k= 1...|X'|] k * 1/|X'| = (|X'| + 1) / 2
-                            double gX2 = 0.5 * (leaf + 1);
-                            conditionalGuessingEntropy += py * gX2;
+                            //
+                            // The division by 2 is moved outside the loop, in order to improve numeric stability
+                            long gX2 = leaf + 1;
+                            conditionalGuessingEntropy += leaf * gX2;
 
                             if(gX2 < minimumConditionalGuessingEntropy)
                                 minimumConditionalGuessingEntropy = gX2;
                         }
 
-                        conditionalGuessingEntropies.Add(conditionalGuessingEntropy);
-                        minConditionalGuessingEntropies.Add(minimumConditionalGuessingEntropy);
+                        mutualInformations.Add(mutualInformation / totalTestcaseCount);
+                        conditionalGuessingEntropies.Add((0.5 * conditionalGuessingEntropy) / totalTestcaseCount);
+                        minConditionalGuessingEntropies.Add(0.5 * minimumConditionalGuessingEntropy);
                         treeDepths.Add(treeDepth);
                     }
 
@@ -1293,6 +1297,16 @@ public class ControlFlowLeakage : AnalysisStage
                                                           $"\"StandardDeviation\":{subtreeDepth.standardDeviation:F2}," +
                                                           $"\"Minimum\":{treeDepths.Min()}," +
                                                           $"\"Maximum\":{treeDepths.Max()}" +
+                                                          $"}},"
+                        );
+
+                        var mutualInformation = ComputeMean(mutualInformations);
+                        await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Mutual information: {mutualInformation.mean:F2} +/- {mutualInformation.standardDeviation:F2} bits, min {mutualInformations.Min():F2} bits, max {mutualInformations.Max():F2} bits");
+                        await callStacksWriter.WriteAsync($"\"MutualInformation\":{{" +
+                                                          $"\"Mean\":{mutualInformation.mean:F2}," +
+                                                          $"\"StandardDeviation\":{mutualInformation.standardDeviation:F2}," +
+                                                          $"\"Minimum\":{mutualInformations.Min():F2}," +
+                                                          $"\"Maximum\":{mutualInformations.Max():F2}," +
                                                           $"}},"
                         );
 
@@ -1369,7 +1383,7 @@ public class ControlFlowLeakage : AnalysisStage
                     break;
             }
         }
-        
+
         await callStacksWriter.WriteAsync("]}");
     }
 
