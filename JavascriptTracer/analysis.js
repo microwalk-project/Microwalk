@@ -11,11 +11,12 @@ const traceDirectory = process.env.JS_TRACE_DIRECTORY;
 
 let currentTestcaseId = -1;
 let traceData = []; // Prefix mode
+const traceDataSizeLimit = 1000;
 let scriptsFile = fs.openSync(`${traceDirectory}/scripts.txt`, "w");
 
 let knownCodeFiles = {};
 
-function storeTrace()
+function persistTrace()
 {
 	let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
 	
@@ -24,10 +25,19 @@ function storeTrace()
 	let traceFile = fs.openSync(traceFilePath, "w");
 	
 	console.log(`Store`);
-	fs.writeSync(traceFile, traceData.join('\n'));
+	fs.writeSync(traceFile, traceData.join('\n'), { flag: `a+` });
 	
 	console.log(`Close`);
 	fs.closeSync(traceFile);
+}
+
+function appendTraceData(data)
+{
+    if(traceData.length >= traceDataSizeLimit) {
+        persistTrace();
+        traceData = [];
+    }
+    traceData?.push(data);
 }
 
 (function(sandbox)
@@ -80,7 +90,7 @@ function storeTrace()
             {
                 // Ensure that old trace has been written (prefix mode)
                 if(traceData !== null)
-                    storeTrace();
+                    persistTrace();
 
                 // Enter new testcase
                 ++currentTestcaseId;
@@ -99,7 +109,7 @@ function storeTrace()
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            traceData?.push(`Call;${formatIid(iid)};${functionInfo};${functionName}`);
+            appendTraceData(`Call;${formatIid(iid)};${functionInfo};${functionName}`);
 
             return {f: f, base: base, args: args, skip: false};
         };
@@ -118,12 +128,12 @@ function storeTrace()
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            traceData?.push(`Ret2;${functionInfo};${formatIid(iid)}`);
+            appendTraceData(`Ret2;${functionInfo};${formatIid(iid)}`);
 
             if(f && f.name === testcaseEndFunctionName)
             {
                 // Close trace
-                storeTrace();
+                persistTrace();
                 traceFile = null;
             }
 
@@ -145,7 +155,7 @@ function storeTrace()
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                traceData?.push(`Get;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                appendTraceData(`Get;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
             }
 
             return {base: base, offset: offset, skip: false};
@@ -162,7 +172,7 @@ function storeTrace()
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                traceData?.push(`Put;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                appendTraceData(`Put;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
             }
 
             // If val is an anonymous function, use the property as its name
@@ -174,21 +184,21 @@ function storeTrace()
 
         this._return = function(iid, val)
         {
-            traceData?.push(`Ret1;${formatIid(iid)}`);
+            appendTraceData(`Ret1;${formatIid(iid)}`);
 
             return {result: val};
         };
 
         this.conditional = function(iid, result)
         {
-            traceData?.push(`Cond;${formatIid(iid)}`);
+            appendTraceData(`Cond;${formatIid(iid)}`);
 			
             return {result: result};
         };
 
         this.endExpression = function(iid)
         {
-            traceData?.push(`Expr;${formatIid(iid)}`);
+            appendTraceData(`Expr;${formatIid(iid)}`);
         };
 
         this.onReady = function(cb)
