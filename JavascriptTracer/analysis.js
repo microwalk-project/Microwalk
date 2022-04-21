@@ -11,7 +11,8 @@ const traceDirectory = process.env.JS_TRACE_DIRECTORY;
 
 let currentTestcaseId = -1;
 let traceData = []; // Prefix mode
-const traceDataSizeLimit = 1000;
+const traceDataSizeLimit = 1000000;
+let previousTraceFilePath = ""
 let scriptsFile = fs.openSync(`${traceDirectory}/scripts.txt`, "w");
 
 let knownCodeFiles = {};
@@ -19,15 +20,25 @@ let knownCodeFiles = {};
 function persistTrace()
 {
 	let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
+
+    let writingToNewTrace = false;
+    if(traceFilePath !== previousTraceFilePath) {
+        writingToNewTrace = true;
+        previousTraceFilePath = traceFilePath;
+    }
+
+    let traceFile;
+    if (writingToNewTrace) {
+        console.log(`Creating ${traceFilePath}`);
+        traceFile = fs.openSync(traceFilePath, "w");
+    } else {
+        traceFile = fs.openSync(traceFilePath, "a+");
+    }
+
+	// console.log(`Store`);
+	fs.writeSync(traceFile, traceData.join('\n')); // , { flag: `a+` }
 	
-	console.log(`Open ${traceFilePath}`);
-	
-	let traceFile = fs.openSync(traceFilePath, "w");
-	
-	console.log(`Store`);
-	fs.writeSync(traceFile, traceData.join('\n'), { flag: `a+` });
-	
-	console.log(`Close`);
+	// console.log(`Close`);
 	fs.closeSync(traceFile);
 }
 
