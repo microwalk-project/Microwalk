@@ -35,10 +35,9 @@ function persistTrace()
         traceFile = fs.openSync(traceFilePath, "a+");
     }
 
-	// console.log(`Store`);
-	fs.writeSync(traceFile, traceData.join('\n')); // , { flag: `a+` }
-	
-	// console.log(`Close`);
+    fs.writeSync(traceFile, traceData.join('\n'));
+    fs.writeSync(traceFile, '\n');
+
 	fs.closeSync(traceFile);
 }
 
