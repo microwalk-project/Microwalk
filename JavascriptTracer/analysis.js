@@ -19,7 +19,7 @@ let knownCodeFiles = {};
 
 function persistTrace()
 {
-	let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
+    let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
 
     let writingToNewTrace = false;
     if(traceFilePath !== previousTraceFilePath) {
@@ -35,18 +35,21 @@ function persistTrace()
         traceFile = fs.openSync(traceFilePath, "a+");
     }
 
+    console.log('Storing with id: ' + currentTestcaseId);
+
     fs.writeSync(traceFile, traceData.join('\n'));
     fs.writeSync(traceFile, '\n');
 
-	fs.closeSync(traceFile);
+    fs.closeSync(traceFile);
 }
 
 function appendTraceData(data)
 {
-    if(traceData.length >= traceDataSizeLimit) {
+    if (traceData.length >= traceDataSizeLimit) {
         persistTrace();
         traceData = [];
     }
+
     traceData?.push(data);
 }
 
@@ -98,13 +101,16 @@ function appendTraceData(data)
             // Handle special testcase begin marker function
             if(functionName === testcaseBeginFunctionName)
             {
+                console.log('invokeFunPre: Called\n')
                 // Ensure that old trace has been written (prefix mode)
-                if(traceData !== null)
+                if(traceData.length > 0)
+                    console.log('invokeFunPre: persisting trace')
                     persistTrace();
+                    traceData = [];
 
                 // Enter new testcase
                 ++currentTestcaseId;
-				traceData = [];
+                console.log('invokeFunPre: Testcase incremented')
             }
 
             // Get function information
@@ -142,9 +148,10 @@ function appendTraceData(data)
 
             if(f && f.name === testcaseEndFunctionName)
             {
+                console.log('Persisting trace in invokeFun')
                 // Close trace
                 persistTrace();
-                traceFile = null;
+                traceData = [];
             }
 
             return {result: result};
