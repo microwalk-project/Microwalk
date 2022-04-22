@@ -35,8 +35,6 @@ function persistTrace()
         traceFile = fs.openSync(traceFilePath, "a+");
     }
 
-    console.log('Storing with id: ' + currentTestcaseId);
-
     fs.writeSync(traceFile, traceData.join('\n'));
     fs.writeSync(traceFile, '\n');
 
@@ -101,16 +99,13 @@ function appendTraceData(data)
             // Handle special testcase begin marker function
             if(functionName === testcaseBeginFunctionName)
             {
-                console.log('invokeFunPre: Called\n')
                 // Ensure that old trace has been written (prefix mode)
                 if(traceData.length > 0)
-                    console.log('invokeFunPre: persisting trace')
                     persistTrace();
                     traceData = [];
 
                 // Enter new testcase
                 ++currentTestcaseId;
-                console.log('invokeFunPre: Testcase incremented')
             }
 
             // Get function information
@@ -148,7 +143,6 @@ function appendTraceData(data)
 
             if(f && f.name === testcaseEndFunctionName)
             {
-                console.log('Persisting trace in invokeFun')
                 // Close trace
                 persistTrace();
                 traceData = [];
