@@ -9,29 +9,40 @@ const testcaseEndFunctionName = "__MICROWALK_testcaseEnd";
 
 const traceDirectory = process.env.JS_TRACE_DIRECTORY;
 
-let currentTestcaseId = -1;
-let traceData = []; // Prefix mode
+let currentTestcaseId = -1; // Prefix mode
+let traceData = [];
 const traceDataSizeLimit = 1000000;
 let previousTraceFilePath = ""
 let scriptsFile = fs.openSync(`${traceDirectory}/scripts.txt`, "w");
 
+let nextCodeFileIndex = 0;
 let knownCodeFiles = {};
+
+// Compressed lines from the trace prefix can be reused in all other traces
+let nextCompressedLineIndex = 0;
+let compressedLines = {};
+let prefixNextCompressedLineIndex = 0;
+let prefixCompressedLines = {};
 
 function persistTrace()
 {
     let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
 
     let writingToNewTrace = false;
-    if(traceFilePath !== previousTraceFilePath) {
+    if(traceFilePath !== previousTraceFilePath)
+    {
         writingToNewTrace = true;
         previousTraceFilePath = traceFilePath;
     }
 
     let traceFile;
-    if (writingToNewTrace) {
+    if(writingToNewTrace)
+    {
         console.log(`Creating ${traceFilePath}`);
         traceFile = fs.openSync(traceFilePath, "w");
-    } else {
+    }
+    else
+    {
         traceFile = fs.openSync(traceFilePath, "a+");
     }
 
@@ -43,17 +54,34 @@ function persistTrace()
 
 function appendTraceData(data)
 {
-    if (traceData.length >= traceDataSizeLimit) {
+    if(traceData.length >= traceDataSizeLimit)
+    {
         persistTrace();
         traceData = [];
     }
 
-    traceData?.push(data);
+    traceData?.push(getCompressedLine(data));
+}
+
+function getCompressedLine(line)
+{
+    if(line in compressedLines)
+        return compressedLines[line];
+    else
+    {
+        let compressed = nextCompressedLineIndex.toString();
+        ++nextCompressedLineIndex;
+
+        compressedLines[line] = compressed;
+        traceData?.push(`L|${compressed}|${line}`);
+
+        return compressed;
+    }
 }
 
 (function(sandbox)
-{	
-	function formatIidWithSid(sid, iid)
+{
+    function formatIidWithSid(sid, iid)
     {
         const sdata = J$.smap[sid];
         if(sdata === undefined)
@@ -62,19 +90,23 @@ function appendTraceData(data)
         if(idata === undefined)
             return null;
 
-        let codeFileName = sdata.originalCodeFileName;
-        if(knownCodeFiles[sdata.originalCodeFileName] !== undefined)
-            codeFileName = knownCodeFiles[sdata.originalCodeFileName];
+        let fileIndex = "";
+        if(sdata.originalCodeFileName in knownCodeFiles)
+            fileIndex = knownCodeFiles[sdata.originalCodeFileName];
         else
         {
+            let codeFileName = sdata.originalCodeFileName;
             if(codeFileName.startsWith(globalPathPrefix))
                 codeFileName = codeFileName.slice(globalPathPrefix.length);
 
-            knownCodeFiles[sdata.originalCodeFileName] = codeFileName;
-            fs.writeSync(scriptsFile, `${sdata.originalCodeFileName}\t${codeFileName}\n`);
+            fileIndex = nextCodeFileIndex.toString();
+            ++nextCodeFileIndex;
+
+            knownCodeFiles[sdata.originalCodeFileName] = fileIndex;
+            fs.writeSync(scriptsFile, `${fileIndex}\t${sdata.originalCodeFileName}\t${codeFileName}\n`);
         }
 
-        return `${codeFileName}:${idata[0]}:${idata[1]}:${idata[2]}:${idata[3]}`;
+        return `${fileIndex}:${idata[0]}:${idata[1]}:${idata[2]}:${idata[3]}`;
     }
 
     function formatIid(iid)
@@ -99,13 +131,22 @@ function appendTraceData(data)
             // Handle special testcase begin marker function
             if(functionName === testcaseBeginFunctionName)
             {
-                // Ensure that old trace has been written (prefix mode)
+                // Ensure that previous trace has been fully written (prefix mode)
                 if(traceData.length > 0)
                     persistTrace();
-                    traceData = [];
+                traceData = [];
+
+                // If we were in prefix mode, store compression dictionaries
+                if(currentTestcaseId === -1)
+                {
+                    prefixNextCompressedLineIndex = nextCompressedLineIndex;
+                    prefixCompressedLines = compressedLines;
+                }
 
                 // Enter new testcase
                 ++currentTestcaseId;
+                compressedLines = prefixCompressedLines;
+                nextCompressedLineIndex = prefixNextCompressedLineIndex;
             }
 
             // Get function information
@@ -113,14 +154,14 @@ function appendTraceData(data)
             if(functionInfo == null)
             {
                 if(f && f.name !== undefined)
-                    functionInfo = `[extern]:${f.name}`;
+                    functionInfo = `E:${f.name}`;
                 else
-                    functionInfo = "[extern]:?";
+                    functionInfo = "E:?";
             }
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            appendTraceData(`Call;${formatIid(iid)};${functionInfo};${functionName}`);
+            appendTraceData(`c;${formatIid(iid)};${functionInfo};${functionName}`);
 
             return {f: f, base: base, args: args, skip: false};
         };
@@ -132,14 +173,14 @@ function appendTraceData(data)
             if(functionInfo == null)
             {
                 if(f && f.name !== undefined)
-                    functionInfo = `[extern]:${f.name}`;
+                    functionInfo = `E:${f.name}`;
                 else
-                    functionInfo = "[extern]:?";
+                    functionInfo = "E:?";
             }
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            appendTraceData(`Ret2;${functionInfo};${formatIid(iid)}`);
+            appendTraceData(`R;${functionInfo};${formatIid(iid)}`);
 
             if(f && f.name === testcaseEndFunctionName)
             {
@@ -166,7 +207,7 @@ function appendTraceData(data)
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                appendTraceData(`Get;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                appendTraceData(`g;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
             }
 
             return {base: base, offset: offset, skip: false};
@@ -183,7 +224,7 @@ function appendTraceData(data)
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                appendTraceData(`Put;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                appendTraceData(`p;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
             }
 
             // If val is an anonymous function, use the property as its name
@@ -195,21 +236,21 @@ function appendTraceData(data)
 
         this._return = function(iid, val)
         {
-            appendTraceData(`Ret1;${formatIid(iid)}`);
+            appendTraceData(`r;${formatIid(iid)}`);
 
             return {result: val};
         };
 
         this.conditional = function(iid, result)
         {
-            appendTraceData(`Cond;${formatIid(iid)}`);
-			
+            appendTraceData(`C;${formatIid(iid)}`);
+
             return {result: result};
         };
 
         this.endExpression = function(iid)
         {
-            appendTraceData(`Expr;${formatIid(iid)}`);
+            appendTraceData(`e;${formatIid(iid)}`);
         };
 
         this.onReady = function(cb)

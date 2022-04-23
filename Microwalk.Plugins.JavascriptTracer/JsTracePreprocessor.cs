@@ -63,14 +63,24 @@ public class JsTracePreprocessor : PreprocessorStage
     private Dictionary<int, HeapObjectData>? _prefixHeapObjects = null;
 
     /// <summary>
-    /// Image data of external functions ("[extern]").
+    /// Compressed lines from the trace prefix, indexed by line ID.
+    /// </summary>
+    private Dictionary<int, string>? _prefixCompressedLinesLookup = null;
+
+    /// <summary>
+    /// ID of the external functions image.
+    /// </summary>
+    private int _externalFunctionsImageId;
+
+    /// <summary>
+    /// Image data of external functions ("E:&lt;function name&gt;").
     /// </summary>
     private TracePrefixFile.ImageFileInfo _externalFunctionsImage = null!;
 
     /// <summary>
-    /// Metadata about loaded "images" (= scripts), indexed by script file names.
+    /// Metadata about loaded "images" (= scripts), indexed by script IDs.
     /// </summary>
-    private Dictionary<string, TracePrefixFile.ImageFileInfo> _imageFiles = null!;
+    private Dictionary<int, TracePrefixFile.ImageFileInfo> _imageFiles = null!;
 
     /// <summary>
     /// The next address which is assigned to an external function.
@@ -119,19 +129,19 @@ public class JsTracePreprocessor : PreprocessorStage
 
                 // Read scripts data and translate into image file format
                 string[] scriptsFileLines = await File.ReadAllLinesAsync(scriptsFilePath);
-                int nextImageFileId = 0;
                 int maxImageNameLength = 8; // [extern]
                 List<TracePrefixFile.ImageFileInfo> imageFiles = new();
                 foreach(string line in scriptsFileLines)
                 {
                     string[] scriptData = line.Split('\t');
+                    int imageFileId = int.Parse(scriptData[0]);
                     var imageFile = new TracePrefixFile.ImageFileInfo
                     {
-                        Id = nextImageFileId,
+                        Id = imageFileId,
                         Interesting = true,
-                        StartAddress = (ulong)nextImageFileId << 32,
-                        EndAddress = ((ulong)nextImageFileId << 32) | 0xFFFFFFFFul,
-                        Name = scriptData[1]
+                        StartAddress = (ulong)imageFileId << 32,
+                        EndAddress = ((ulong)imageFileId << 32) | 0xFFFFFFFFul,
+                        Name = scriptData[2]
                     };
                     imageFiles.Add(imageFile);
                     _relativeAddressLookup.Add(imageFile.Id, new ConcurrentDictionary<string, (uint start, uint end)>());
@@ -139,17 +149,16 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     if(imageFile.Name.Length > maxImageNameLength)
                         maxImageNameLength = imageFile.Name.Length;
-
-                    ++nextImageFileId;
                 }
 
                 // Add dummy image for [extern] functions
+                _externalFunctionsImageId = imageFiles.Max(i => i.Id) + 1;
                 _externalFunctionsImage = new TracePrefixFile.ImageFileInfo
                 {
-                    Id = nextImageFileId,
+                    Id = _externalFunctionsImageId,
                     Interesting = true,
-                    StartAddress = (ulong)nextImageFileId << 32,
-                    EndAddress = ((ulong)nextImageFileId << 32) | 0xFFFFFFFFul,
+                    StartAddress = (ulong)_externalFunctionsImageId << 32,
+                    EndAddress = ((ulong)_externalFunctionsImageId << 32) | 0xFFFFFFFFul,
                     Name = "[extern]"
                 };
                 imageFiles.Add(_externalFunctionsImage);
@@ -165,7 +174,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     imageFile.Store(tracePrefixFileWriter);
 
                 // Load and parse trace prefix data
-                _imageFiles = imageFiles.ToDictionary(i => i.Name);
+                _imageFiles = imageFiles.ToDictionary(i => i.Id);
                 await PreprocessFileAsync(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]");
 
                 // Create trace prefix object
@@ -221,17 +230,49 @@ public class JsTracePreprocessor : PreprocessorStage
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastCondEntry = null;
         Dictionary<int, HeapObjectData> heapObjects = _prefixHeapObjects == null ? new() : new(_prefixHeapObjects);
+        Dictionary<int, string> compressedLinesLookup = _prefixCompressedLinesLookup == null ? new() : new(_prefixCompressedLinesLookup);
         ulong nextHeapAllocationAddress = _prefixNextHeapAllocationAddress;
         const uint heapAllocationChunkSize = 0x100000;
         bool lastWasCond = false;
-        foreach(var line in inputFile)
+        foreach(var inputFileLine in inputFile)
         {
+            // Skip empty lines
+            if(string.IsNullOrWhiteSpace(inputFileLine))
+                continue;
+
+            // Is this a line info entry containing a previously unknown line?
+            if(inputFileLine[0] == 'L')
+            {
+                // Extract and store line info
+                int separatorIndex = inputFileLine.AsSpan(2).IndexOf('|');
+                int lId = int.Parse(inputFileLine.AsSpan(2, separatorIndex));
+                string lContent = inputFileLine[(2 + separatorIndex + 1)..];
+
+                compressedLinesLookup.Add(lId, lContent);
+
+                // Do not further parse the extracted line
+                continue;
+            }
+
+            // Extract line
+            if(!int.TryParse(inputFileLine, out int lineId))
+            {
+                await Logger.LogWarningAsync($"{logPrefix} Unrecognized line encoding: {inputFileLine}");
+                continue;
+            }
+
+            if(!compressedLinesLookup.TryGetValue(lineId, out string? line))
+            {
+                await Logger.LogWarningAsync($"{logPrefix} Could not resolve compressed line #{lineId}");
+                continue;
+            }
+
             string[] parts = line.Split(';');
 
             string entryType = parts[0];
             switch(entryType)
             {
-                case "Call":
+                case "c":
                 {
                     // Resolve code locations
                     var source = ResolveLineInfoToImage(parts[1]);
@@ -281,7 +322,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Ret1":
+                case "r":
                 {
                     // Resolve code locations
                     var source = ResolveLineInfoToImage(parts[1]);
@@ -316,7 +357,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Ret2":
+                case "R":
                 {
                     // Resolve code locations
                     var source = ResolveLineInfoToImage(parts[1]);
@@ -364,7 +405,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Cond":
+                case "C":
                 {
                     // Resolve code locations
                     var location = ResolveLineInfoToImage(parts[1]);
@@ -398,7 +439,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Expr":
+                case "e":
                 {
                     // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
                     if(lastWasCond)
@@ -437,7 +478,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Get":
+                case "g":
                 {
                     // Resolve code locations
                     var location = ResolveLineInfoToImage(parts[1]);
@@ -513,7 +554,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     break;
                 }
 
-                case "Put":
+                case "p":
                 {
                     // Resolve code locations
                     var location = ResolveLineInfoToImage(parts[1]);
@@ -588,6 +629,12 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     break;
                 }
+
+                default:
+                {
+                    await Logger.LogWarningAsync($"{logPrefix} Could not parse line: {line}");
+                    break;
+                }
             }
         }
 
@@ -595,6 +642,7 @@ public class JsTracePreprocessor : PreprocessorStage
         {
             _prefixNextHeapAllocationAddress = nextHeapAllocationAddress;
             _prefixHeapObjects = heapObjects;
+            _prefixCompressedLinesLookup = compressedLinesLookup;
         }
     }
 
@@ -605,7 +653,7 @@ public class JsTracePreprocessor : PreprocessorStage
     /// Line number information.
     ///
     /// Supported formats:
-    /// - scriptName:startLine:startColumn:endLine:endColumn
+    /// - scriptId:startLine:startColumn:endLine:endColumn
     /// - [extern]:functionName:constructor
     /// </param>
     private (TracePrefixFile.ImageFileInfo ImageFileInfo, uint RelativeStartAddress, uint RelativeEndAddress) ResolveLineInfoToImage(string lineInfo)
@@ -613,14 +661,14 @@ public class JsTracePreprocessor : PreprocessorStage
         string[] parts = lineInfo.Split(':');
 
         // Try to read existing address data
-        var image = _imageFiles[parts[0]];
+        var image = _imageFiles[parts[0] == "E" ? _externalFunctionsImageId : int.Parse(parts[0])];
         var imageAddressLookup = _relativeAddressLookup[image.Id];
         var addressData = imageAddressLookup.GetOrAdd(lineInfo, _ =>
         {
             // Address not known yet, compute it
 
             // Unknown script / external function?
-            if(parts[0] == "[extern]")
+            if(parts[0] == "E")
             {
                 // Get address of function, or generate a new one if it does not yet exist
                 // Necessary locking is done by the underlying concurrent dictionary
@@ -687,20 +735,20 @@ public class JsTracePreprocessor : PreprocessorStage
             );
         Dictionary<int, SortedList<(uint start, uint end), string>> sortedFunctionNameLookup = _functionNameLookup
             .ToDictionary(fnl => fnl.Key, fnl => new SortedList<(uint start, uint end), string>(fnl.Value));
-        foreach(var (imageFileName, imageFileInfo) in _imageFiles)
+        foreach(var (imageFileId, imageFileInfo) in _imageFiles)
         {
-            string mapFileName = Path.Join(_mapDirectory.FullName, replaceChars.Aggregate(imageFileName, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
+            string mapFileName = Path.Join(_mapDirectory.FullName, replaceChars.Aggregate(imageFileInfo.Name, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
             await using var mapFileWriter = new StreamWriter(File.Open(mapFileName, FileMode.Create));
 
-            await mapFileWriter.WriteLineAsync(imageFileName);
+            await mapFileWriter.WriteLineAsync(imageFileInfo.Name);
 
             // Create MAP entries
-            foreach(uint relativeAddress in requestedMapEntriesPerImage[imageFileInfo.Id])
+            foreach(uint relativeAddress in requestedMapEntriesPerImage[imageFileId])
             {
-                string name = sortedFunctionNameLookup[imageFileInfo.Id].LastOrDefault(functionData => functionData.Key.start <= relativeAddress && relativeAddress <= functionData.Key.end, new KeyValuePair<(uint start, uint end), string>((0, 0), "")).Value;
+                string name = sortedFunctionNameLookup[imageFileId].LastOrDefault(functionData => functionData.Key.start <= relativeAddress && relativeAddress <= functionData.Key.end, new KeyValuePair<(uint start, uint end), string>((0, 0), "")).Value;
 
                 // Handle [extern] functions separately
-                if(imageFileInfo.Id == _externalFunctionsImage.Id)
+                if(imageFileId == _externalFunctionsImage.Id)
                     await mapFileWriter.WriteLineAsync($"{relativeAddress:x8}\t{name}");
                 else
                 {
