@@ -234,406 +234,453 @@ public class JsTracePreprocessor : PreprocessorStage
         ulong nextHeapAllocationAddress = _prefixNextHeapAllocationAddress;
         const uint heapAllocationChunkSize = 0x100000;
         bool lastWasCond = false;
+        int lastLineId = 0;
         foreach(var inputFileLine in inputFile)
         {
             // Skip empty lines
             if(string.IsNullOrWhiteSpace(inputFileLine))
                 continue;
 
-            // Is this a line info entry containing a previously unknown line?
-            if(inputFileLine[0] == 'L')
+            // Read merged lines
+            int pos = 0;
+            while(pos < inputFileLine.Length)
             {
-                // Extract and store line info
-                int separatorIndex = inputFileLine.AsSpan(2).IndexOf('|');
-                int lId = int.Parse(inputFileLine.AsSpan(2, separatorIndex));
-                string lContent = inputFileLine[(2 + separatorIndex + 1)..];
-
-                compressedLinesLookup.Add(lId, lContent);
-
-                // Do not further parse the extracted line
-                continue;
-            }
-
-            // Extract line
-            if(!int.TryParse(inputFileLine, out int lineId))
-            {
-                await Logger.LogWarningAsync($"{logPrefix} Unrecognized line encoding: {inputFileLine}");
-                continue;
-            }
-
-            if(!compressedLinesLookup.TryGetValue(lineId, out string? line))
-            {
-                await Logger.LogWarningAsync($"{logPrefix} Could not resolve compressed line #{lineId}");
-                continue;
-            }
-
-            string[] parts = line.Split(';');
-
-            string entryType = parts[0];
-            switch(entryType)
-            {
-                case "c":
+                // Parse current control character
+                char firstChar = inputFileLine[pos];
+                int lineId;
+                string lineEndPart = "";
+                if(firstChar == 'L')
                 {
-                    // Resolve code locations
-                    var source = ResolveLineInfoToImage(parts[1]);
-                    var destination = ResolveLineInfoToImage(parts[2]);
+                    // Line info
+                    int separatorIndex = inputFileLine.AsSpan(pos + 2).IndexOf('|');
+                    int lId = int.Parse(inputFileLine.AsSpan(pos + 2, separatorIndex));
+                    string lContent = inputFileLine[(pos + 2 + separatorIndex + 1)..];
 
-                    // Record function name, if it is not already known
-                    _functionNameLookup[destination.ImageFileInfo.Id].TryAdd((destination.RelativeStartAddress, destination.RelativeEndAddress), parts[3]);
+                    compressedLinesLookup.Add(lId, lContent);
 
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
-                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
-                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeEndAddress), null); // For Ret2-only returns (e.g., void functions)
-
-                    // Do not trace branches in prefix mode
-                    if(isPrefix)
-                        break;
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
-                    {
-                        var branchEntry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = source.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = source.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
-
-                        lastCondEntry = null;
-                    }
-
-                    // Record call
-                    var entry = new Branch
-                    {
-                        BranchType = Branch.BranchTypes.Call,
-                        Taken = true,
-                        SourceImageId = source.ImageFileInfo.Id,
-                        SourceInstructionRelativeAddress = source.RelativeStartAddress,
-                        DestinationImageId = destination.ImageFileInfo.Id,
-                        DestinationInstructionRelativeAddress = destination.RelativeStartAddress
-                    };
-                    entry.Store(traceFileWriter);
-
+                    // The line is fully consumed
                     break;
                 }
-
-                case "r":
+                else if(firstChar is >= 'a' and <= 's')
                 {
-                    // Resolve code locations
-                    var source = ResolveLineInfoToImage(parts[1]);
+                    // Line ID, relative
 
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
+                    lineId = lastLineId + (firstChar - 'j');
+                    lastLineId = lineId;
 
-                    // Do not trace branches in prefix mode
-                    if(isPrefix)
-                        break;
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
+                    // Is this a prefixed line?
+                    ++pos;
+                    if(pos < inputFileLine.Length && inputFileLine[pos] == '|')
                     {
-                        var branchEntry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = source.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = source.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
+                        // Read remaining line part
+                        lineEndPart = inputFileLine.Substring(pos + 1);
 
-                        lastCondEntry = null;
+                        // The line is fully consumed
+                        pos = inputFileLine.Length;
                     }
-
-                    // Remember for next Ret2 entry
-                    lastRet1Entry = (source.ImageFileInfo, source.RelativeStartAddress);
-
-                    break;
                 }
-
-                case "R":
+                else if(char.IsDigit(firstChar))
                 {
-                    // Resolve code locations
-                    var source = ResolveLineInfoToImage(parts[1]);
-                    var destination = ResolveLineInfoToImage(parts[2]);
+                    // Line ID, absolute
 
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
-                    _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
-
-                    // Do not trace branches in prefix mode
-                    if(isPrefix)
-                        break;
-
-                    // Did we see a Ret1 entry? -> more accurate location info
-                    Branch entry;
-                    if(lastRet1Entry != null)
+                    int numDigits = 0;
+                    for(int i = pos; i < inputFileLine.Length; ++i)
                     {
-                        entry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Return,
-                            Taken = true,
-                            SourceImageId = lastRet1Entry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastRet1Entry.Value.address,
-                            DestinationImageId = destination.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = destination.RelativeStartAddress
-                        };
-
-                        lastRet1Entry = null;
+                        if(!char.IsDigit(inputFileLine[i]))
+                            break;
+                        ++numDigits;
                     }
-                    else
+
+                    lineId = int.Parse(inputFileLine.Substring(pos, numDigits));
+                    lastLineId = lineId;
+
+                    // Is this a prefixed line?
+                    pos += numDigits;
+                    if(pos < inputFileLine.Length && inputFileLine[pos] == '|')
                     {
-                        entry = new Branch
+                        // Read remaining line part
+                        lineEndPart = inputFileLine.Substring(pos + 1);
+
+                        // The line is fully consumed
+                        pos = inputFileLine.Length;
+                    }
+                }
+                else
+                    throw new Exception($"{logPrefix} Unexpected control character: '{firstChar}' in line \"{inputFileLine}\"");
+
+                // Extract line
+                if(!compressedLinesLookup.TryGetValue(lineId, out string? line))
+                    throw new Exception($"{logPrefix} Could not resolve compressed line #{lineId}");
+
+                line += lineEndPart;
+
+                // Parse decompressed line
+                string[] parts = line.Split(';');
+                string entryType = parts[0];
+                switch(entryType)
+                {
+                    case "c":
+                    {
+                        // Resolve code locations
+                        var source = ResolveLineInfoToImage(parts[1]);
+                        var destination = ResolveLineInfoToImage(parts[2]);
+
+                        // Record function name, if it is not already known
+                        _functionNameLookup[destination.ImageFileInfo.Id].TryAdd((destination.RelativeStartAddress, destination.RelativeEndAddress), parts[3]);
+
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
+                        _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
+                        _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeEndAddress), null); // For Ret2-only returns (e.g., void functions)
+
+                        // Do not trace branches in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
                         {
-                            BranchType = Branch.BranchTypes.Return,
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = source.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = source.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+
+                            lastCondEntry = null;
+                        }
+
+                        // Record call
+                        var entry = new Branch
+                        {
+                            BranchType = Branch.BranchTypes.Call,
                             Taken = true,
                             SourceImageId = source.ImageFileInfo.Id,
-                            SourceInstructionRelativeAddress = source.RelativeEndAddress,
+                            SourceInstructionRelativeAddress = source.RelativeStartAddress,
                             DestinationImageId = destination.ImageFileInfo.Id,
                             DestinationInstructionRelativeAddress = destination.RelativeStartAddress
                         };
-                    }
+                        entry.Store(traceFileWriter);
 
-                    entry.Store(traceFileWriter);
-
-                    break;
-                }
-
-                case "C":
-                {
-                    // Resolve code locations
-                    var location = ResolveLineInfoToImage(parts[1]);
-
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
-
-                    // Do not trace branches in prefix mode
-                    if(isPrefix)
-                        break;
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
-                    {
-                        var branchEntry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = location.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
-                    }
-
-                    // We have to wait until the next line before we can produce a meaningful branch entry
-                    lastCondEntry = (location.ImageFileInfo, location.RelativeStartAddress);
-                    lastWasCond = true;
-
-                    break;
-                }
-
-                case "e":
-                {
-                    // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
-                    if(lastWasCond)
-                    {
-                        lastWasCond = false;
                         break;
                     }
 
-                    // Resolve code locations
-                    var location = ResolveLineInfoToImage(parts[1]);
+                    case "r":
+                    {
+                        // Resolve code locations
+                        var source = ResolveLineInfoToImage(parts[1]);
 
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
 
-                    // Do not trace branches in prefix mode
-                    if(isPrefix)
+                        // Do not trace branches in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
+                        {
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = source.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = source.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+
+                            lastCondEntry = null;
+                        }
+
+                        // Remember for next Ret2 entry
+                        lastRet1Entry = (source.ImageFileInfo, source.RelativeStartAddress);
+
                         break;
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
-                    {
-                        var branchEntry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = location.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
-
-                        lastCondEntry = null;
                     }
 
-                    break;
-                }
-
-                case "g":
-                {
-                    // Resolve code locations
-                    var location = ResolveLineInfoToImage(parts[1]);
-
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
+                    case "R":
                     {
-                        var branchEntry = new Branch
+                        // Resolve code locations
+                        var source = ResolveLineInfoToImage(parts[1]);
+                        var destination = ResolveLineInfoToImage(parts[2]);
+
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
+                        _requestedMapEntries.TryAdd((destination.ImageFileInfo.Id, destination.RelativeStartAddress), null);
+
+                        // Do not trace branches in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Did we see a Ret1 entry? -> more accurate location info
+                        Branch entry;
+                        if(lastRet1Entry != null)
                         {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = location.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
-                    }
+                            entry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Return,
+                                Taken = true,
+                                SourceImageId = lastRet1Entry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastRet1Entry.Value.address,
+                                DestinationImageId = destination.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = destination.RelativeStartAddress
+                            };
 
-                    // Extract access data
-                    int objectId = int.Parse(parts[2]);
-                    string offset = parts[3];
-
-                    // Did we already encounter this object?
-                    if(!heapObjects.TryGetValue(objectId, out var objectData))
-                    {
-                        objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
-                        heapObjects.Add(objectId, objectData);
-
-                        var heapAllocation = new HeapAllocation
+                            lastRet1Entry = null;
+                        }
+                        else
                         {
-                            Id = objectId,
-                            Address = nextHeapAllocationAddress,
-                            Size = 2 * heapAllocationChunkSize
-                        };
-                        heapAllocation.Store(traceFileWriter);
+                            entry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Return,
+                                Taken = true,
+                                SourceImageId = source.ImageFileInfo.Id,
+                                SourceInstructionRelativeAddress = source.RelativeEndAddress,
+                                DestinationImageId = destination.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = destination.RelativeStartAddress
+                            };
+                        }
 
-                        nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
-                    }
+                        entry.Store(traceFileWriter);
 
-                    // Did we already encounter this offset?
-                    uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
-                    {
-                        // No, create new entry
-
-                        // Numeric index?
-                        if(uint.TryParse(offset, out uint offsetInt))
-                            return offsetInt;
-
-                        // Named property
-                        return objectData.NextPropertyAddress++;
-                    });
-
-                    // Do not memory accesses in prefix mode
-                    if(isPrefix)
                         break;
-
-                    // Create memory access
-                    var memoryAccess = new HeapMemoryAccess
-                    {
-                        InstructionImageId = location.ImageFileInfo.Id,
-                        InstructionRelativeAddress = location.RelativeStartAddress,
-                        HeapAllocationBlockId = objectId,
-                        MemoryRelativeAddress = offsetRelativeAddress,
-                        Size = 1,
-                        IsWrite = false
-                    };
-                    memoryAccess.Store(traceFileWriter);
-
-                    break;
-                }
-
-                case "p":
-                {
-                    // Resolve code locations
-                    var location = ResolveLineInfoToImage(parts[1]);
-
-                    // Produce MAP entries
-                    _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
-
-                    // Create branch entry, if there is a pending conditional
-                    if(lastCondEntry != null)
-                    {
-                        var branchEntry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Jump,
-                            Taken = true,
-                            SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                            SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                            DestinationImageId = location.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = location.RelativeStartAddress
-                        };
-                        branchEntry.Store(traceFileWriter);
                     }
 
-                    // Extract access data
-                    int objectId = int.Parse(parts[2]);
-                    string offset = parts[3];
-
-                    // Did we already encounter this object?
-                    if(!heapObjects.TryGetValue(objectId, out var objectData))
+                    case "C":
                     {
-                        objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
-                        heapObjects.Add(objectId, objectData);
+                        // Resolve code locations
+                        var location = ResolveLineInfoToImage(parts[1]);
 
-                        var heapAllocation = new HeapAllocation
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
+
+                        // Do not trace branches in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
                         {
-                            Id = objectId,
-                            Address = nextHeapAllocationAddress,
-                            Size = 2 * heapAllocationChunkSize
-                        };
-                        heapAllocation.Store(traceFileWriter);
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = location.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+                        }
 
-                        nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
-                    }
+                        // We have to wait until the next line before we can produce a meaningful branch entry
+                        lastCondEntry = (location.ImageFileInfo, location.RelativeStartAddress);
+                        lastWasCond = true;
 
-                    // Did we already encounter this offset?
-                    uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
-                    {
-                        // No, create new entry
-
-                        // Numeric index?
-                        if(uint.TryParse(offset, out uint offsetInt))
-                            return offsetInt;
-
-                        // Named property
-                        return objectData.NextPropertyAddress++;
-                    });
-
-                    // Do not memory accesses in prefix mode
-                    if(isPrefix)
                         break;
+                    }
 
-                    // Create memory access
-                    var memoryAccess = new HeapMemoryAccess
+                    case "e":
                     {
-                        InstructionImageId = location.ImageFileInfo.Id,
-                        InstructionRelativeAddress = location.RelativeStartAddress,
-                        HeapAllocationBlockId = objectId,
-                        MemoryRelativeAddress = offsetRelativeAddress,
-                        Size = 1,
-                        IsWrite = true
-                    };
-                    memoryAccess.Store(traceFileWriter);
+                        // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
+                        if(lastWasCond)
+                        {
+                            lastWasCond = false;
+                            break;
+                        }
 
-                    break;
-                }
+                        // Resolve code locations
+                        var location = ResolveLineInfoToImage(parts[1]);
 
-                default:
-                {
-                    await Logger.LogWarningAsync($"{logPrefix} Could not parse line: {line}");
-                    break;
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
+
+                        // Do not trace branches in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
+                        {
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = location.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+
+                            lastCondEntry = null;
+                        }
+
+                        break;
+                    }
+
+                    case "g":
+                    {
+                        // Resolve code locations
+                        var location = ResolveLineInfoToImage(parts[1]);
+
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
+                        {
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = location.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+                        }
+
+                        // Extract access data
+                        int objectId = int.Parse(parts[2]);
+                        string offset = parts[3];
+
+                        // Did we already encounter this object?
+                        if(!heapObjects.TryGetValue(objectId, out var objectData))
+                        {
+                            objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
+                            heapObjects.Add(objectId, objectData);
+
+                            var heapAllocation = new HeapAllocation
+                            {
+                                Id = objectId,
+                                Address = nextHeapAllocationAddress,
+                                Size = 2 * heapAllocationChunkSize
+                            };
+                            heapAllocation.Store(traceFileWriter);
+
+                            nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+                        }
+
+                        // Did we already encounter this offset?
+                        uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
+                        {
+                            // No, create new entry
+
+                            // Numeric index?
+                            if(uint.TryParse(offset, out uint offsetInt))
+                                return offsetInt;
+
+                            // Named property
+                            return objectData.NextPropertyAddress++;
+                        });
+
+                        // Do not memory accesses in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create memory access
+                        var memoryAccess = new HeapMemoryAccess
+                        {
+                            InstructionImageId = location.ImageFileInfo.Id,
+                            InstructionRelativeAddress = location.RelativeStartAddress,
+                            HeapAllocationBlockId = objectId,
+                            MemoryRelativeAddress = offsetRelativeAddress,
+                            Size = 1,
+                            IsWrite = false
+                        };
+                        memoryAccess.Store(traceFileWriter);
+
+                        break;
+                    }
+
+                    case "p":
+                    {
+                        // Resolve code locations
+                        var location = ResolveLineInfoToImage(parts[1]);
+
+                        // Produce MAP entries
+                        _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
+
+                        // Create branch entry, if there is a pending conditional
+                        if(lastCondEntry != null)
+                        {
+                            var branchEntry = new Branch
+                            {
+                                BranchType = Branch.BranchTypes.Jump,
+                                Taken = true,
+                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
+                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
+                                DestinationImageId = location.ImageFileInfo.Id,
+                                DestinationInstructionRelativeAddress = location.RelativeStartAddress
+                            };
+                            branchEntry.Store(traceFileWriter);
+                        }
+
+                        // Extract access data
+                        int objectId = int.Parse(parts[2]);
+                        string offset = parts[3];
+
+                        // Did we already encounter this object?
+                        if(!heapObjects.TryGetValue(objectId, out var objectData))
+                        {
+                            objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
+                            heapObjects.Add(objectId, objectData);
+
+                            var heapAllocation = new HeapAllocation
+                            {
+                                Id = objectId,
+                                Address = nextHeapAllocationAddress,
+                                Size = 2 * heapAllocationChunkSize
+                            };
+                            heapAllocation.Store(traceFileWriter);
+
+                            nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+                        }
+
+                        // Did we already encounter this offset?
+                        uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
+                        {
+                            // No, create new entry
+
+                            // Numeric index?
+                            if(uint.TryParse(offset, out uint offsetInt))
+                                return offsetInt;
+
+                            // Named property
+                            return objectData.NextPropertyAddress++;
+                        });
+
+                        // Do not memory accesses in prefix mode
+                        if(isPrefix)
+                            break;
+
+                        // Create memory access
+                        var memoryAccess = new HeapMemoryAccess
+                        {
+                            InstructionImageId = location.ImageFileInfo.Id,
+                            InstructionRelativeAddress = location.RelativeStartAddress,
+                            HeapAllocationBlockId = objectId,
+                            MemoryRelativeAddress = offsetRelativeAddress,
+                            Size = 1,
+                            IsWrite = true
+                        };
+                        memoryAccess.Store(traceFileWriter);
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        throw new Exception($"{logPrefix} Could not parse line: {line}");
+                    }
                 }
             }
         }

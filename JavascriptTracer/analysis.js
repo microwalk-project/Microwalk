@@ -24,6 +24,13 @@ let compressedLines = {};
 let prefixNextCompressedLineIndex = 0;
 let prefixCompressedLines = {};
 
+// Used for computing relative distance between subsequent compressed line IDs.
+// If the distance is small, we only print the offset (+1, ...), not the entire line ID.
+let lastCompressedLineIndex = -1000;
+
+// If the last line used a one-character relative encoding, we omit the line break and append the next one directly.
+let lastLineWasEncodedRelatively = false;
+
 function persistTrace()
 {
     let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
@@ -52,7 +59,7 @@ function persistTrace()
     fs.closeSync(traceFile);
 }
 
-function appendTraceData(data)
+function writeTraceLine(line)
 {
     if(traceData.length >= traceDataSizeLimit)
     {
@@ -60,7 +67,50 @@ function appendTraceData(data)
         traceData = [];
     }
 
-    traceData?.push(getCompressedLine(data));
+    let encodedLine = "";
+
+    let lineIndex = getCompressedLine(line);
+    let distance = lineIndex - lastCompressedLineIndex;
+    let encodeRelatively = (distance >= -9 && distance <= 9);
+    if(encodeRelatively)
+        encodedLine = String.fromCharCode(106 + distance); // 'j' + distance => a ... s
+    else
+        encodedLine = lineIndex.toString();
+
+    if(lastLineWasEncodedRelatively && traceData.length > 0)
+        traceData[traceData.length - 1] += encodedLine;
+    else
+        traceData.push(encodedLine);
+
+    lastLineWasEncodedRelatively = encodeRelatively;
+    lastCompressedLineIndex = lineIndex;
+}
+
+function writePrefixedTraceLine(prefix, line)
+{
+    if(traceData.length >= traceDataSizeLimit)
+    {
+        persistTrace();
+        traceData = [];
+    }
+
+    let encodedLine = "";
+
+    let lineIndex = getCompressedLine(prefix);
+    let distance = lineIndex - lastCompressedLineIndex;
+    let encodeRelatively = (distance >= -9 && distance <= 9);
+    if(encodeRelatively)
+        encodedLine = `${String.fromCharCode(106 + distance)}|${line}`; // 'j' + distance => a ... s
+    else
+        encodedLine = `${lineIndex}|${line}`;
+
+    if(lastLineWasEncodedRelatively && traceData.length > 0)
+        traceData[traceData.length - 1] += encodedLine;
+    else
+        traceData.push(encodedLine);
+
+    lastLineWasEncodedRelatively = false;
+    lastCompressedLineIndex = lineIndex;
 }
 
 function getCompressedLine(line)
@@ -69,12 +119,13 @@ function getCompressedLine(line)
         return compressedLines[line];
     else
     {
-        let compressed = nextCompressedLineIndex.toString();
+        let compressed = nextCompressedLineIndex;
         ++nextCompressedLineIndex;
 
         compressedLines[line] = compressed;
-        traceData?.push(`L|${compressed}|${line}`);
+        traceData.push(`L|${compressed}|${line}`);
 
+        lastLineWasEncodedRelatively = false;
         return compressed;
     }
 }
@@ -145,8 +196,10 @@ function getCompressedLine(line)
 
                 // Enter new testcase
                 ++currentTestcaseId;
-                compressedLines = prefixCompressedLines;
+                compressedLines = Object.assign({}, prefixCompressedLines);
                 nextCompressedLineIndex = prefixNextCompressedLineIndex;
+                lastCompressedLineIndex = -1000;
+                lastLineWasEncodedRelatively = false;
             }
 
             // Get function information
@@ -161,7 +214,7 @@ function getCompressedLine(line)
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            appendTraceData(`c;${formatIid(iid)};${functionInfo};${functionName}`);
+            writeTraceLine(`c;${formatIid(iid)};${functionInfo};${functionName}`);
 
             return {f: f, base: base, args: args, skip: false};
         };
@@ -180,7 +233,7 @@ function getCompressedLine(line)
 
             functionInfo += (isConstructor ? ":c" : ":");
 
-            appendTraceData(`R;${functionInfo};${formatIid(iid)}`);
+            writeTraceLine(`R;${functionInfo};${formatIid(iid)}`);
 
             if(f && f.name === testcaseEndFunctionName)
             {
@@ -207,7 +260,7 @@ function getCompressedLine(line)
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                appendTraceData(`g;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                writePrefixedTraceLine(`g;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};`, formattedOffset);
             }
 
             return {base: base, offset: offset, skip: false};
@@ -224,7 +277,7 @@ function getCompressedLine(line)
                 if(typeof formattedOffset === "string")
                     formattedOffset = formattedOffset.replace(';', '_');
 
-                appendTraceData(`p;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};${formattedOffset}`);
+                writePrefixedTraceLine(`p;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};`, formattedOffset);
             }
 
             // If val is an anonymous function, use the property as its name
@@ -236,21 +289,21 @@ function getCompressedLine(line)
 
         this._return = function(iid, val)
         {
-            appendTraceData(`r;${formatIid(iid)}`);
+            writeTraceLine(`r;${formatIid(iid)}`);
 
             return {result: val};
         };
 
         this.conditional = function(iid, result)
         {
-            appendTraceData(`C;${formatIid(iid)}`);
+            writeTraceLine(`C;${formatIid(iid)}`);
 
             return {result: result};
         };
 
         this.endExpression = function(iid)
         {
-            appendTraceData(`e;${formatIid(iid)}`);
+            writeTraceLine(`e;${formatIid(iid)}`);
         };
 
         this.onReady = function(cb)
