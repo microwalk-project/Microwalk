@@ -531,6 +531,17 @@ VOID InstrumentImage(IMG img, VOID* v)
 	// Retrieve image memory offsets
 	UINT64 imageStart = IMG_LowAddress(img);
 	UINT64 imageEnd = IMG_HighAddress(img);
+	UINT32 numRegions = IMG_NumRegions(img);
+	for(UINT32 r = 0; r < numRegions; ++r)
+	{
+		UINT64 low = IMG_RegionLowAddress(img, r);
+		if(low < imageStart)
+			imageStart = low;
+		
+		UINT64 high = IMG_RegionHighAddress(img, r);
+		if(high > imageEnd)
+			imageEnd = high;
+	}
 
 	// Record image data
 	TraceWriter::WriteImageLoadData(static_cast<int>(interesting), imageStart, imageEnd, imageName);
