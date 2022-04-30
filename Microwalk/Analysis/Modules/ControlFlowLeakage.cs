@@ -869,9 +869,13 @@ public class ControlFlowLeakage : AnalysisStage
     public override async Task FinishAsync()
     {
         /*
-         * Runs through the final call tree once and does the following:
-         * - write a text representation of each node to a text file (human-readable dump of the entire call tree).                                                                     
-         * - record hashes of all nodes which are involved in splits. Output the number of distinct hashes per instruction/call stack ID.
+         * In the first step, we do an iterative depth-first search through the final call tree, and build testcase ID trees for every splitting instruction and call stack.
+         * If an instruction causes a split, the associated current testcase ID tree node for the given instruction gets new nodes, where each has the testcase IDs of the currently processed branch.
+         * If tree dump generation is enabled, we store the nodes in a dump file while iterating the tree.
+         *
+         * The results are stored in a consolidated call tree.
+         *
+         * In the second step, we iterate the consolidated call tree and compute various leakage measures over the individual testcase ID trees.
          */
 
         string logMessagePrefix = "[analyze:cfl]";
@@ -946,7 +950,7 @@ public class ControlFlowLeakage : AnalysisStage
 
                 // Check split successors: If an instruction caused a split, record the testcase IDs of its split successors
                 // _Usually_ the splitting instruction should be the same for all split successors.
-                // However, we support several split successor instructions here, so we get results even when the traces are a bit weird.
+                // However, we support different split successor instructions here, so we get results even when the traces are a bit weird.
                 Dictionary<ulong, (AnalysisData.InstructionType Type, Dictionary<int, TestcaseIdSet> TestcaseIds)> splitSuccessorTestcases = new();
                 for(var s = 0; s < currentNode.SplitSuccessors.Count; s++)
                 {
