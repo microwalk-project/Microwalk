@@ -10,7 +10,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public TraceEntryTypes EntryType => TraceEntryTypes.StackAllocation;
         public const int EntrySize = 1 + 4 + 4 + 4 + 4 + 8;
 
-        public void FromReader(FastBinaryReader reader)
+        public void FromReader(IFastBinaryReader reader)
         {
             Id = reader.ReadInt32();
             InstructionImageId = reader.ReadInt32();

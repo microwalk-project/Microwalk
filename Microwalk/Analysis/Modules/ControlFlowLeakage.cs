@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Microwalk.FrameworkBase;
@@ -19,7 +18,7 @@ using Standart.Hash.xxHash;
 namespace Microwalk.Analysis.Modules;
 
 [FrameworkModule("control-flow-leakage", "Finds control flow variations on each call stack level.")]
-public class ControlFlowLeakage : AnalysisStage
+public partial class ControlFlowLeakage : AnalysisStage
 {
     private const ulong _addressIdFlagImage = 0x0000_0000_0000_0000;
     private const ulong _addressIdFlagMemory = 0x8000_0000_0000_0000;
@@ -125,6 +124,7 @@ public class ControlFlowLeakage : AnalysisStage
             throw new Exception("Preprocessed trace prefix is null. Is the preprocessor stage missing?");
 
         string logMessagePrefix = $"[analyze:cfl:{traceEntity.Id}]";
+        await Logger.LogDebugAsync($"{logMessagePrefix} Processing trace #{traceEntity.Id}");
 
         // Mark our visit at the root node
         _rootNode.TestcaseIds.Add(traceEntity.Id);
@@ -146,10 +146,12 @@ public class ControlFlowLeakage : AnalysisStage
         int successorIndex = 0;
         ulong currentCallStackId = _rootNodeCallStackId;
         int traceEntryId = -1;
-        foreach(var traceEntry in traceEntity.PreprocessedTraceFile.GetEntriesWithPrefix())
+        var traceEnumerator = traceEntity.PreprocessedTraceFile.GetNonAllocatingEnumeratorWithPrefix();
+        while(traceEnumerator.MoveNext())
         {
+            var traceEntry = traceEnumerator.Current;
             ++traceEntryId;
-
+            
             if(traceEntry.EntryType == TraceEntryTypes.Branch)
             {
                 var branchEntry = (Branch)traceEntry;
@@ -1542,304 +1544,6 @@ public class ControlFlowLeakage : AnalysisStage
             standardDeviation = Math.Sqrt(sum / i);
 
         return (mean, standardDeviation);
-    }
-
-    private abstract class CallTreeNode
-    {
-        /// <summary>
-        /// Testcase IDs leading to this call tree node.
-        /// </summary>
-        public TestcaseIdSet TestcaseIds { get; protected init; } = new();
-    }
-
-    /// <summary>
-    /// Dummy node type that has a number of successor nodes, followed by a split.
-    /// </summary>
-    private class SplitNode : CallTreeNode
-    {
-        /// <summary>
-        /// Successors of this node, in linear order.
-        /// </summary>
-        public List<CallTreeNode> Successors { get; } = new();
-
-        /// <summary>
-        /// Alternative successors of this node, directly following the last node of <see cref="Successors"/>, in no particular order.
-        /// </summary>
-        public List<SplitNode> SplitSuccessors { get; } = new();
-
-        /// <summary>
-        /// Splits the given node at the given successor index.
-        /// </summary>
-        /// <param name="successorIndex">Index of the successor where the split is created.</param>
-        /// <param name="testcaseId">Current testcase ID.</param>
-        /// <param name="firstSuccessor">First successor of the new split branch.</param>
-        /// <returns></returns>
-        public SplitNode SplitAtSuccessor(int successorIndex, int testcaseId, CallTreeNode firstSuccessor)
-        {
-            // Copy remaining info from this node over to 1st split node
-            var splitNode1 = new SplitNode
-            {
-                TestcaseIds = TestcaseIds.Copy()
-            };
-            splitNode1.TestcaseIds.Remove(testcaseId);
-
-            splitNode1.Successors.AddRange(Successors.Skip(successorIndex));
-            Successors.RemoveRange(successorIndex, Successors.Count - successorIndex);
-            splitNode1.SplitSuccessors.AddRange(SplitSuccessors);
-            SplitSuccessors.Clear();
-
-            // The 2nd split node holds the new, conflicting entry
-            var splitNode2 = new SplitNode();
-            splitNode2.Successors.Add(firstSuccessor);
-            splitNode2.TestcaseIds.Add(testcaseId);
-
-            SplitSuccessors.Add(splitNode1);
-            SplitSuccessors.Add(splitNode2);
-
-            return splitNode2;
-        }
-    }
-
-    private class CallNode : SplitNode
-    {
-        public CallNode(ulong sourceInstructionId, ulong targetInstructionId, ulong callStackId)
-        {
-            SourceInstructionId = sourceInstructionId;
-            TargetInstructionId = targetInstructionId;
-            CallStackId = callStackId;
-        }
-
-        /// <summary>
-        /// Branch instruction ID.
-        /// </summary>
-        public ulong SourceInstructionId { get; }
-
-        /// <summary>
-        /// Target instruction ID.
-        /// </summary>
-        public ulong TargetInstructionId { get; }
-
-        /// <summary>
-        /// ID of the call stack created by this node.
-        /// </summary>
-        public ulong CallStackId { get; }
-    }
-
-    private class RootNode : SplitNode
-    {
-    }
-
-    private class BranchNode : CallTreeNode
-    {
-        public BranchNode(ulong sourceInstructionId, ulong targetInstructionId, bool taken)
-        {
-            SourceInstructionId = sourceInstructionId;
-            TargetInstructionId = targetInstructionId;
-            Taken = taken;
-        }
-
-        /// <summary>
-        /// Branch instruction ID.
-        /// </summary>
-        public ulong SourceInstructionId { get; }
-
-        /// <summary>
-        /// Target instruction ID. Only valid if <see cref="Taken"/> is true.
-        /// </summary>
-        public ulong TargetInstructionId { get; }
-
-        /// <summary>
-        /// Denotes whether the branch was taken.
-        /// </summary>
-        public bool Taken { get; }
-
-
-        public override bool Equals(object? obj)
-        {
-            return obj is BranchNode other && Equals(other);
-        }
-
-        private bool Equals(BranchNode other)
-        {
-            return SourceInstructionId == other.SourceInstructionId
-                   && TargetInstructionId == other.TargetInstructionId;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(SourceInstructionId, TargetInstructionId);
-        }
-    }
-
-    private class ReturnNode : BranchNode
-    {
-        public ReturnNode(ulong sourceInstructionId, ulong targetInstructionId)
-            : base(sourceInstructionId, targetInstructionId, true)
-        {
-        }
-    }
-
-    private class MemoryAccessNode : CallTreeNode
-    {
-        public MemoryAccessNode(ulong instructionId, bool isWrite)
-        {
-            InstructionId = instructionId;
-            IsWrite = isWrite;
-        }
-
-        /// <summary>
-        /// Instruction ID of the memory access.
-        /// </summary>
-        public ulong InstructionId { get; }
-
-        /// <summary>
-        /// Encoded target address of this memory accessing instruction, and the respective testcases.
-        /// </summary>
-        public Dictionary<ulong, TestcaseIdSet> Targets { get; } = new();
-
-        public bool IsWrite { get; }
-    }
-
-    private class AllocationNode : CallTreeNode
-    {
-        public AllocationNode(int id, uint size, bool isHeap)
-        {
-            IsHeap = isHeap;
-            Size = size;
-            Id = id;
-        }
-
-        /// <summary>
-        /// Unique allocation ID of this node, which all testcase-specific IDs map to. 
-        /// </summary>
-        public int Id { get; }
-
-        public bool IsHeap { get; }
-
-        /// <summary>
-        /// Allocation size.
-        /// </summary>
-        public uint Size { get; }
-    }
-
-    /// <summary>
-    /// Utility class for efficient storage of a testcase ID set.
-    /// Assumes that testcase IDs are small and don't have large gaps in between.
-    /// </summary>
-    /// <remarks>
-    /// This class is not thread-safe.
-    /// </remarks>
-    private class TestcaseIdSet
-    {
-        private ulong[] _testcaseIdBitField = new ulong[1];
-
-        private static byte[] _hashBuffer = new byte[8];
-
-        private void EnsureArraySize(int id)
-        {
-            if(id / 64 < _testcaseIdBitField.Length)
-                return;
-
-            int newSize = 2 * _testcaseIdBitField.Length;
-            while(newSize <= id / 64)
-                newSize *= 2;
-
-            // Resize
-            ulong[] newBitField = new ulong[newSize];
-            _testcaseIdBitField.CopyTo(newBitField, 0);
-
-            _testcaseIdBitField = newBitField;
-        }
-
-        /// <summary>
-        /// Adds the given testcase ID to this set, if it is not yet included.
-        /// </summary>
-        /// <param name="id">Testcase ID.</param>
-        public void Add(int id)
-        {
-            EnsureArraySize(id);
-
-            _testcaseIdBitField[id / 64] |= (1ul << (id % 64));
-        }
-
-        /// <summary>
-        /// Removes the given testcase ID from this set, if it is included.
-        /// </summary>
-        /// <param name="id">Testcase ID.</param>
-        public void Remove(int id)
-        {
-            EnsureArraySize(id);
-
-            _testcaseIdBitField[id / 64] &= ~(1ul << (id % 64));
-        }
-
-        /// <summary>
-        /// Returns a deep copy of this set.
-        /// </summary>
-        public TestcaseIdSet Copy()
-        {
-            TestcaseIdSet s = new TestcaseIdSet
-            {
-                _testcaseIdBitField = new ulong[_testcaseIdBitField.Length]
-            };
-            _testcaseIdBitField.CopyTo(s._testcaseIdBitField, 0);
-
-            return s;
-        }
-
-        /// <summary>
-        /// Returns the included testcase ID in ascending order.
-        /// </summary>
-        public IEnumerable<int> AsEnumerable()
-        {
-            for(int i = 0; i < _testcaseIdBitField.Length; ++i)
-            {
-                ulong b = _testcaseIdBitField[i];
-                for(int j = 0; j < 64; ++j)
-                {
-                    if((b & 1) != 0)
-                        yield return 64 * i + j;
-
-                    b >>= 1;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Computes a hash over all included IDs.
-        /// </summary>
-        public ulong GetHash()
-        {
-            // Resize shared hash buffer, if necessary
-            int byteCount = 8 * _testcaseIdBitField.Length;
-            if(_hashBuffer.Length < byteCount)
-                _hashBuffer = new byte[byteCount];
-
-            // Copy encoded testcase IDs to hash buffer
-            Buffer.BlockCopy(_testcaseIdBitField, 0, _hashBuffer, 0, byteCount);
-
-            return xxHash64.ComputeHash(_hashBuffer, byteCount);
-        }
-
-        public override string ToString()
-        {
-            return FormatIntegerSequence(AsEnumerable());
-        }
-
-        /// <summary>
-        /// Returns the number of IDs contained in this object.
-        /// </summary>
-        public int Count
-        {
-            get
-            {
-                // This is much faster than _testcaseIdBitField.Sum(BitOperations.PopCount), probably due to better inlining
-                int count = 0;
-                foreach(var b in _testcaseIdBitField)
-                    count += BitOperations.PopCount(b);
-                return count;
-            }
-        }
     }
 
     private class AnalysisData

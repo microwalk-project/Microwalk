@@ -15,23 +15,27 @@ namespace Microwalk.TracePreprocessing.Modules
 
         private DirectoryInfo _inputDirectory = null!;
         private TracePrefixFile _tracePrefix = null!;
+        private bool _loadLazily;
 
         protected override async Task InitAsync(MappingNode? moduleOptions)
         {
             if(moduleOptions == null)
                 throw new ConfigurationException("Missing module configuration.");
-            
+
             // Check input directory
             var inputDirectoryPath = moduleOptions.GetChildNodeOrDefault("input-directory")?.AsString() ?? throw new ConfigurationException("Missing input directory.");
             _inputDirectory = new DirectoryInfo(inputDirectoryPath);
             if(!_inputDirectory.Exists)
                 throw new ConfigurationException("Could not find input directory.");
 
+            // Lazy loading?
+            _loadLazily = moduleOptions.GetChildNodeOrDefault("lazy")?.AsBoolean() ?? false;
+
             // Try to load prefix file
             string preprocessedPrefixFilePath = Path.Combine(_inputDirectory.FullName, "prefix.trace.preprocessed");
             if(!File.Exists(preprocessedPrefixFilePath))
             {
-                await Logger.LogErrorAsync($"Could not find preprocessed trace prefix file.");
+                await Logger.LogErrorAsync("Could not find preprocessed trace prefix file.");
                 throw new FileNotFoundException("Could not find preprocessed trace prefix file.", preprocessedPrefixFilePath);
             }
 
@@ -57,8 +61,15 @@ namespace Microwalk.TracePreprocessing.Modules
             traceEntity.PreprocessedTraceFilePath = preprocessedTraceFilePath;
 
             // Load trace
-            var bytes = await File.ReadAllBytesAsync(preprocessedTraceFilePath);
-            traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, bytes);
+            if(_loadLazily)
+            {
+                traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceFilePath);
+            }
+            else
+            {
+                var bytes = await File.ReadAllBytesAsync(preprocessedTraceFilePath);
+                traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, bytes);
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public TraceEntryTypes EntryType => TraceEntryTypes.HeapFree;
         public const int EntrySize = 1 + 4;
 
-        public void FromReader(FastBinaryReader reader)
+        public void FromReader(IFastBinaryReader reader)
         {
             Id = reader.ReadInt32();
         }

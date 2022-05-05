@@ -140,11 +140,11 @@ namespace Microwalk.Plugins.PinTracer
                         imageFile.Store(tracePrefixFileWriter);
 
                     // Load and parse trace prefix data
-                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]", out Dictionary<int, HeapAllocation> tracePrefixAllocations);
+                    PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]");
 
                     // Create trace prefix object
                     var preprocessedTracePrefixData = tracePrefixFileWriter.Buffer.AsMemory(0, tracePrefixFileWriter.Length);
-                    _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData, tracePrefixAllocations);
+                    _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData);
                     _firstTestcase = false;
 
                     // Keep raw trace data?
@@ -173,11 +173,11 @@ namespace Microwalk.Plugins.PinTracer
             using var traceFileWriter = new FastBinaryWriter(1);
 
             // Preprocess trace data
-            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]", out Dictionary<int, HeapAllocation> allocations);
+            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
 
             // Create trace file object
             var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
-            var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData, allocations);
+            var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData);
             
             // Store to disk?
             if(_storeTraces)
@@ -205,11 +205,10 @@ namespace Microwalk.Plugins.PinTracer
         /// <param name="isPrefix">Determines whether the prefix file is handled.</param>
         /// <param name="traceFileWriter">Writer for storing the preprocessed trace data.</param>
         /// <param name="logPrefix">Short prefix for log messages printed by this function.</param>
-        /// <param name="allocations">Heap allocation lookup table, indexed by IDs.</param>
         /// <remarks>
         /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix, out Dictionary<int, HeapAllocation> allocations)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix)
         {
             // Read entire trace file into memory, since these files should not get too big
             byte[] inputFile = File.ReadAllBytes(inputFileName);
@@ -227,7 +226,6 @@ namespace Microwalk.Plugins.PinTracer
             ulong lastAllocReturnAddress = 0;
             bool encounteredSizeSinceLastAlloc = false;
             var heapAllocationLookup = new SortedList<ulong, HeapAllocation>();
-            var heapAllocationData = new List<HeapAllocation>();
             int nextHeapAllocationId = isPrefix ? 0 : _tracePrefixLastHeapAllocationId + 1;
             int nextStackAllocationId = isPrefix ? 0 : _tracePrefixLastStackAllocationId + 1;
             fixed(byte* inputFilePtr = inputFile)
@@ -276,7 +274,6 @@ namespace Microwalk.Plugins.PinTracer
 
                             // Store allocation information
                             heapAllocationLookup[entry.Address] = entry;
-                            heapAllocationData.Add(entry);
 
                             // Update state
                             lastAllocReturnAddress = entry.Address;
@@ -581,7 +578,6 @@ namespace Microwalk.Plugins.PinTracer
             }
 
             // Create trace file object
-            allocations = heapAllocationData.ToDictionary(ad => ad.Id);
             if(isPrefix)
             {
                 _tracePrefixHeapAllocationLookup = heapAllocationLookup;

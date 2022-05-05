@@ -1,14 +1,13 @@
 ﻿using System;
-using System.IO;
 using System.Text;
 
 namespace Microwalk.FrameworkBase.Utilities
 {
     /// <summary>
-    /// Provides functions for fast reading from binary data.
+    /// Provides functions for fast reading from a buffer with binary data.
     /// This class does not do error checking!
     /// </summary>
-    public class FastBinaryReader : IDisposable
+    public class FastBinaryBufferReader : IDisposable, IFastBinaryReader
     {
         /// <summary>
         /// Returns or sets the current read position.
@@ -16,24 +15,20 @@ namespace Microwalk.FrameworkBase.Utilities
         public int Position { get; set; }
 
         /// <summary>
+        /// Total length of the binary data.
+        /// </summary>
+        public int Length => Buffer.Length;
+
+        /// <summary>
         /// The byte buffer this object reads from.
         /// </summary>
         public Memory<byte> Buffer { get; }
-
-        /// <summary>
-        /// Loads the given file into the internal buffer.
-        /// </summary>
-        /// <param name="filename">The file to be loaded.</param>
-        public FastBinaryReader(string filename)
-        {
-            Buffer = File.ReadAllBytes(filename);
-        }
-
+        
         /// <summary>
         /// Creates a new reader for the given byte buffer.
         /// </summary>
         /// <param name="buffer">Buffer containing the data to be read.</param>
-        public FastBinaryReader(Memory<byte> buffer)
+        public FastBinaryBufferReader(Memory<byte> buffer)
         {
             Buffer = buffer;
         }

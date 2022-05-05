@@ -10,7 +10,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         public TraceEntryTypes EntryType => TraceEntryTypes.ImageMemoryAccess;
         public const int EntrySize = 1 + 1 + 2 + 4 + 4 + 4 + 4;
 
-        public void FromReader(FastBinaryReader reader)
+        public void FromReader(IFastBinaryReader reader)
         {
             IsWrite = reader.ReadBoolean();
             Size = reader.ReadInt16();

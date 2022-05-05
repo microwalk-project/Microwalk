@@ -16,7 +16,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         /// Initializes the trace entry from the given binary reader.
         /// </summary>
         /// <param name="reader">Binary reader containing the trace data.</param>
-        public void FromReader(FastBinaryReader reader);
+        public void FromReader(IFastBinaryReader reader);
 
         /// <summary>
         /// Writes the entry data using the given binary writer.

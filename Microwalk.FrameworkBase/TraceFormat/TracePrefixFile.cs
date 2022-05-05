@@ -19,12 +19,10 @@ namespace Microwalk.FrameworkBase.TraceFormat
         /// Loads a trace prefix file from the given byte buffer.
         /// </summary>
         /// <param name="buffer">Buffer containing the trace data.</param>
-        /// <param name="allocations">Optional. Allocation lookup table, indexed by IDs.</param>
-        public TracePrefixFile(Memory<byte> buffer, Dictionary<int, HeapAllocation>? allocations = null)
-            : base(allocations)
+        public TracePrefixFile(Memory<byte> buffer)
         {
             // Read image file information
-            var reader = new FastBinaryReader(buffer);
+            var reader = new FastBinaryBufferReader(buffer);
             int imageFileCount = reader.ReadInt32();
             ImageFiles = new Dictionary<int, ImageFileInfo>();
             for(int i = 0; i < imageFileCount; ++i)
@@ -53,7 +51,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
             /// Reads image data.
             /// </summary>
             /// <param name="reader">Binary reader.</param>
-            public ImageFileInfo(FastBinaryReader reader)
+            public ImageFileInfo(IFastBinaryReader reader)
             {
                 Id = reader.ReadInt32();
                 StartAddress = reader.ReadUInt64();
