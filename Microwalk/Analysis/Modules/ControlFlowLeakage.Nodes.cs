@@ -8,10 +8,6 @@ public partial class ControlFlowLeakage
 {
     private abstract class CallTreeNode
     {
-        /// <summary>
-        /// Testcase IDs leading to this call tree node.
-        /// </summary>
-        public TestcaseIdSet TestcaseIds { get; protected init; } = new();
     }
 
     /// <summary>
@@ -19,6 +15,11 @@ public partial class ControlFlowLeakage
     /// </summary>
     private class SplitNode : CallTreeNode
     {
+        /// <summary>
+        /// Testcase IDs leading to this call tree node.
+        /// </summary>
+        public TestcaseIdSet TestcaseIds { get; protected init; } = new();
+        
         /// <summary>
         /// Successors of this node, in linear order.
         /// </summary>

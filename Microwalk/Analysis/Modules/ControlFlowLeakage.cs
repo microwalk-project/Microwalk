@@ -285,7 +285,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             {
                                 // The successor matches, nothing to do here
 
-                                branchNode.TestcaseIds.Add(traceEntity.Id);
                                 ++successorIndex;
                             }
                             else
@@ -296,7 +295,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, branchNode);
 
                                 // Continue with new split node
-                                branchNode.TestcaseIds.Add(traceEntity.Id);
                                 currentNode = newSplitNode;
                                 successorIndex = 1;
                             }
@@ -312,7 +310,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 currentNode.Successors.Add(branchNode);
 
                                 // Next
-                                branchNode.TestcaseIds.Add(traceEntity.Id);
                                 ++successorIndex;
                             }
                             else if(currentNode.SplitSuccessors.Count > 0)
@@ -326,7 +323,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                         // The split successor matches, we can continue there
 
                                         splitSuccessor.TestcaseIds.Add(traceEntity.Id);
-                                        branchNode.TestcaseIds.Add(traceEntity.Id);
 
                                         currentNode = splitSuccessor;
                                         successorIndex = 1;
@@ -347,7 +343,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                     currentNode.SplitSuccessors.Add(splitNode);
 
                                     // Continue with new split node
-                                    branchNode.TestcaseIds.Add(traceEntity.Id);
                                     currentNode = splitNode;
                                     successorIndex = 1;
                                 }
@@ -365,7 +360,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 currentNode.SplitSuccessors.Add(splitNode);
 
                                 // Continue with new split node
-                                branchNode.TestcaseIds.Add(traceEntity.Id);
                                 currentNode = splitNode;
                                 successorIndex = 1;
                             }
@@ -384,7 +378,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             {
                                 // The successor matches, we don't need to do anything here
 
-                                returnNode.TestcaseIds.Add(traceEntity.Id);
                                 if(nodeStack.Count == 0)
                                 {
                                     await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (1) Encountered return entry, but node stack is empty; continuing with root node");
@@ -402,7 +395,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
                                 currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, returnNode);
 
-                                returnNode.TestcaseIds.Add(traceEntity.Id);
                                 if(nodeStack.Count == 0)
                                     await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (2) Encountered return entry, but node stack is empty; continuing with root node");
                                 else
@@ -421,7 +413,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 var returnNode = new ReturnNode(sourceInstructionId, targetInstructionId);
                                 currentNode.Successors.Add(returnNode);
 
-                                returnNode.TestcaseIds.Add(traceEntity.Id);
                                 if(nodeStack.Count == 0)
                                 {
                                     await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (3) Encountered return entry, but node stack is empty; continuing with root node");
@@ -444,7 +435,6 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                                         splitSuccessor.TestcaseIds.Add(traceEntity.Id);
 
-                                        returnNode.TestcaseIds.Add(traceEntity.Id);
                                         if(nodeStack.Count == 0)
                                             await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (4) Encountered return entry, but node stack is empty; continuing with root node");
                                         else
@@ -467,7 +457,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                     splitNode.TestcaseIds.Add(traceEntity.Id);
                                     currentNode.SplitSuccessors.Add(splitNode);
 
-                                    returnNode.TestcaseIds.Add(traceEntity.Id);
                                     if(nodeStack.Count == 0)
                                         await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (5) Encountered return entry, but node stack is empty; continuing with root node");
                                     else
@@ -488,7 +477,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 splitNode.TestcaseIds.Add(traceEntity.Id);
                                 currentNode.SplitSuccessors.Add(splitNode);
 
-                                returnNode.TestcaseIds.Add(traceEntity.Id);
                                 if(nodeStack.Count == 0)
                                     await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] (6) Encountered return entry, but node stack is empty; continuing with root node");
                                 else
@@ -560,7 +548,6 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                         allocationIdMapping.Add(id, allocationNode.Id);
 
-                        allocationNode.TestcaseIds.Add(traceEntity.Id);
                         ++successorIndex;
                     }
                     else
@@ -573,7 +560,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         allocationIdMapping.Add(id, allocationNode.Id);
 
                         // Continue with new split node
-                        allocationNode.TestcaseIds.Add(traceEntity.Id);
                         currentNode = newSplitNode;
                         successorIndex = 1;
                     }
@@ -591,7 +577,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         allocationIdMapping.Add(id, allocationNode.Id);
 
                         // Next
-                        allocationNode.TestcaseIds.Add(traceEntity.Id);
                         ++successorIndex;
                     }
                     else if(currentNode.SplitSuccessors.Count > 0)
@@ -605,7 +590,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 // The split successor matches, we can continue there
 
                                 splitSuccessor.TestcaseIds.Add(traceEntity.Id);
-                                allocationNode.TestcaseIds.Add(traceEntity.Id);
 
                                 allocationIdMapping.Add(id, allocationNode.Id);
 
@@ -630,7 +614,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             currentNode.SplitSuccessors.Add(splitNode);
 
                             // Continue with new split node
-                            allocationNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode = splitNode;
                             successorIndex = 1;
                         }
@@ -650,7 +633,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         currentNode.SplitSuccessors.Add(splitNode);
 
                         // Continue with new split node
-                        allocationNode.TestcaseIds.Add(traceEntity.Id);
                         currentNode = splitNode;
                         successorIndex = 1;
                     }
@@ -752,7 +734,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
                         }
 
-                        memoryNode.TestcaseIds.Add(traceEntity.Id);
                         ++successorIndex;
                     }
                     else
@@ -770,7 +751,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, memoryNode);
 
                         // Continue with new split node
-                        memoryNode.TestcaseIds.Add(traceEntity.Id);
                         currentNode = newSplitNode;
                         successorIndex = 1;
                     }
@@ -790,7 +770,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         currentNode.Successors.Add(memoryNode);
 
                         // Next
-                        memoryNode.TestcaseIds.Add(traceEntity.Id);
                         ++successorIndex;
                     }
                     else if(currentNode.SplitSuccessors.Count > 0)
@@ -814,7 +793,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 }
 
                                 splitSuccessor.TestcaseIds.Add(traceEntity.Id);
-                                memoryNode.TestcaseIds.Add(traceEntity.Id);
 
                                 currentNode = splitSuccessor;
                                 successorIndex = 1;
@@ -838,7 +816,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             currentNode.SplitSuccessors.Add(splitNode);
 
                             // Continue with new split node
-                            memoryNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode = splitNode;
                             successorIndex = 1;
                         }
@@ -859,7 +836,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         currentNode.SplitSuccessors.Add(splitNode);
 
                         // Continue with new split node
-                        memoryNode.TestcaseIds.Add(traceEntity.Id);
                         currentNode = splitNode;
                         successorIndex = 1;
                     }
@@ -1115,7 +1091,7 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                             // We can't really build a testcase ID tree for this instruction, as it does not split the call tree.
                             // So we just create a new node each time the instruction is encountered.
-                            var newTestcaseIdRootNode = new AnalysisData.TestcaseIdTreeNode { TestcaseIds = memoryAccessNode.TestcaseIds };
+                            var newTestcaseIdRootNode = new AnalysisData.TestcaseIdTreeNode { TestcaseIds = currentNode.TestcaseIds };
                             int targetIndex = 0;
                             foreach(var target in memoryAccessNode.Targets)
                                 newTestcaseIdRootNode.Children.Add(targetIndex++, new AnalysisData.TestcaseIdTreeNode { TestcaseIds = target.Value });
