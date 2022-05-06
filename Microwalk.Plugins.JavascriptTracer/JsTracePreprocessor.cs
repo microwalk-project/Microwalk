@@ -191,6 +191,13 @@ public class JsTracePreprocessor : PreprocessorStage
                 }
             }
         }
+        catch
+        {
+            // Ensure that other threads don't try to process the prefix as well
+            _firstTestcase = false;
+
+            throw;
+        }
         finally
         {
             _firstTestcaseSemaphore.Release();
@@ -232,7 +239,7 @@ public class JsTracePreprocessor : PreprocessorStage
         // Resize output buffer to avoid re-allocations
         // As a starting point, we just take the size of the raw trace
         if(isPrefix)
-            traceFileWriter.ResizeBuffer(1 * 1024*1024);
+            traceFileWriter.ResizeBuffer(1 * 1024 * 1024);
         else
             traceFileWriter.ResizeBuffer((int)inputFileStream.Length);
 
@@ -247,6 +254,7 @@ public class JsTracePreprocessor : PreprocessorStage
         int inputBufferLength = 0;
         int inputBufferPosition = 0;
         char[] inputBuffer = new char[1 * 1024 * 1024];
+        char[] lineBuffer = new char[1024]; // For storing a single, decompressed line
         while(true)
         {
             // Empty buffer? -> Read next chunk
@@ -285,7 +293,7 @@ public class JsTracePreprocessor : PreprocessorStage
                 inputBufferPosition = 0;
 
                 // Append the new data
-                int dataRead = inputFileStreamReader.ReadBlock(inputBuffer.AsSpan( inputBufferLength..));
+                int dataRead = inputFileStreamReader.ReadBlock(inputBuffer.AsSpan(inputBufferLength..));
                 inputBufferLength += dataRead;
                 if(dataRead == 0)
                 {
@@ -398,24 +406,33 @@ public class JsTracePreprocessor : PreprocessorStage
                     throw new Exception($"{logPrefix} Unexpected control character: '{firstChar}' in line \"{new string(currentInputFileLineSpan)}\"");
 
                 // Extract line
-                if(!compressedLinesLookup.TryGetValue(lineId, out string? line))
+                if(!compressedLinesLookup.TryGetValue(lineId, out string? decompressedLine))
                     throw new Exception($"{logPrefix} Could not resolve compressed line #{lineId}");
 
-                line += new string(lineEndPart);
+                // Compose final decompressed line
+                decompressedLine.CopyTo(lineBuffer);
+                lineEndPart.CopyTo(lineBuffer.AsSpan(decompressedLine.Length));
+                ReadOnlySpan<char> line = lineBuffer.AsSpan(0, decompressedLine.Length + lineEndPart.Length);
 
                 // Parse decompressed line
-                string[] parts = line.Split(';');
-                string entryType = parts[0];
+                const char separator = ';';
+                var lineParts = line;
+                char entryType = NextSplit(ref lineParts, separator)[0];
                 switch(entryType)
                 {
-                    case "c":
+                    case 'c':
                     {
+                        // Parse line
+                        var sourcePart = NextSplit(ref lineParts, separator);
+                        var destinationPart = NextSplit(ref lineParts, separator);
+                        var namePart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var source = ResolveLineInfoToImage(parts[1]);
-                        var destination = ResolveLineInfoToImage(parts[2]);
+                        var source = ResolveLineInfoToImage(sourcePart);
+                        var destination = ResolveLineInfoToImage(destinationPart);
 
                         // Record function name, if it is not already known
-                        _functionNameLookup[destination.ImageFileInfo.Id].TryAdd((destination.RelativeStartAddress, destination.RelativeEndAddress), parts[3]);
+                        _functionNameLookup[destination.ImageFileInfo.Id].TryAdd((destination.RelativeStartAddress, destination.RelativeEndAddress), new string(namePart));
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
@@ -458,10 +475,13 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "r":
+                    case 'r':
                     {
+                        // Parse line
+                        var sourcePart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var source = ResolveLineInfoToImage(parts[1]);
+                        var source = ResolveLineInfoToImage(sourcePart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
@@ -493,11 +513,15 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "R":
+                    case 'R':
                     {
+                        // Parse line
+                        var sourcePart = NextSplit(ref lineParts, separator);
+                        var destinationPart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var source = ResolveLineInfoToImage(parts[1]);
-                        var destination = ResolveLineInfoToImage(parts[2]);
+                        var source = ResolveLineInfoToImage(sourcePart);
+                        var destination = ResolveLineInfoToImage(destinationPart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((source.ImageFileInfo.Id, source.RelativeStartAddress), null);
@@ -541,10 +565,13 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "C":
+                    case 'C':
                     {
+                        // Parse line
+                        var locationPart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var location = ResolveLineInfoToImage(parts[1]);
+                        var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
@@ -574,10 +601,13 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "e":
+                    case 'e':
                     {
+                        // Parse line
+                        var locationPart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var location = ResolveLineInfoToImage(parts[1]);
+                        var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
@@ -606,10 +636,15 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "g":
+                    case 'g':
                     {
+                        // Parse line
+                        var locationPart = NextSplit(ref lineParts, separator);
+                        var objectIdPart = NextSplit(ref lineParts, separator);
+                        var offsetPart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var location = ResolveLineInfoToImage(parts[1]);
+                        var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
@@ -632,8 +667,8 @@ public class JsTracePreprocessor : PreprocessorStage
                         }
 
                         // Extract access data
-                        int objectId = int.Parse(parts[2]);
-                        string offset = parts[3];
+                        int objectId = int.Parse(objectIdPart);
+                        string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
                         if(!heapObjects.TryGetValue(objectId, out var objectData))
@@ -684,10 +719,15 @@ public class JsTracePreprocessor : PreprocessorStage
                         break;
                     }
 
-                    case "p":
+                    case 'p':
                     {
+                        // Parse line
+                        var locationPart = NextSplit(ref lineParts, separator);
+                        var objectIdPart = NextSplit(ref lineParts, separator);
+                        var offsetPart = NextSplit(ref lineParts, separator);
+
                         // Resolve code locations
-                        var location = ResolveLineInfoToImage(parts[1]);
+                        var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
                         _requestedMapEntries.TryAdd((location.ImageFileInfo.Id, location.RelativeStartAddress), null);
@@ -710,8 +750,8 @@ public class JsTracePreprocessor : PreprocessorStage
                         }
 
                         // Extract access data
-                        int objectId = int.Parse(parts[2]);
-                        string offset = parts[3];
+                        int objectId = int.Parse(objectIdPart);
+                        string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
                         if(!heapObjects.TryGetValue(objectId, out var objectData))
@@ -788,32 +828,48 @@ public class JsTracePreprocessor : PreprocessorStage
     /// - scriptId:startLine:startColumn:endLine:endColumn
     /// - [extern]:functionName:constructor
     /// </param>
-    private (TracePrefixFile.ImageFileInfo ImageFileInfo, uint RelativeStartAddress, uint RelativeEndAddress) ResolveLineInfoToImage(string lineInfo)
+    private (TracePrefixFile.ImageFileInfo ImageFileInfo, uint RelativeStartAddress, uint RelativeEndAddress) ResolveLineInfoToImage(ReadOnlySpan<char> lineInfo)
     {
-        string[] parts = lineInfo.Split(':');
+        const char separator = ':';
+
+        // We use line info as key for caching known addresses
+        string lineInfoString = new string(lineInfo);
+
+        var part0 = NextSplit(ref lineInfo, separator);
 
         // Try to read existing address data
-        var image = _imageFiles[parts[0] == "E" ? _externalFunctionsImageId : int.Parse(parts[0])];
+        bool isExternal = part0[0] == 'E';
+        var image = _imageFiles[isExternal ? _externalFunctionsImageId : int.Parse(part0)];
         var imageAddressLookup = _relativeAddressLookup[image.Id];
-        var addressData = imageAddressLookup.GetOrAdd(lineInfo, _ =>
+        var addressData = imageAddressLookup.GetOrAdd(lineInfoString, _ =>
         {
             // Address not known yet, compute it
 
+            // Split
+            var lineInfoStringSpan = _.AsSpan(); // We can't capture the lineInfo Span directly
+            NextSplit(ref lineInfoStringSpan, separator); // part0 is already handled
+            var part1 = NextSplit(ref lineInfoStringSpan, separator);
+
             // Unknown script / external function?
-            if(parts[0] == "E")
+            if(isExternal)
             {
                 // Get address of function, or generate a new one if it does not yet exist
                 // Necessary locking is done by the underlying concurrent dictionary
-                uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(parts[1], _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
+                uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(new string(part1), _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
 
                 return (externalFunctionAddress, externalFunctionAddress);
             }
 
+            // Split
+            var part2 = NextSplit(ref lineInfoStringSpan, separator);
+            var part3 = NextSplit(ref lineInfoStringSpan, separator);
+            var part4 = NextSplit(ref lineInfoStringSpan, separator);
+
             // Normal function
-            uint startLine = uint.Parse(parts[1]);
-            uint startColumn = uint.Parse(parts[2]);
-            uint endLine = uint.Parse(parts[3]);
-            uint endColumn = uint.Parse(parts[4]);
+            uint startLine = uint.Parse(part1);
+            uint startColumn = uint.Parse(part2);
+            uint endLine = uint.Parse(part3);
+            uint endColumn = uint.Parse(part4);
             uint startAddress = (startLine << _columnsBits) | startColumn;
             uint endAddress = (endLine << _columnsBits) | endColumn;
 
@@ -892,6 +948,33 @@ public class JsTracePreprocessor : PreprocessorStage
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Looks for the separator and returns the next string part before it.
+    /// Updates the given string span to point to the remaining string.
+    /// </summary>
+    /// <param name="str">String to split.</param>
+    /// <param name="separator">Split character.</param>
+    /// <returns></returns>
+    private ReadOnlySpan<char> NextSplit(ref ReadOnlySpan<char> str, char separator)
+    {
+        // Look for separator
+        for(int i = 0; i < str.Length; ++i)
+        {
+            if(str[i] == separator)
+            {
+                // Get part
+                var part = str[..i];
+                str = str[(i + 1)..];
+                return part;
+            }
+        }
+
+        // Not found, return entire remaining string
+        var tmp = str;
+        str = ReadOnlySpan<char>.Empty;
+        return tmp;
     }
 
     private class HeapObjectData
