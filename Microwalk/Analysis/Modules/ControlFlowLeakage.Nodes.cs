@@ -19,7 +19,7 @@ public partial class ControlFlowLeakage
         /// Testcase IDs leading to this call tree node.
         /// </summary>
         public TestcaseIdSet TestcaseIds { get; protected init; } = new();
-        
+
         /// <summary>
         /// Successors of this node, in linear order.
         /// </summary>
@@ -142,7 +142,7 @@ public partial class ControlFlowLeakage
         }
     }
 
-    private class MemoryAccessNode : CallTreeNode
+    private abstract class MemoryAccessNode : CallTreeNode
     {
         public MemoryAccessNode(ulong instructionId, bool isWrite)
         {
@@ -155,12 +155,32 @@ public partial class ControlFlowLeakage
         /// </summary>
         public ulong InstructionId { get; }
 
+        public bool IsWrite { get; }
+    }
+
+    private class SimpleMemoryAccessNode : MemoryAccessNode
+    {
+        public SimpleMemoryAccessNode(ulong instructionId, bool isWrite, ulong targetAddress)
+            : base(instructionId, isWrite)
+        {
+            TargetAddress = targetAddress;
+        }
+
+        public ulong TargetAddress { get; }
+        public TestcaseIdSet TestcaseIds { get; } = new();
+    }
+
+    private class SplitMemoryAccessNode : MemoryAccessNode
+    {
+        public SplitMemoryAccessNode(ulong instructionId, bool isWrite)
+            : base(instructionId, isWrite)
+        {
+        }
+
         /// <summary>
         /// Encoded target address of this memory accessing instruction, and the respective testcases.
         /// </summary>
         public Dictionary<ulong, TestcaseIdSet> Targets { get; } = new();
-
-        public bool IsWrite { get; }
     }
 
     private class AllocationNode : CallTreeNode

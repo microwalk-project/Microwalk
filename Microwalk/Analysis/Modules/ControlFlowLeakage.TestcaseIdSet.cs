@@ -18,8 +18,6 @@ public partial class ControlFlowLeakage
     {
         private ulong[] _testcaseIdBitField = new ulong[1];
 
-        private static byte[] _hashBuffer = new byte[8];
-
         private void EnsureArraySize(int id)
         {
             if(id / 64 < _testcaseIdBitField.Length)
@@ -59,6 +57,23 @@ public partial class ControlFlowLeakage
         }
 
         /// <summary>
+        /// Creates a new empty testcase ID set.
+        /// </summary>
+        public TestcaseIdSet()
+        {
+        }
+
+        /// <summary>
+        /// Creates a new testcase ID set with the given values.
+        /// </summary>
+        /// <param name="testcaseIds">Testcase IDs to add.</param>
+        public TestcaseIdSet(params int[] testcaseIds)
+        {
+            foreach(var t in testcaseIds)
+                Add(t);
+        }
+
+        /// <summary>
         /// Returns a deep copy of this set.
         /// </summary>
         public TestcaseIdSet Copy()
@@ -88,22 +103,6 @@ public partial class ControlFlowLeakage
                     b >>= 1;
                 }
             }
-        }
-
-        /// <summary>
-        /// Computes a hash over all included IDs.
-        /// </summary>
-        public ulong GetHash()
-        {
-            // Resize shared hash buffer, if necessary
-            int byteCount = 8 * _testcaseIdBitField.Length;
-            if(_hashBuffer.Length < byteCount)
-                _hashBuffer = new byte[byteCount];
-
-            // Copy encoded testcase IDs to hash buffer
-            Buffer.BlockCopy(_testcaseIdBitField, 0, _hashBuffer, 0, byteCount);
-
-            return xxHash64.ComputeHash(_hashBuffer, byteCount);
         }
 
         public override string ToString()

@@ -151,7 +151,7 @@ public partial class ControlFlowLeakage : AnalysisStage
         {
             var traceEntry = traceEnumerator.Current;
             ++traceEntryId;
-            
+
             if(traceEntry.EntryType == TraceEntryTypes.Branch)
             {
                 var branchEntry = (Branch)traceEntry;
@@ -713,8 +713,8 @@ public partial class ControlFlowLeakage : AnalysisStage
                 /*
                  * Step 2: Handle individual cases, same as for branches.
                  *
-                 * Contrary to branches, we don't split as long as the instruction ID is identical, since memory accesses do not affect control flow.
-                 * Instead, a memory access stores a record of all accessed addresses and the respective testcase IDs.
+                 * Contrary to branches, we don't split the tree as long as the instruction ID is identical, since memory accesses do not affect control flow.
+                 * Instead, a split memory access stores a record of all accessed addresses and the respective testcase IDs.
                  */
 
                 // Are there successor nodes from previous testcases?
@@ -725,13 +725,28 @@ public partial class ControlFlowLeakage : AnalysisStage
                     {
                         // The successor matches, check whether our access target is recorded
 
-                        if(memoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
-                            targetTestcaseIdSet.Add(traceEntity.Id);
-                        else
+                        if(memoryNode is SimpleMemoryAccessNode simpleMemoryNode)
                         {
-                            targetTestcaseIdSet = new TestcaseIdSet();
-                            targetTestcaseIdSet.Add(traceEntity.Id);
-                            memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                            if(simpleMemoryNode.TargetAddress == targetAddressId)
+                                simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
+                            else
+                            {
+                                var splitMemoryNode = new SplitMemoryAccessNode(memoryNode.InstructionId, memoryNode.IsWrite);
+                                splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, simpleMemoryNode.TestcaseIds);
+                                splitMemoryNode.Targets.Add(targetAddressId, new TestcaseIdSet(traceEntity.Id));
+                                currentNode.Successors[successorIndex] = splitMemoryNode;
+                            }
+                        }
+                        else if(memoryNode is SplitMemoryAccessNode splitMemoryNode)
+                        {
+                            if(splitMemoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
+                                targetTestcaseIdSet.Add(traceEntity.Id);
+                            else
+                            {
+                                targetTestcaseIdSet = new TestcaseIdSet();
+                                targetTestcaseIdSet.Add(traceEntity.Id);
+                                splitMemoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                            }
                         }
 
                         ++successorIndex;
@@ -743,12 +758,10 @@ public partial class ControlFlowLeakage : AnalysisStage
                         // kind of masked instruction or a conditional move, which sometimes does trigger a memory access and sometimes does not,
                         // so we handle this case anyway.
 
-                        memoryNode = new MemoryAccessNode(instructionId, isWrite);
-                        var targetTestcaseIdSet = new TestcaseIdSet();
-                        targetTestcaseIdSet.Add(traceEntity.Id);
-                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                        var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
+                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
-                        var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, memoryNode);
+                        var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, simpleMemoryNode);
 
                         // Continue with new split node
                         currentNode = newSplitNode;
@@ -762,12 +775,10 @@ public partial class ControlFlowLeakage : AnalysisStage
                     if(currentNode.TestcaseIds.Count == 1)
                     {
                         // No, this is purely ours. So just append another successor
-                        var memoryNode = new MemoryAccessNode(instructionId, isWrite);
-                        var targetTestcaseIdSet = new TestcaseIdSet();
-                        targetTestcaseIdSet.Add(traceEntity.Id);
-                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                        var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
+                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
-                        currentNode.Successors.Add(memoryNode);
+                        currentNode.Successors.Add(simpleMemoryNode);
 
                         // Next
                         ++successorIndex;
@@ -783,13 +794,28 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 // The split successor matches, we can continue there
 
                                 // Check whether our access target is recorded
-                                if(memoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
-                                    targetTestcaseIdSet.Add(traceEntity.Id);
-                                else
+                                if(memoryNode is SimpleMemoryAccessNode simpleMemoryNode)
                                 {
-                                    targetTestcaseIdSet = new TestcaseIdSet();
-                                    targetTestcaseIdSet.Add(traceEntity.Id);
-                                    memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                                    if(simpleMemoryNode.TargetAddress == targetAddressId)
+                                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
+                                    else
+                                    {
+                                        var splitMemoryNode = new SplitMemoryAccessNode(memoryNode.InstructionId, memoryNode.IsWrite);
+                                        splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, simpleMemoryNode.TestcaseIds);
+                                        splitMemoryNode.Targets.Add(targetAddressId, new TestcaseIdSet(traceEntity.Id));
+                                        splitSuccessor.Successors[0] = splitMemoryNode;
+                                    }
+                                }
+                                else if(memoryNode is SplitMemoryAccessNode splitMemoryNode)
+                                {
+                                    if(splitMemoryNode.Targets.TryGetValue(targetAddressId, out var targetTestcaseIdSet))
+                                        targetTestcaseIdSet.Add(traceEntity.Id);
+                                    else
+                                    {
+                                        targetTestcaseIdSet = new TestcaseIdSet();
+                                        targetTestcaseIdSet.Add(traceEntity.Id);
+                                        splitMemoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                                    }
                                 }
 
                                 splitSuccessor.TestcaseIds.Add(traceEntity.Id);
@@ -806,12 +832,10 @@ public partial class ControlFlowLeakage : AnalysisStage
                         {
                             // Add new split successor
                             var splitNode = new SplitNode();
-                            var memoryNode = new MemoryAccessNode(instructionId, isWrite);
-                            var targetTestcaseIdSet = new TestcaseIdSet();
-                            targetTestcaseIdSet.Add(traceEntity.Id);
-                            memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                            var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
+                            simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
-                            splitNode.Successors.Add(memoryNode);
+                            splitNode.Successors.Add(simpleMemoryNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
                             currentNode.SplitSuccessors.Add(splitNode);
 
@@ -826,12 +850,10 @@ public partial class ControlFlowLeakage : AnalysisStage
                         await Logger.LogWarningAsync($"{logMessagePrefix} [{traceEntryId}] Encountered weird case for memory access entry");
 
                         var splitNode = new SplitNode();
-                        var memoryNode = new MemoryAccessNode(instructionId, isWrite);
-                        var targetTestcaseIdSet = new TestcaseIdSet();
-                        targetTestcaseIdSet.Add(traceEntity.Id);
-                        memoryNode.Targets.Add(targetAddressId, targetTestcaseIdSet);
+                        var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
+                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
-                        splitNode.Successors.Add(memoryNode);
+                        splitNode.Successors.Add(simpleMemoryNode);
                         splitNode.TestcaseIds.Add(traceEntity.Id);
                         currentNode.SplitSuccessors.Add(splitNode);
 
@@ -1066,34 +1088,45 @@ public partial class ControlFlowLeakage : AnalysisStage
                         if(_dumpCallTree && _includeMemoryAccessesInCallTreeDump)
                         {
                             await callTreeDumpWriter.WriteLineAsync($"{indentation}    #memory {_formattedImageAddresses[memoryAccessNode.InstructionId]} {(memoryAccessNode.IsWrite ? "writes" : "reads")}");
-                            foreach(var targetAddress in memoryAccessNode.Targets)
+                            if(memoryAccessNode is SimpleMemoryAccessNode simpleMemoryNode)
                             {
-                                string formattedTargetAddress = (targetAddress.Key & _addressIdFlagMemory) != 0
-                                    ? _formattedMemoryAddresses[targetAddress.Key]
-                                    : _formattedImageAddresses[targetAddress.Key];
+                                string formattedTargetAddress = (simpleMemoryNode.TargetAddress & _addressIdFlagMemory) != 0
+                                    ? _formattedMemoryAddresses[simpleMemoryNode.TargetAddress]
+                                    : _formattedImageAddresses[simpleMemoryNode.TargetAddress];
 
-                                await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                                await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(simpleMemoryNode.TestcaseIds.AsEnumerable())} ({simpleMemoryNode.TestcaseIds.Count} total)");
+                            }
+                            else if(memoryAccessNode is SplitMemoryAccessNode splitMemoryNode)
+                            {
+                                foreach(var targetAddress in splitMemoryNode.Targets)
+                                {
+                                    string formattedTargetAddress = (targetAddress.Key & _addressIdFlagMemory) != 0
+                                        ? _formattedMemoryAddresses[targetAddress.Key]
+                                        : _formattedImageAddresses[targetAddress.Key];
+
+                                    await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                                }
                             }
                         }
 
                         // Record access target testcase IDs, if there is more than one
-                        if(memoryAccessNode.Targets.Count > 1)
+                        if(memoryAccessNode is SplitMemoryAccessNode splitMemoryAccessNode && splitMemoryAccessNode.Targets.Count > 1)
                         {
                             // Get analysis data object for this instruction
-                            if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(memoryAccessNode.InstructionId, out var analysisData))
+                            if(!currentCallStackNode.InstructionAnalysisData.TryGetValue(splitMemoryAccessNode.InstructionId, out var analysisData))
                             {
                                 analysisData = new AnalysisData
                                 {
                                     Type = AnalysisData.InstructionType.MemoryAccess
                                 };
-                                currentCallStackNode.InstructionAnalysisData.Add(memoryAccessNode.InstructionId, analysisData);
+                                currentCallStackNode.InstructionAnalysisData.Add(splitMemoryAccessNode.InstructionId, analysisData);
                             }
 
                             // We can't really build a testcase ID tree for this instruction, as it does not split the call tree.
                             // So we just create a new node each time the instruction is encountered.
                             var newTestcaseIdRootNode = new AnalysisData.TestcaseIdTreeNode { TestcaseIds = currentNode.TestcaseIds };
                             int targetIndex = 0;
-                            foreach(var target in memoryAccessNode.Targets)
+                            foreach(var target in splitMemoryAccessNode.Targets)
                                 newTestcaseIdRootNode.Children.Add(targetIndex++, new AnalysisData.TestcaseIdTreeNode { TestcaseIds = target.Value });
 
                             analysisData.TestcaseIdTrees.Add(newTestcaseIdRootNode);
