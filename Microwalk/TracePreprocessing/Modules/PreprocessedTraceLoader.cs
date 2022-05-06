@@ -29,7 +29,7 @@ namespace Microwalk.TracePreprocessing.Modules
                 throw new ConfigurationException("Could not find input directory.");
 
             // Lazy loading?
-            _loadLazily = moduleOptions.GetChildNodeOrDefault("lazy")?.AsBoolean() ?? false;
+            _loadLazily = moduleOptions.GetChildNodeOrDefault("lazy")?.AsBoolean() ?? true;
 
             // Try to load prefix file
             string preprocessedPrefixFilePath = Path.Combine(_inputDirectory.FullName, "prefix.trace.preprocessed");
