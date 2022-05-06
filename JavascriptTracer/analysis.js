@@ -31,6 +31,9 @@ let lastCompressedLineIndex = -1000;
 // If the last line used a one-character relative encoding, we omit the line break and append the next one directly.
 let lastLineWasEncodedRelatively = false;
 
+// Stores whether the last trace entry was a conditional.
+let pendingConditionalState = 0; // 0: No conditional; 1: Pending target instruction; 2: Skip very next expression
+
 function persistTrace()
 {
     let traceFilePath = currentTestcaseId === -1 ? `${traceDirectory}/prefix.trace` : `${traceDirectory}/t${currentTestcaseId}.trace`;
@@ -216,6 +219,8 @@ function getCompressedLine(line)
 
             writeTraceLine(`c;${formatIid(iid)};${functionInfo};${functionName}`);
 
+            pendingConditionalState = 0;
+
             return {f: f, base: base, args: args, skip: false};
         };
 
@@ -242,6 +247,8 @@ function getCompressedLine(line)
                 traceData = [];
             }
 
+            pendingConditionalState = 0;
+
             return {result: result};
         };
 
@@ -262,6 +269,8 @@ function getCompressedLine(line)
 
                 writePrefixedTraceLine(`g;${formatIid(iid)};${shadowObject["owner"]["*J$O*"]};`, formattedOffset);
             }
+
+            pendingConditionalState = 0;
 
             return {base: base, offset: offset, skip: false};
         };
@@ -284,12 +293,16 @@ function getCompressedLine(line)
             if(val && typeof val === "function" && val.name === "")
                 J$.smemory.getShadowObjectOfObject(val).functionName = offset;
 
+            pendingConditionalState = 0;
+
             return {base: base, offset: offset, val: val, skip: false};
         };
 
         this._return = function(iid, val)
         {
             writeTraceLine(`r;${formatIid(iid)}`);
+
+            pendingConditionalState = 0;
 
             return {result: val};
         };
@@ -298,12 +311,27 @@ function getCompressedLine(line)
         {
             writeTraceLine(`C;${formatIid(iid)}`);
 
+            pendingConditionalState = 2;
+
             return {result: result};
         };
 
         this.endExpression = function(iid)
         {
+            // Only record expressions when there is a pending conditional
+            if(pendingConditionalState === 0)
+                return;
+
+            // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
+            if(pendingConditionalState === 2)
+            {
+                pendingConditionalState = 1;
+                return;
+            }
+
             writeTraceLine(`e;${formatIid(iid)}`);
+
+            pendingConditionalState = 0;
         };
 
         this.onReady = function(cb)

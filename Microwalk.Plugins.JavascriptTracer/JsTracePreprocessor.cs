@@ -175,7 +175,7 @@ public class JsTracePreprocessor : PreprocessorStage
 
                 // Load and parse trace prefix data
                 _imageFiles = imageFiles.ToDictionary(i => i.Id);
-                await PreprocessFileAsync(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]");
+                PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]");
 
                 // Create trace prefix object
                 var preprocessedTracePrefixData = tracePrefixFileWriter.Buffer.AsMemory(0, tracePrefixFileWriter.Length);
@@ -199,7 +199,7 @@ public class JsTracePreprocessor : PreprocessorStage
         // Preprocess trace data
         using var traceFileWriter = new FastBinaryWriter(1);
         await Logger.LogDebugAsync($"[preprocess:{traceEntity.Id}] Preprocessing trace");
-        await PreprocessFileAsync(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
+        PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
 
         // Create trace file object
         var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
@@ -217,14 +217,24 @@ public class JsTracePreprocessor : PreprocessorStage
         traceEntity.PreprocessedTraceFile = preprocessedTraceFile;
     }
 
-    private async Task PreprocessFileAsync(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix)
+    private void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix)
     {
         // Read entire raw trace into memory, for faster processing
-        string[] inputFile = await File.ReadAllLinesAsync(inputFileName, Encoding.UTF8, PipelineToken);
+        using var inputFileStream = File.Open(inputFileName, new FileStreamOptions
+        {
+            Access = FileAccess.Read,
+            Mode = FileMode.Open,
+            Options = FileOptions.SequentialScan,
+            BufferSize = 1 * 1024 * 1024
+        });
+        using var inputFileStreamReader = new StreamReader(inputFileStream, Encoding.UTF8);
 
         // Resize output buffer to avoid re-allocations
-        // As an upper bound, we just take the number of raw trace entries
-        traceFileWriter.ResizeBuffer(MaxPreprocessedTraceEntrySize * inputFile.Length);
+        // As a starting point, we just take the size of the raw trace
+        if(isPrefix)
+            traceFileWriter.ResizeBuffer(1 * 1024*1024);
+        else
+            traceFileWriter.ResizeBuffer((int)inputFileStream.Length);
 
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
@@ -233,28 +243,107 @@ public class JsTracePreprocessor : PreprocessorStage
         Dictionary<int, string> compressedLinesLookup = _prefixCompressedLinesLookup == null ? new() : new(_prefixCompressedLinesLookup);
         ulong nextHeapAllocationAddress = _prefixNextHeapAllocationAddress;
         const uint heapAllocationChunkSize = 0x100000;
-        bool lastWasCond = false;
         int lastLineId = 0;
-        foreach(var inputFileLine in inputFile)
+        int inputBufferLength = 0;
+        int inputBufferPosition = 0;
+        char[] inputBuffer = new char[1 * 1024 * 1024];
+        while(true)
         {
+            // Empty buffer? -> Read next chunk
+            if(inputBufferPosition == inputBufferLength)
+            {
+                inputBufferLength = inputFileStreamReader.ReadBlock(inputBuffer);
+                if(inputBufferLength == 0)
+                    break;
+
+                inputBufferPosition = 0;
+            }
+
+            // Find end of next line in input buffer
+            int lineEnd = inputBufferPosition;
+            Span<char> currentInputFileLineSpan = Span<char>.Empty;
+            bool foundNewLine = false;
+            while(lineEnd < inputBufferLength)
+            {
+                if(inputBuffer[lineEnd] == '\n')
+                {
+                    currentInputFileLineSpan = inputBuffer.AsSpan(inputBufferPosition..lineEnd);
+                    foundNewLine = true;
+                    break;
+                }
+
+                ++lineEnd;
+            }
+
+            // If we could not find the line end in the buffer, we need to read more data
+            if(!foundNewLine)
+            {
+                // Copy beginning of line to buffer begin
+                for(int i = inputBufferPosition; i < inputBufferLength; ++i)
+                    inputBuffer[i - inputBufferPosition] = inputBuffer[i];
+                inputBufferLength -= inputBufferPosition;
+                inputBufferPosition = 0;
+
+                // Append the new data
+                int dataRead = inputFileStreamReader.ReadBlock(inputBuffer.AsSpan( inputBufferLength..));
+                inputBufferLength += dataRead;
+                if(dataRead == 0)
+                {
+                    // No data retrieved, either the buffer is entirely full or the file has ended
+                    // Since the buffer is _very_ large, we just assume the latter, and fail otherwise
+                    if(inputFileStream.Position < inputFileStream.Length)
+                        throw new Exception("The file read buffer is too small (no data returned).");
+
+                    currentInputFileLineSpan = inputBuffer.AsSpan(..inputBufferLength);
+                }
+                else
+                {
+                    // Look for newline or buffer end
+                    lineEnd = inputBufferPosition;
+                    while(lineEnd < inputBufferLength)
+                    {
+                        if(inputBuffer[lineEnd] == '\n')
+                        {
+                            currentInputFileLineSpan = inputBuffer.AsSpan(inputBufferPosition..lineEnd);
+                            foundNewLine = true;
+                            break;
+                        }
+
+                        ++lineEnd;
+                    }
+
+                    if(!foundNewLine)
+                    {
+                        if(inputFileStream.Position < inputFileStream.Length)
+                            throw new Exception("The file read buffer is too small (could not find line end).");
+
+                        currentInputFileLineSpan = inputBuffer.AsSpan(inputBufferPosition..lineEnd);
+                    }
+                }
+            }
+
+            // Update current input buffer position
+            // The line span automatically skips the \n, as the end of the range is exclusive
+            inputBufferPosition = lineEnd + 1;
+
             // Skip empty lines
-            if(string.IsNullOrWhiteSpace(inputFileLine))
+            if(currentInputFileLineSpan.Length == 0)
                 continue;
 
             // Read merged lines
             int pos = 0;
-            while(pos < inputFileLine.Length)
+            while(pos < currentInputFileLineSpan.Length)
             {
                 // Parse current control character
-                char firstChar = inputFileLine[pos];
+                char firstChar = currentInputFileLineSpan[pos];
                 int lineId;
-                string lineEndPart = "";
+                ReadOnlySpan<char> lineEndPart = ReadOnlySpan<char>.Empty;
                 if(firstChar == 'L')
                 {
                     // Line info
-                    int separatorIndex = inputFileLine.AsSpan(pos + 2).IndexOf('|');
-                    int lId = int.Parse(inputFileLine.AsSpan(pos + 2, separatorIndex));
-                    string lContent = inputFileLine[(pos + 2 + separatorIndex + 1)..];
+                    int separatorIndex = currentInputFileLineSpan.Slice(pos + 2).IndexOf('|');
+                    int lId = int.Parse(currentInputFileLineSpan.Slice(pos + 2, separatorIndex));
+                    string lContent = new string(currentInputFileLineSpan.Slice(pos + 2 + separatorIndex + 1));
 
                     compressedLinesLookup.Add(lId, lContent);
 
@@ -270,13 +359,13 @@ public class JsTracePreprocessor : PreprocessorStage
 
                     // Is this a prefixed line?
                     ++pos;
-                    if(pos < inputFileLine.Length && inputFileLine[pos] == '|')
+                    if(pos < currentInputFileLineSpan.Length && currentInputFileLineSpan[pos] == '|')
                     {
                         // Read remaining line part
-                        lineEndPart = inputFileLine.Substring(pos + 1);
+                        lineEndPart = currentInputFileLineSpan.Slice(pos + 1);
 
                         // The line is fully consumed
-                        pos = inputFileLine.Length;
+                        pos = currentInputFileLineSpan.Length;
                     }
                 }
                 else if(char.IsDigit(firstChar))
@@ -284,35 +373,35 @@ public class JsTracePreprocessor : PreprocessorStage
                     // Line ID, absolute
 
                     int numDigits = 0;
-                    for(int i = pos; i < inputFileLine.Length; ++i)
+                    for(int i = pos; i < currentInputFileLineSpan.Length; ++i)
                     {
-                        if(!char.IsDigit(inputFileLine[i]))
+                        if(!char.IsDigit(currentInputFileLineSpan[i]))
                             break;
                         ++numDigits;
                     }
 
-                    lineId = int.Parse(inputFileLine.Substring(pos, numDigits));
+                    lineId = int.Parse(currentInputFileLineSpan.Slice(pos, numDigits));
                     lastLineId = lineId;
 
                     // Is this a prefixed line?
                     pos += numDigits;
-                    if(pos < inputFileLine.Length && inputFileLine[pos] == '|')
+                    if(pos < currentInputFileLineSpan.Length && currentInputFileLineSpan[pos] == '|')
                     {
                         // Read remaining line part
-                        lineEndPart = inputFileLine.Substring(pos + 1);
+                        lineEndPart = currentInputFileLineSpan.Slice(pos + 1);
 
                         // The line is fully consumed
-                        pos = inputFileLine.Length;
+                        pos = currentInputFileLineSpan.Length;
                     }
                 }
                 else
-                    throw new Exception($"{logPrefix} Unexpected control character: '{firstChar}' in line \"{inputFileLine}\"");
+                    throw new Exception($"{logPrefix} Unexpected control character: '{firstChar}' in line \"{new string(currentInputFileLineSpan)}\"");
 
                 // Extract line
                 if(!compressedLinesLookup.TryGetValue(lineId, out string? line))
                     throw new Exception($"{logPrefix} Could not resolve compressed line #{lineId}");
 
-                line += lineEndPart;
+                line += new string(lineEndPart);
 
                 // Parse decompressed line
                 string[] parts = line.Split(';');
@@ -481,20 +570,12 @@ public class JsTracePreprocessor : PreprocessorStage
 
                         // We have to wait until the next line before we can produce a meaningful branch entry
                         lastCondEntry = (location.ImageFileInfo, location.RelativeStartAddress);
-                        lastWasCond = true;
 
                         break;
                     }
 
                     case "e":
                     {
-                        // Always skip expressions immediately following a conditional, as those simply span the entire conditional statement
-                        if(lastWasCond)
-                        {
-                            lastWasCond = false;
-                            break;
-                        }
-
                         // Resolve code locations
                         var location = ResolveLineInfoToImage(parts[1]);
 
@@ -546,6 +627,8 @@ public class JsTracePreprocessor : PreprocessorStage
                                 DestinationInstructionRelativeAddress = location.RelativeStartAddress
                             };
                             branchEntry.Store(traceFileWriter);
+
+                            lastCondEntry = null;
                         }
 
                         // Extract access data
@@ -622,6 +705,8 @@ public class JsTracePreprocessor : PreprocessorStage
                                 DestinationInstructionRelativeAddress = location.RelativeStartAddress
                             };
                             branchEntry.Store(traceFileWriter);
+
+                            lastCondEntry = null;
                         }
 
                         // Extract access data
