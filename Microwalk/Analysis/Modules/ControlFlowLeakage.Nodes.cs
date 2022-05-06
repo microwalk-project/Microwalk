@@ -167,7 +167,6 @@ public partial class ControlFlowLeakage
         }
 
         public ulong TargetAddress { get; }
-        public TestcaseIdSet TestcaseIds { get; } = new();
     }
 
     private class SplitMemoryAccessNode : MemoryAccessNode

@@ -88,6 +88,19 @@ public partial class ControlFlowLeakage
         }
 
         /// <summary>
+        /// Returns a deep copy of this set, with the given ID removed.
+        /// </summary>
+        /// <param name="id">ID to exclude from the copied set.</param>
+        /// <returns></returns>
+        public TestcaseIdSet Without(int id)
+        {
+            var newSet = Copy();
+            newSet.Remove(id);
+
+            return newSet;
+        }
+
+        /// <summary>
         /// Returns the included testcase ID in ascending order.
         /// </summary>
         public IEnumerable<int> AsEnumerable()

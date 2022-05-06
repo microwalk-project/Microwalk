@@ -727,12 +727,10 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                         if(memoryNode is SimpleMemoryAccessNode simpleMemoryNode)
                         {
-                            if(simpleMemoryNode.TargetAddress == targetAddressId)
-                                simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
-                            else
+                            if(simpleMemoryNode.TargetAddress != targetAddressId)
                             {
                                 var splitMemoryNode = new SplitMemoryAccessNode(memoryNode.InstructionId, memoryNode.IsWrite);
-                                splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, simpleMemoryNode.TestcaseIds);
+                                splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, currentNode.TestcaseIds.Without(traceEntity.Id));
                                 splitMemoryNode.Targets.Add(targetAddressId, new TestcaseIdSet(traceEntity.Id));
                                 currentNode.Successors[successorIndex] = splitMemoryNode;
                             }
@@ -759,7 +757,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                         // so we handle this case anyway.
 
                         var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
-                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
                         var newSplitNode = currentNode.SplitAtSuccessor(successorIndex, traceEntity.Id, simpleMemoryNode);
 
@@ -776,7 +773,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                     {
                         // No, this is purely ours. So just append another successor
                         var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
-                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
                         currentNode.Successors.Add(simpleMemoryNode);
 
@@ -796,12 +792,10 @@ public partial class ControlFlowLeakage : AnalysisStage
                                 // Check whether our access target is recorded
                                 if(memoryNode is SimpleMemoryAccessNode simpleMemoryNode)
                                 {
-                                    if(simpleMemoryNode.TargetAddress == targetAddressId)
-                                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
-                                    else
+                                    if(simpleMemoryNode.TargetAddress != targetAddressId)
                                     {
                                         var splitMemoryNode = new SplitMemoryAccessNode(memoryNode.InstructionId, memoryNode.IsWrite);
-                                        splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, simpleMemoryNode.TestcaseIds);
+                                        splitMemoryNode.Targets.Add(simpleMemoryNode.TargetAddress, currentNode.TestcaseIds.Without(traceEntity.Id));
                                         splitMemoryNode.Targets.Add(targetAddressId, new TestcaseIdSet(traceEntity.Id));
                                         splitSuccessor.Successors[0] = splitMemoryNode;
                                     }
@@ -833,7 +827,6 @@ public partial class ControlFlowLeakage : AnalysisStage
                             // Add new split successor
                             var splitNode = new SplitNode();
                             var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
-                            simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
                             splitNode.Successors.Add(simpleMemoryNode);
                             splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -851,7 +844,6 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                         var splitNode = new SplitNode();
                         var simpleMemoryNode = new SimpleMemoryAccessNode(instructionId, isWrite, targetAddressId);
-                        simpleMemoryNode.TestcaseIds.Add(traceEntity.Id);
 
                         splitNode.Successors.Add(simpleMemoryNode);
                         splitNode.TestcaseIds.Add(traceEntity.Id);
@@ -1094,7 +1086,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                                     ? _formattedMemoryAddresses[simpleMemoryNode.TargetAddress]
                                     : _formattedImageAddresses[simpleMemoryNode.TargetAddress];
 
-                                await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(simpleMemoryNode.TestcaseIds.AsEnumerable())} ({simpleMemoryNode.TestcaseIds.Count} total)");
+                                await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress}");
                             }
                             else if(memoryAccessNode is SplitMemoryAccessNode splitMemoryNode)
                             {
