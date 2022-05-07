@@ -132,7 +132,7 @@ namespace Microwalk.Plugins.PinTracer
                     _imageFiles = imageFiles.OrderByDescending(img => img.Interesting).ToArray();
 
                     // Prepare writer for serializing trace data
-                    using var tracePrefixFileWriter = new FastBinaryWriter(_imageFiles.Length * (32 + maxImageNameLength));
+                    using var tracePrefixFileWriter = new FastBinaryBufferWriter(_imageFiles.Length * (32 + maxImageNameLength));
 
                     // Write image files
                     tracePrefixFileWriter.WriteInt32(_imageFiles.Length);
@@ -170,7 +170,7 @@ namespace Microwalk.Plugins.PinTracer
 
             // Prepare writer for serializing trace data
             // The buffer will be resized by the preprocess method, which can compute a good upper bound for the output file size
-            using var traceFileWriter = new FastBinaryWriter(1);
+            using var traceFileWriter = new FastBinaryBufferWriter(1);
 
             // Preprocess trace data
             PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
@@ -208,7 +208,7 @@ namespace Microwalk.Plugins.PinTracer
         /// <remarks>
         /// This function as not designed as asynchronous, to allow unsafe operations and stack allocations.
         /// </remarks>
-        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix)
+        private unsafe void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryBufferWriter traceFileWriter, string logPrefix)
         {
             // Read entire trace file into memory, since these files should not get too big
             byte[] inputFile = File.ReadAllBytes(inputFileName);

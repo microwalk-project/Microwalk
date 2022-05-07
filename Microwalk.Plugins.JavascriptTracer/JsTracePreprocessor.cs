@@ -166,7 +166,8 @@ public class JsTracePreprocessor : PreprocessorStage
                 _functionNameLookup.Add(_externalFunctionsImage.Id, new ConcurrentDictionary<(uint start, uint end), string>());
 
                 // Prepare writer for serializing trace data
-                using var tracePrefixFileWriter = new FastBinaryWriter(imageFiles.Count * (32 + maxImageNameLength));
+                // We initialize it with some robust initial capacity, to reduce amount of copying while keeping memory overhead low
+                using var tracePrefixFileWriter = new FastBinaryBufferWriter(imageFiles.Count * (32 + maxImageNameLength) + 1 * 1024 * 1024);
 
                 // Write image files
                 tracePrefixFileWriter.WriteInt32(imageFiles.Count);
@@ -204,27 +205,31 @@ public class JsTracePreprocessor : PreprocessorStage
         }
 
         // Preprocess trace data
-        using var traceFileWriter = new FastBinaryWriter(1);
         await Logger.LogDebugAsync($"[preprocess:{traceEntity.Id}] Preprocessing trace");
-        PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
-
-        // Create trace file object
-        var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
-        var preprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData);
-
-        // Store to disk?
         if(_storeTraces)
         {
-            traceEntity.PreprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".preprocessed");
-            await using var writer = new BinaryWriter(File.Open(traceEntity.PreprocessedTraceFilePath, FileMode.Create, FileAccess.Write, FileShare.None));
-            writer.Write(preprocessedTraceData.Span);
-        }
+            // Write trace to file, do not keep it in memory
+            string preprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".preprocessed");
+            using var traceFileWriter = new FastBinaryFileWriter(preprocessedTraceFilePath);
+            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
+            traceFileWriter.Flush();
 
-        // Keep trace data in memory for the analysis stages
-        traceEntity.PreprocessedTraceFile = preprocessedTraceFile;
+            // Create trace file object
+            traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceFilePath);
+        }
+        else
+        {
+            // Keep trace in memory for immediate analysis
+            using var traceFileWriter = new FastBinaryBufferWriter(1 * 1024 * 1024);
+            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
+
+            // Create trace file object
+            var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
+            traceEntity.PreprocessedTraceFile = new TraceFile(_tracePrefix, preprocessedTraceData);
+        }
     }
 
-    private void PreprocessFile(string inputFileName, bool isPrefix, FastBinaryWriter traceFileWriter, string logPrefix)
+    private void PreprocessFile(string inputFileName, bool isPrefix, IFastBinaryWriter traceFileWriter, string logPrefix)
     {
         // Read entire raw trace into memory, for faster processing
         using var inputFileStream = File.Open(inputFileName, new FileStreamOptions
@@ -236,12 +241,10 @@ public class JsTracePreprocessor : PreprocessorStage
         });
         using var inputFileStreamReader = new StreamReader(inputFileStream, Encoding.UTF8);
 
-        // Resize output buffer to avoid re-allocations
-        // As a starting point, we just take the size of the raw trace
-        if(isPrefix)
-            traceFileWriter.ResizeBuffer(1 * 1024 * 1024);
-        else
-            traceFileWriter.ResizeBuffer((int)inputFileStream.Length);
+        // If we are writing to memory, set the capacity of the writer to a rough estimate of the preprocessed file size,
+        // in order to avoid reallocations and expensive copying
+        if(traceFileWriter is FastBinaryBufferWriter binaryBufferWriter)
+            binaryBufferWriter.ResizeBuffer((int)inputFileStream.Length);
 
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;

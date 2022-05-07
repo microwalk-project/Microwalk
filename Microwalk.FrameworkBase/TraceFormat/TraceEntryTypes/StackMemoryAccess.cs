@@ -20,7 +20,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             MemoryRelativeAddress = reader.ReadUInt32();
         }
 
-        public void Store(FastBinaryWriter writer)
+        public void Store(IFastBinaryWriter writer)
         {
             writer.WriteByte((byte)TraceEntryTypes.StackMemoryAccess);
             writer.WriteBoolean(IsWrite);

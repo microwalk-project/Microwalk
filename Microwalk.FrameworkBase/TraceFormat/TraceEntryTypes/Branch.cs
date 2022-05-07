@@ -20,7 +20,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             BranchType = (BranchTypes)reader.ReadByte();
         }
 
-        public void Store(FastBinaryWriter writer)
+        public void Store(IFastBinaryWriter writer)
         {
             writer.WriteByte((byte)TraceEntryTypes.Branch);
             writer.WriteInt32(SourceImageId);

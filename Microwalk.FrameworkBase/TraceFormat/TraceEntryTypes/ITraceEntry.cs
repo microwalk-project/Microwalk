@@ -22,6 +22,6 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
         /// Writes the entry data using the given binary writer.
         /// </summary>
         /// <param name="writer">Binary writer.</param>
-        public void Store(FastBinaryWriter writer);
+        public void Store(IFastBinaryWriter writer);
     }
 }

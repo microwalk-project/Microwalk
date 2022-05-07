@@ -6,10 +6,10 @@ using System.Text;
 namespace Microwalk.FrameworkBase.Utilities
 {
     /// <summary>
-    /// Provides functions for fast linear writing of binary data.
-    /// This class does only do rudimentary error checking, it mostly relies on the security guarantess by the CLR.
+    /// Provides functions for fast sequential writing into a binary buffer.
+    /// This class does only do rudimentary error checking, it mostly relies on the security guarantees by the CLR.
     /// </summary>
-    public class FastBinaryWriter : IDisposable
+    public class FastBinaryBufferWriter : IFastBinaryWriter, IDisposable
     {
         /// <summary>
         /// The current length of the written data.
@@ -33,7 +33,7 @@ namespace Microwalk.FrameworkBase.Utilities
         /// The initial buffer capacity.
         /// Giving a good upper bound of the needed capacity will lead to considerable performance improvements, as no re-allocations are necessary.
         /// </param>
-        public FastBinaryWriter(int initialCapacity)
+        public FastBinaryBufferWriter(int initialCapacity)
         {
             Buffer = new byte[initialCapacity];
             _bufferMemoryHandle = Buffer.AsMemory().Pin();

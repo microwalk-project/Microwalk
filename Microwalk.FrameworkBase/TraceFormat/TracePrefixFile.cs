@@ -65,7 +65,7 @@ namespace Microwalk.FrameworkBase.TraceFormat
             /// Saves image file data.
             /// </summary>
             /// <param name="writer">Binary writer.</param>
-            public void Store(FastBinaryWriter writer)
+            public void Store(FastBinaryBufferWriter writer)
             {
                 writer.WriteInt32(Id);
                 writer.WriteUInt64(StartAddress);

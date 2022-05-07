@@ -19,7 +19,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             Address = reader.ReadUInt64();
         }
 
-        public void Store(FastBinaryWriter writer)
+        public void Store(IFastBinaryWriter writer)
         {
             writer.WriteByte((byte)TraceEntryTypes.StackAllocation);
             writer.WriteInt32(Id);

@@ -15,7 +15,7 @@ namespace Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes
             Id = reader.ReadInt32();
         }
 
-        public void Store(FastBinaryWriter writer)
+        public void Store(IFastBinaryWriter writer)
         {
             writer.WriteByte((byte)TraceEntryTypes.HeapFree);
             writer.WriteInt32(Id);

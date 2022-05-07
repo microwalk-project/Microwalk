@@ -6,7 +6,7 @@ namespace Microwalk.FrameworkBase.Utilities;
 
 /// <summary>
 /// Provides functions for fast reading from a file with binary data.
-/// This class does not do error checking!
+/// This class does only do rudimentary error checking, it mostly relies on the security guarantees by the CLR.
 /// Optimized for sequential access.
 /// </summary>
 public class FastBinaryFileReader : IFastBinaryReader, IDisposable
