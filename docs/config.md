@@ -1,9 +1,22 @@
 # Configuration
 
-Microwalk reads its entire run configuration from a single YAML file. This file specifies the loaded modules and their settings.
+Microwalk reads its entire run configuration from a single YAML file. The file specifies the loaded pipeline modules and their settings.
+
+The pipeline is structured as follows: First, the `testcase` stage produces/loads a number of test case files (= inputs), which are passed to the `trace` stage.
+The `trace` stage uses these test cases to generate raw execution traces using a language-specific backend (e.g., Pin for x86 binaries or Jalangi2 for JavaScript).
+Then, the raw traces are passed to the `preprocess` stage, that parses the raw traces and converts them into Microwalk's generic trace format. The resulting generic
+traces can finally be analyzed by various `analysis` modules.
 
 A configuration file generally looks as follows:
 ```yaml
+# Configuration preprocessor section (optional)
+base-file: base-file.yml
+constants:
+  CONSTANT_NAME: some value
+  
+---
+
+# Actual configuration
 general:
   logger:
     # Logger settings
@@ -44,6 +57,29 @@ analysis:
 A valid configuration file must specify at least one module for each stage.
 
 
+## Preprocessor
+
+Microwalk has a simple configuration preprocessor that supports environment variables, constants and loading other configuration files/parts. 
+The preprocessor is executed before handling the configuration itself.
+
+### `base-file`
+Base configuration file which should be loaded and parsed before the current one (nesting is supported).
+Keys existing in both the base file and the current file are always superseded by those of the current file.
+
+### `constants`
+A number of arbitrary string constants, which can be referenced by `$$CONSTANT_NAME$$` in other parts of the file.
+
+Predefined constants:
+- `CONFIG_PATH`<br>
+  Absolute path of the directory where the main configuration file resides.
+
+- `CONFIG_FILENAME`<br>
+  Name of the main configuration file, without extension (e.g., `target-aes` for `target-aes.yml`).
+
+### Enviroment variables
+All environment variables of the current process environment are available as `$$$VARIABLE_NAME$$$` and are treated just like constants.
+
+
 ## `general`
 
 ### `logger`
@@ -58,10 +94,26 @@ Controls the logger.
   - `warning`
   - `error` (default)
   
-  It is recommended to test the config file with `warning` level enabled, as some modules may report possible misconfiguration as warnings.
+  It is recommended to test the configuration file with `warning` level enabled, as some modules may report possible misconfiguration as warnings.
 
 - `file` (optional)<br>
   Output file for the log. This file will receive the same log messages as stdout.
+
+### `monitor` (optional)
+
+Configures process monitoring.
+
+Currently, this does only track total memory usage.
+
+- `enable` (optional)<br>
+  If set to `true`, enables process monitoring. If this is `false`, all other monitoring options are ignored.
+  
+  Default: `false`
+
+- `sample-rate` (optional)<br>
+  Sets the sample rate (milliseconds) for querying process statistics.
+  
+  Default: 500
 
 
 ## `testcase`
@@ -121,7 +173,8 @@ Options:
 
 General options:
 - `input-buffer-size` (optional)<br>
-  Size of trace stage input buffer. This controls the test case generator output speed, as new test cases can only be queued when there is room in the buffer.
+  Size of trace stage input buffer. This controls the number of active pending test cases which are not currently processed by the next stage.
+  Since test case objects are quite small, buffering a few does not cause much harm; especially, if test case generation takes a bit (e.g., random asymmetric keys).
   
   Default: 1
 
@@ -145,7 +198,7 @@ Options:
 
 Passes through the test cases without generating traces. This module is designed to be used in conjunction with the preprocessed trace loader, where raw traces are not needed.
 
-### Module: `pin`
+### Module: `pin` [PinTracer]
 
 Generates traces using a Pin tool.
 
@@ -160,7 +213,7 @@ Options:
   Output directory for raw traces.
   
 - `images`<br>
-  List of interesting images. Only instructions from these images are traced; all others are ignored.
+  List of names of interesting images (= binaries). Only instructions from these images are traced; all others are ignored.
 
   Example:
   ```yaml
@@ -194,12 +247,21 @@ Options:
   - `3`: [(Intel) Westmere](https://en.wikipedia.org/wiki/Westmere_(microarchitecture))
   - `4`: [(Intel) Ivy Brigde](https://en.wikipedia.org/wiki/Ivy_Bridge_(microarchitecture))
 
+- `stack-tracking` (optional)<br>
+  Enable stack tracking. This is an experimental feature for tracking individual stack frames, instead of referencing the stack as a whole.
+  
+  Default: `false`
+  
+- `environment` (optional)<br>
+  A list of enviroment variables which should be passed to the process.
+  
 
 ## `preprocess`
 
 General options:
 - `input-buffer-size` (optional)<br>
   Size of preprocessor stage input buffer. This throttles the trace generator: Raw traces can be quite large and take up a lot of disk space.
+  If only existing raw traces are loaded from disk, this setting does not significantly influence execution.
   
   Default: 1
 
@@ -220,21 +282,18 @@ Options:
 - `input-directory`<br>
   Input directory containing preprocessed trace files.
 
-### Module: `pin-dump`
+### Module: `passthrough`
 
-Dumps raw Pin trace files in a human-readable form. Primarily intended for debugging.
+Passes through the test cases and raw traces without preprocessing. This module should only be used with an empty (`passthrough`) analysis stage, since no preprocessed traces are inserted into the pipeline.
 
-Options:
-- `output-directory`<br>
-  Output directory for trace text files.
 
-### Module: `pin`
+### Module: `pin` [PinTracer]
 
-Preprocesses traces generated with the Pin tool.
+Preprocesses raw traces generated with the Microwalk Pin tracer backend.
 
 Options:
 - `store-traces` (optional)<br>
-  Controls whether preprocessed traces are written to the file system. If set to `false`, preprocessed traces are kept in memory, until the analysis has finished, and are then discarded.
+  Controls whether preprocessed traces are written to the file system. If set to `false`, preprocessed traces are only kept in memory and are discarded after the analysis has finished.
   
   Default: `false`
   
@@ -242,19 +301,49 @@ Options:
   Output directory for preprocessed traces. Must be set when `store-traces` is `true`.
 
 - `keep-raw-traces` (optional)<br>
-  Controls whether raw traces are kept after preprocessing has completed. Deleting raw traces may significantly free up disk space.
+  Controls whether raw traces are kept after preprocessing has completed. Deleting raw traces may free up disk space.
   
   Default: `false`
 
-### Module: `passthrough`
+### Module: `pin-dump` [PinTracer]
 
-Passes through the test cases and raw traces without preprocessing. This module should only be used with an empty (`passthrough`) analysis stage, since no preprocessed traces are inserted into the pipeline.
+Dumps raw Pin trace files in a human-readable form. Primarily intended for debugging.
+
+Options:
+- `output-directory`<br>
+  Output directory for trace text files.
+
+### Module: `js` [JavascriptTracer]
+
+Preprocesses raw traces generated with the Microwalk Jalangi2 tracer backend.
+
+Options:
+- `store-traces` (optional)<br>
+  Controls whether preprocessed traces are written to the file system. If set to `false`, preprocessed traces are only kept in memory and are discarded after the analysis has finished.
+  If set to `true`, preprocessed traces are streamed to binary files and are not kept in memory -- thus, analysis needs to load them again.
+  
+  Default: `false`
+  
+- `output-directory` (optional)<br>
+  Output directory for preprocessed traces. Must be set when `store-traces` is `true`.
+  
+- `map-directory` (optional)<br>
+  Output directory for MAP files.
+
+- `columns-bits` (optional)<br>
+  Number of bits used for encoding a column number in a 32-bit integer. The remaining bits are used for encoding a line number.
+  
+  The default value should work for reasonable settings; however, when dealing with extreme cases (e.g., a minified library residing in a single, very long line),
+  make sure to adjust this in order to avoid erroneous traces.
+
+  Default: 13
+  
 
 ## `analysis`
 
 General options:
 - `input-buffer-size` (optional)<br>
-  Size of analysis stage input buffer.
+  Size of analysis stage input buffer. Note that the buffer only contains _pending_ preprocessed traces, i.e., in addition to the ones that are already processed by the analysis stage(s).
   
   Default: 1
 
@@ -262,6 +351,11 @@ General options:
   Amount of concurrent analysis threads. This is only applied when the selected analysis module supports parallelism.
 
   Default: 1
+  
+### Module: `passthrough`
+
+Ignores all passed traces. Intended for "offline" trace generation/preprocessing without immediate analysis.
+
 
 ### Module: `dump`
 
@@ -286,9 +380,30 @@ Options:
     - mylibrary.dll.map
   ```
 
+- `map-directory` (optional)<br>
+  Path to a directory containing [MAP files](docs/mapfile.md). This loads all files that end with `.map` from the given directory, in addition to the ones specified manually through the
+  `map-files` key.
+
+- `skip-memory-accesses` (optional)<br>
+  Controls whether memory accesses should be skipped when writing the trace dump.
+  
+  Default: `false`
+
+- `skip-jumps` (optional)<br>
+  Controls whether "jump" branches should be skipped when writing the trace dump.
+  
+  Default: `false`
+
+- `skip-returns` (optional)<br>
+  Controls whether "return" branches should be skipped when writing the trace dump.
+  
+  Default: `false`
+
 ### Module: `instruction-memory-access-trace-leakage`
 
 Calculates several trace leakage measures for each memory accessing instruction.
+
+*This is a legacy module. Use the `call-stack-memory-access-trace-leakage`, which is better optimized and yields more detailed results.*
 
 Options:
 - `output-directory`<br>
@@ -300,6 +415,8 @@ Options:
   Supported formats:
   - `txt`: Formats each analysis result as a line in a text file.
   - `csv` (default): Creates a CSV file, where lines are instructions and columns are the results of the different measures.
+  
+  In addition, a 
 
 - `dump-full-data` (optional)<br>
   Writes the entire final state of the analysis module into a separate output file. This may be useful for identifying the specific test cases which generated a particular trace and analysis result.
@@ -325,8 +442,81 @@ The leakage measures are computed over each unique combination of instruction an
 
 Additionally, the `dump-full-data` mode outputs detailed information over the encountered call stacks and their respective hit counts.
 
-Options: *See `instruction-memory-access-trace-leakage` module`
+Note that a leakage shown for a given memory access does not imply that this access is non-constant-time: The leakage may have also been caused by a control flow variation higher up in the call chain.
+Thus, while this module is quite fast due to its focus on memory access traces, it fails at accurately localizing and attributing leakages. If possible, we recommend using the `control-flow-leakage`
+module, which needs a bit more resources, but yields very accurate leakage assessments.
 
-### Module: `passthrough`
+Options:
+- `output-directory`<br>
+  Output directory for analysis results.
+  
+- `output-format` (optional)<br>
+  Output format of the leakage report.
+  
+  Supported formats:
+  - `txt`: Formats each analysis result as a line in a text file.
+  - `csv` (default): Creates a CSV file, where lines are instructions and columns are the results of the different measures.
+  
+  In addition, text/CSV files containing information about the detected call stacks are generated.
 
-Ignores all passed traces. Primarily intended for debugging.
+- `dump-full-data` (optional)<br>
+  Writes the entire final state of the analysis module into a separate output file. This may be useful for identifying the specific test cases which generated a particular trace and analysis result.
+  
+  Default: `false`
+
+- `map-files` (optional)<br>
+  A list of [MAP files](docs/mapfile.md) which contain a mapping of image offsets to symbol names.
+
+  Example:
+  ```yaml
+  map-files:
+    - wrapper.exe.map
+    - mylibrary.dll.map
+  ```
+
+### Module: `control-flow-leakage`
+
+Merges all preprocessed traces into a call tree, while encoding trace divergences as "splits" in the tree structure.
+
+This encoding enables an accurate analysis that manages to attribute leakages to individual branch/memory access instructions. In addition, it yields a rough assessment of the leakage severity
+through several measures.
+
+The implementation of this module is highly optimized, so it should work on a typical machine for reasonable workloads.
+
+A guide for interpreting the generated reports can be found [here](control-flow-leakage.md).
+
+Options:
+- `output-directory`<br>
+  Output directory for analysis results.
+  
+- `map-files` (optional)<br>
+  A list of [MAP files](docs/mapfile.md) which contain a mapping of image offsets to symbol names.
+
+  Example:
+  ```yaml
+  map-files:
+    - wrapper.exe.map
+    - mylibrary.dll.map
+  ```
+
+- `map-directory` (optional)<br>
+  Path to a directory containing [MAP files](docs/mapfile.md). This loads all files that end with `.map` from the given directory, in addition to the ones specified manually through the
+  `map-files` key.
+
+- `include-testcases-in-call-stacks` (optional)<br>
+  Controls whether test case ID trees should be included in the analysis result. While those are not strictly necessary for interpreting a reported leakages, they may help by specifying
+  which input led to which behavior.
+  
+  Default: `true`
+
+- `dump-call-tree` (optional)<br>
+  If enabled, this dumps the entire call tree to a text file in the output directory.
+  
+  This feature is mostly intended for debugging: The call tree dump is quite verbose and thus very large.
+  
+  Default: `false`
+
+- `include-memory-accesses-in-dump` (optional)<br>
+  Controls whether memory accesses should be included in the call tree dump. If this is set to `false`, only branches are written to the dump.
+  
+  Default: `true`
