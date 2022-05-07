@@ -290,7 +290,6 @@ public class JsTracePreprocessor : PreprocessorStage
             if(inputBufferPosition == inputBufferLength)
             {
                 inputBufferLength = inputFileStreamReader.ReadBlock(inputBuffer);
-                Console.WriteLine("Next1");
                 if(inputBufferLength == 0)
                     break;
 
@@ -324,7 +323,6 @@ public class JsTracePreprocessor : PreprocessorStage
 
                 // Append the new data
                 int dataRead = inputFileStreamReader.ReadBlock(inputBuffer.AsSpan(inputBufferLength..));
-                Console.WriteLine("Next2");
                 inputBufferLength += dataRead;
                 if(dataRead == 0)
                 {
@@ -558,7 +556,7 @@ public class JsTracePreprocessor : PreprocessorStage
                         var source = ResolveLineInfoToImage(sourcePart);
                         var destination = ResolveLineInfoToImage(destinationPart);
 
-// Produce MAP entries
+                        // Produce MAP entries
                         if(_firstTestcase)
                         {
                             _requestedMapEntriesPrefix.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
@@ -704,6 +702,7 @@ public class JsTracePreprocessor : PreprocessorStage
                         string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
+                        uint offsetRelativeAddress;
                         if(!heapObjects.TryGetValue(objectId, out var objectData))
                         {
                             objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
@@ -715,20 +714,29 @@ public class JsTracePreprocessor : PreprocessorStage
                             heapAllocationEntry.Store(traceFileWriter);
 
                             nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+
+                            // Create entry for current access
+                            // Numeric index, or named property?
+                            offsetRelativeAddress = uint.TryParse(offset, out uint offsetInt)
+                                ? offsetInt 
+                                : objectData.NextPropertyAddress++;
+                            objectData.PropertyAddressMapping.TryAdd(offset, offsetRelativeAddress);
                         }
-
-                        // Did we already encounter this offset?
-                        uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
+                        else
                         {
-                            // No, create new entry
+                            // Did we already encounter this offset?
+                            offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, static (offsetParam, objectDataParam) =>
+                            {
+                                // No, create new entry
 
-                            // Numeric index?
-                            if(uint.TryParse(offset, out uint offsetInt))
-                                return offsetInt;
+                                // Numeric index?
+                                if(uint.TryParse(offsetParam, out uint offsetInt))
+                                    return offsetInt;
 
-                            // Named property
-                            return objectData.NextPropertyAddress++;
-                        });
+                                // Named property
+                                return Interlocked.Increment(ref objectDataParam.NextPropertyAddress);
+                            }, objectData);
+                        }
 
                         // Do not trace memory accesses in prefix mode
                         if(_firstTestcase)
@@ -781,6 +789,7 @@ public class JsTracePreprocessor : PreprocessorStage
                         string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
+                        uint offsetRelativeAddress;
                         if(!heapObjects.TryGetValue(objectId, out var objectData))
                         {
                             objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
@@ -792,20 +801,29 @@ public class JsTracePreprocessor : PreprocessorStage
                             heapAllocationEntry.Store(traceFileWriter);
 
                             nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
+                            
+                            // Create entry for accessed offset
+                            // Numeric index, or named property?
+                            offsetRelativeAddress = uint.TryParse(offset, out uint offsetInt)
+                                ? offsetInt 
+                                : objectData.NextPropertyAddress++;
+                            objectData.PropertyAddressMapping.TryAdd(offset, offsetRelativeAddress);
                         }
-
-                        // Did we already encounter this offset?
-                        uint offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, _ =>
+                        else
                         {
-                            // No, create new entry
+                            // Did we already encounter this offset?
+                            offsetRelativeAddress = objectData.PropertyAddressMapping.GetOrAdd(offset, static (offsetParam, objectDataParam) =>
+                            {
+                                // No, create new entry
 
-                            // Numeric index?
-                            if(uint.TryParse(offset, out uint offsetInt))
-                                return offsetInt;
+                                // Numeric index?
+                                if(uint.TryParse(offsetParam, out uint offsetInt))
+                                    return offsetInt;
 
-                            // Named property
-                            return objectData.NextPropertyAddress++;
-                        });
+                                // Named property
+                                return Interlocked.Increment(ref objectDataParam.NextPropertyAddress);
+                            }, objectData);
+                        }
 
                         // Do not trace memory accesses in prefix mode
                         if(_firstTestcase)
@@ -866,62 +884,69 @@ public class JsTracePreprocessor : PreprocessorStage
         {
             if(!imageData.RelativeAddressLookupPrefix.TryGetValue(lineInfoString, out addressData))
             {
-                addressData = GenerateAddressLookupEntry();
+                addressData = GenerateAddressLookupEntry(lineInfoString);
                 imageData.RelativeAddressLookupPrefix.Add(lineInfoString, addressData);
             }
         }
         else
-            addressData = imageData.RelativeAddressLookup.GetOrAdd(lineInfoString, _ => GenerateAddressLookupEntry());
+            addressData = imageData.RelativeAddressLookup.GetOrAdd(lineInfoString, GenerateAddressLookupEntry);
 
         return (imageData, addressData.start, addressData.end);
+    }
 
-        // Local function for generating new entry in address lookup
-        (uint start, uint end) GenerateAddressLookupEntry()
+    /// <summary>
+    /// Generates a new entry for the relative address lookup.
+    /// </summary>
+    /// <param name="lineInfoString">Line info.</param>
+    /// <returns>Relative start and end address.</returns>
+    private (uint start, uint end) GenerateAddressLookupEntry(string lineInfoString)
+    {
+        const char separator = ':';
+
+        // Split
+        var lineInfoStringSpan = lineInfoString.AsSpan(); // We can't capture the lineInfo Span directly
+        var part0 = NextSplit(ref lineInfoStringSpan, separator); // part0 is already handled
+        var part1 = NextSplit(ref lineInfoStringSpan, separator);
+
+        // Unknown script / external function?
+        bool isExternal = part0[0] == 'E';
+        if(isExternal)
         {
-            // Split
-            var lineInfoStringSpan = lineInfoString.AsSpan(); // We can't capture the lineInfo Span directly
-            NextSplit(ref lineInfoStringSpan, separator); // part0 is already handled
-            var part1 = NextSplit(ref lineInfoStringSpan, separator);
-
-            // Unknown script / external function?
-            if(isExternal)
+            // Get address of function, or generate a new one if it does not yet exist
+            // Necessary locking is done by the underlying concurrent dictionary (if not in prefix mode)
+            string functionName = new string(part1);
+            if(_firstTestcase)
             {
-                // Get address of function, or generate a new one if it does not yet exist
-                // Necessary locking is done by the underlying concurrent dictionary (if not in prefix mode)
-                string functionName = new string(part1);
-                if(_firstTestcase)
+                if(!_externalFunctionAddressesPrefix.TryGetValue(functionName, out uint externalFunctionAddress))
                 {
-                    if(!_externalFunctionAddressesPrefix.TryGetValue(functionName, out uint externalFunctionAddress))
-                    {
-                        externalFunctionAddress = ++_currentExternalFunctionAddress;
-                        _externalFunctionAddressesPrefix.Add(functionName, externalFunctionAddress);
-                    }
-
-                    return (externalFunctionAddress, externalFunctionAddress);
+                    externalFunctionAddress = ++_currentExternalFunctionAddress;
+                    _externalFunctionAddressesPrefix.Add(functionName, externalFunctionAddress);
                 }
-                else
-                {
-                    uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(functionName, _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
 
-                    return (externalFunctionAddress, externalFunctionAddress);
-                }
+                return (externalFunctionAddress, externalFunctionAddress);
             }
+            else
+            {
+                uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(functionName, _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
 
-            // Split
-            var part2 = NextSplit(ref lineInfoStringSpan, separator);
-            var part3 = NextSplit(ref lineInfoStringSpan, separator);
-            var part4 = NextSplit(ref lineInfoStringSpan, separator);
-
-            // Normal function
-            uint startLine = ParseUInt32(part1);
-            uint startColumn = ParseUInt32(part2);
-            uint endLine = ParseUInt32(part3);
-            uint endColumn = ParseUInt32(part4);
-            uint startAddress = (startLine << _columnsBits) | startColumn;
-            uint endAddress = (endLine << _columnsBits) | endColumn;
-
-            return (startAddress, endAddress);
+                return (externalFunctionAddress, externalFunctionAddress);
+            }
         }
+
+        // Split
+        var part2 = NextSplit(ref lineInfoStringSpan, separator);
+        var part3 = NextSplit(ref lineInfoStringSpan, separator);
+        var part4 = NextSplit(ref lineInfoStringSpan, separator);
+
+        // Normal function
+        uint startLine = ParseUInt32(part1);
+        uint startColumn = ParseUInt32(part2);
+        uint endLine = ParseUInt32(part3);
+        uint endColumn = ParseUInt32(part4);
+        uint startAddress = (startLine << _columnsBits) | startColumn;
+        uint endAddress = (endLine << _columnsBits) | endColumn;
+
+        return (startAddress, endAddress);
     }
 
     protected override Task InitAsync(MappingNode? moduleOptions)
@@ -1059,7 +1084,7 @@ public class JsTracePreprocessor : PreprocessorStage
 
     private class HeapObjectData
     {
-        public uint NextPropertyAddress { get; set; }
+        public uint NextPropertyAddress;
 
         public ConcurrentDictionary<string, uint> PropertyAddressMapping { get; } = new();
     }
