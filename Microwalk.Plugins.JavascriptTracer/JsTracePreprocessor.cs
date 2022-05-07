@@ -80,7 +80,7 @@ public class JsTracePreprocessor : PreprocessorStage
     /// <summary>
     /// Metadata and lookup objects for loaded "images" (= scripts), indexed by script IDs.
     /// </summary>
-    private readonly Dictionary<int, ImageData> _imageData = new();
+    private readonly List<ImageData> _imageData = new();
 
     /// <summary>
     /// The next address which is assigned to an external function.
@@ -90,13 +90,28 @@ public class JsTracePreprocessor : PreprocessorStage
     /// <summary>
     /// Lookup for addresses assigned to external functions "[extern]:functionName", indexed by functionName.
     /// </summary>
-    private readonly ConcurrentDictionary<string, uint> _externalFunctionAddresses = new();
+    private ConcurrentDictionary<string, uint> _externalFunctionAddresses = null!;
+
+    /// <summary>
+    /// Lookup for addresses assigned to external functions "[extern]:functionName", indexed by functionName.
+    /// 
+    /// This variable used by the prefix preprocessing step exclusively, the data is copied to <see cref="_externalFunctionAddresses"/> afterwards.
+    /// </summary>
+    private Dictionary<string, uint> _externalFunctionAddressesPrefix = new();
 
     /// <summary>
     /// Requested MAP entries, which will be generated after preprocessing is done.
-    /// This is dictionary is used as a set, so the value is always ignored.
+    /// This dictionary is used as a set, so the value is always ignored.
     /// </summary>
-    private readonly ConcurrentDictionary<(int imageId, uint relativeAddress), object?> _requestedMapEntries = new();
+    private ConcurrentDictionary<(int imageId, uint relativeAddress), object?> _requestedMapEntries = null!;
+
+    /// <summary>
+    /// Requested MAP entries, which will be generated after preprocessing is done.
+    /// This dictionary is used as a set, so the value is always ignored.
+    /// 
+    /// This variable used by the prefix preprocessing step exclusively, the data is copied to <see cref="_externalFunctionAddresses"/> afterwards.
+    /// </summary>
+    private Dictionary<(int imageId, uint relativeAddress), object?> _requestedMapEntriesPrefix = new();
 
     public override async Task PreprocessTraceAsync(TraceEntity traceEntity)
     {
@@ -120,10 +135,16 @@ public class JsTracePreprocessor : PreprocessorStage
                 // Read scripts data and translate into image file format
                 string[] scriptsFileLines = await File.ReadAllLinesAsync(scriptsFilePath);
                 int maxImageNameLength = 8; // [extern]
+                int currentImageFileId = 0;
                 foreach(string line in scriptsFileLines)
                 {
                     string[] scriptData = line.Split('\t');
-                    int imageFileId = int.Parse(scriptData[0]);
+
+                    // The script IDs are expected to be zero-based and consecutive
+                    int imageFileId = ParseInt32NotSigned(scriptData[0]);
+                    if(currentImageFileId != imageFileId)
+                        throw new Exception($"Unexpected script ID ({imageFileId}), expected {currentImageFileId}.");
+
                     var imageFile = new TracePrefixFile.ImageFileInfo
                     {
                         Id = imageFileId,
@@ -132,14 +153,16 @@ public class JsTracePreprocessor : PreprocessorStage
                         EndAddress = ((ulong)imageFileId << 32) | 0xFFFFFFFFul,
                         Name = scriptData[2]
                     };
-                    _imageData.Add(imageFileId, new ImageData(imageFile));
+                    _imageData.Add(new ImageData(imageFile));
 
                     if(imageFile.Name.Length > maxImageNameLength)
                         maxImageNameLength = imageFile.Name.Length;
+
+                    ++currentImageFileId;
                 }
 
                 // Add dummy image for [extern] functions
-                _externalFunctionsImageId = _imageData.Max(i => i.Key) + 1;
+                _externalFunctionsImageId = currentImageFileId;
                 _externalFunctionsImage = new TracePrefixFile.ImageFileInfo
                 {
                     Id = _externalFunctionsImageId,
@@ -148,7 +171,7 @@ public class JsTracePreprocessor : PreprocessorStage
                     EndAddress = ((ulong)_externalFunctionsImageId << 32) | 0xFFFFFFFFul,
                     Name = "[extern]"
                 };
-                _imageData.Add(_externalFunctionsImageId, new ImageData(_externalFunctionsImage));
+                _imageData.Add(new ImageData(_externalFunctionsImage));
 
                 // Prepare writer for serializing trace data
                 // We initialize it with some robust initial capacity, to reduce amount of copying while keeping memory overhead low
@@ -157,15 +180,14 @@ public class JsTracePreprocessor : PreprocessorStage
                 // Write image files
                 tracePrefixFileWriter.WriteInt32(_imageData.Count);
                 foreach(var imageData in _imageData)
-                    imageData.Value.ImageFileInfo.Store(tracePrefixFileWriter);
+                    imageData.ImageFileInfo.Store(tracePrefixFileWriter);
 
                 // Load and parse trace prefix data
-                PreprocessFile(tracePrefixFilePath, true, tracePrefixFileWriter, "[preprocess:prefix]");
+                PreprocessFile(tracePrefixFilePath, tracePrefixFileWriter, "[preprocess:prefix]");
 
                 // Create trace prefix object
                 var preprocessedTracePrefixData = tracePrefixFileWriter.Buffer.AsMemory(0, tracePrefixFileWriter.Length);
                 _tracePrefix = new TracePrefixFile(preprocessedTracePrefixData);
-                _firstTestcase = false;
 
                 // Store to disk?
                 if(_storeTraces)
@@ -174,11 +196,26 @@ public class JsTracePreprocessor : PreprocessorStage
                     await using var writer = new BinaryWriter(File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None));
                     writer.Write(preprocessedTracePrefixData.Span);
                 }
+
+                // Initialize shared dictionaries
+                _externalFunctionAddresses = new ConcurrentDictionary<string, uint>(_externalFunctionAddressesPrefix);
+                _externalFunctionAddressesPrefix = null!;
+                _requestedMapEntries = new ConcurrentDictionary<(int imageId, uint relativeAddress), object?>(_requestedMapEntriesPrefix);
+                _requestedMapEntriesPrefix = null!;
+                foreach(var imageData in _imageData)
+                {
+                    imageData.FunctionNameLookup = new ConcurrentDictionary<(uint start, uint end), string>(imageData.FunctionNameLookupPrefix);
+                    imageData.FunctionNameLookupPrefix = null!;
+                    imageData.RelativeAddressLookup = new ConcurrentDictionary<string, (uint start, uint end)>(imageData.RelativeAddressLookupPrefix);
+                    imageData.RelativeAddressLookupPrefix = null!;
+                }
+
+                _firstTestcase = false;
             }
         }
         catch
         {
-            // Ensure that other threads don't try to process the prefix as well
+            // Ensure that other threads don't try to process the prefix as well, leading to confusing stack traces
             _firstTestcase = false;
 
             throw;
@@ -195,7 +232,7 @@ public class JsTracePreprocessor : PreprocessorStage
             // Write trace to file, do not keep it in memory
             string preprocessedTraceFilePath = Path.Combine(_outputDirectory!.FullName, Path.GetFileName(traceEntity.RawTraceFilePath) + ".preprocessed");
             using var traceFileWriter = new FastBinaryFileWriter(preprocessedTraceFilePath);
-            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
+            PreprocessFile(traceEntity.RawTraceFilePath, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
             traceFileWriter.Flush();
 
             // Create trace file object
@@ -205,7 +242,7 @@ public class JsTracePreprocessor : PreprocessorStage
         {
             // Keep trace in memory for immediate analysis
             using var traceFileWriter = new FastBinaryBufferWriter(1 * 1024 * 1024);
-            PreprocessFile(traceEntity.RawTraceFilePath, false, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
+            PreprocessFile(traceEntity.RawTraceFilePath, traceFileWriter, $"[preprocess:{traceEntity.Id}]");
 
             // Create trace file object
             var preprocessedTraceData = traceFileWriter.Buffer.AsMemory(0, traceFileWriter.Length);
@@ -213,7 +250,7 @@ public class JsTracePreprocessor : PreprocessorStage
         }
     }
 
-    private void PreprocessFile(string inputFileName, bool isPrefix, IFastBinaryWriter traceFileWriter, string logPrefix)
+    private void PreprocessFile(string inputFileName, IFastBinaryWriter traceFileWriter, string logPrefix)
     {
         // Read entire raw trace into memory, for faster processing
         using var inputFileStream = File.Open(inputFileName, new FileStreamOptions
@@ -227,8 +264,13 @@ public class JsTracePreprocessor : PreprocessorStage
 
         // If we are writing to memory, set the capacity of the writer to a rough estimate of the preprocessed file size,
         // in order to avoid reallocations and expensive copying
-        if(traceFileWriter is FastBinaryBufferWriter binaryBufferWriter)
+        if(!_firstTestcase && traceFileWriter is FastBinaryBufferWriter binaryBufferWriter)
             binaryBufferWriter.ResizeBuffer((int)inputFileStream.Length);
+
+        // Preallocated trace entry variables (only needed for serialization)
+        Branch branchEntry = new();
+        HeapAllocation heapAllocationEntry = new();
+        HeapMemoryAccess heapMemoryAccessEntry = new();
 
         // Parse trace entries
         (TracePrefixFile.ImageFileInfo imageFileInfo, uint address)? lastRet1Entry = null;
@@ -248,6 +290,7 @@ public class JsTracePreprocessor : PreprocessorStage
             if(inputBufferPosition == inputBufferLength)
             {
                 inputBufferLength = inputFileStreamReader.ReadBlock(inputBuffer);
+                Console.WriteLine("Next1");
                 if(inputBufferLength == 0)
                     break;
 
@@ -281,6 +324,7 @@ public class JsTracePreprocessor : PreprocessorStage
 
                 // Append the new data
                 int dataRead = inputFileStreamReader.ReadBlock(inputBuffer.AsSpan(inputBufferLength..));
+                Console.WriteLine("Next2");
                 inputBufferLength += dataRead;
                 if(dataRead == 0)
                 {
@@ -337,7 +381,7 @@ public class JsTracePreprocessor : PreprocessorStage
                 {
                     // Line info
                     int separatorIndex = currentInputFileLineSpan.Slice(pos + 2).IndexOf('|');
-                    int lId = int.Parse(currentInputFileLineSpan.Slice(pos + 2, separatorIndex));
+                    int lId = ParseInt32NotSigned(currentInputFileLineSpan.Slice(pos + 2, separatorIndex));
                     string lContent = new string(currentInputFileLineSpan.Slice(pos + 2 + separatorIndex + 1));
 
                     compressedLinesLookup.Add(lId, lContent);
@@ -375,7 +419,7 @@ public class JsTracePreprocessor : PreprocessorStage
                         ++numDigits;
                     }
 
-                    lineId = int.Parse(currentInputFileLineSpan.Slice(pos, numDigits));
+                    lineId = ParseInt32NotSigned(currentInputFileLineSpan.Slice(pos, numDigits));
                     lastLineId = lineId;
 
                     // Is this a prefixed line?
@@ -418,46 +462,49 @@ public class JsTracePreprocessor : PreprocessorStage
                         var source = ResolveLineInfoToImage(sourcePart);
                         var destination = ResolveLineInfoToImage(destinationPart);
 
-                        // Record function name, if it is not already known
-                        destination.imageData.FunctionNameLookup.TryAdd((destination.relativeStartAddress, destination.relativeEndAddress), new string(namePart));
-
                         // Produce MAP entries
+                        if(_firstTestcase)
+                        {
+                            _requestedMapEntriesPrefix.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
+                            _requestedMapEntriesPrefix.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeStartAddress), null);
+                            _requestedMapEntriesPrefix.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeEndAddress), null); // For Ret2-only returns (e.g., void functions)
+
+                            // Record function name, if it is not already known
+                            destination.imageData.FunctionNameLookupPrefix.TryAdd((destination.relativeStartAddress, destination.relativeEndAddress), new string(namePart));
+
+                            // Do not trace branches in prefix mode
+                            break;
+                        }
+
                         _requestedMapEntries.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
                         _requestedMapEntries.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeStartAddress), null);
                         _requestedMapEntries.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeEndAddress), null); // For Ret2-only returns (e.g., void functions)
 
-                        // Do not trace branches in prefix mode
-                        if(isPrefix)
-                            break;
+                        // Record function name, if it is not already known
+                        destination.imageData.FunctionNameLookup.TryAdd((destination.relativeStartAddress, destination.relativeEndAddress), new string(namePart));
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = source.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = source.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = source.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = source.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
 
                             lastCondEntry = null;
                         }
 
                         // Record call
-                        var entry = new Branch
-                        {
-                            BranchType = Branch.BranchTypes.Call,
-                            Taken = true,
-                            SourceImageId = source.imageData.ImageFileInfo.Id,
-                            SourceInstructionRelativeAddress = source.relativeStartAddress,
-                            DestinationImageId = destination.imageData.ImageFileInfo.Id,
-                            DestinationInstructionRelativeAddress = destination.relativeStartAddress
-                        };
-                        entry.Store(traceFileWriter);
+                        branchEntry.BranchType = Branch.BranchTypes.Call;
+                        branchEntry.Taken = true;
+                        branchEntry.SourceImageId = source.imageData.ImageFileInfo.Id;
+                        branchEntry.SourceInstructionRelativeAddress = source.relativeStartAddress;
+                        branchEntry.DestinationImageId = destination.imageData.ImageFileInfo.Id;
+                        branchEntry.DestinationInstructionRelativeAddress = destination.relativeStartAddress;
+                        branchEntry.Store(traceFileWriter);
 
                         break;
                     }
@@ -471,24 +518,25 @@ public class JsTracePreprocessor : PreprocessorStage
                         var source = ResolveLineInfoToImage(sourcePart);
 
                         // Produce MAP entries
-                        _requestedMapEntries.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
+                        if(_firstTestcase)
+                        {
+                            _requestedMapEntriesPrefix.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
 
-                        // Do not trace branches in prefix mode
-                        if(isPrefix)
+                            // Do not trace branches in prefix mode
                             break;
+                        }
+
+                        _requestedMapEntries.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = source.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = source.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = source.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = source.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
 
                             lastCondEntry = null;
@@ -510,44 +558,40 @@ public class JsTracePreprocessor : PreprocessorStage
                         var source = ResolveLineInfoToImage(sourcePart);
                         var destination = ResolveLineInfoToImage(destinationPart);
 
-                        // Produce MAP entries
+// Produce MAP entries
+                        if(_firstTestcase)
+                        {
+                            _requestedMapEntriesPrefix.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
+                            _requestedMapEntriesPrefix.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeStartAddress), null);
+
+                            // Do not trace branches in prefix mode
+                            break;
+                        }
+
                         _requestedMapEntries.TryAdd((source.imageData.ImageFileInfo.Id, source.relativeStartAddress), null);
                         _requestedMapEntries.TryAdd((destination.imageData.ImageFileInfo.Id, destination.relativeStartAddress), null);
 
-                        // Do not trace branches in prefix mode
-                        if(isPrefix)
-                            break;
+                        // Create branch entry
+                        branchEntry.BranchType = Branch.BranchTypes.Return;
+                        branchEntry.Taken = true;
+                        branchEntry.DestinationImageId = destination.imageData.ImageFileInfo.Id;
+                        branchEntry.DestinationInstructionRelativeAddress = destination.relativeStartAddress;
 
-                        // Did we see a Ret1 entry? -> more accurate location info
-                        Branch entry;
+                        // Did we see a Ret1 entry? -> more accurate source location info
                         if(lastRet1Entry != null)
                         {
-                            entry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Return,
-                                Taken = true,
-                                SourceImageId = lastRet1Entry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastRet1Entry.Value.address,
-                                DestinationImageId = destination.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = destination.relativeStartAddress
-                            };
+                            branchEntry.SourceImageId = lastRet1Entry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastRet1Entry.Value.address;
 
                             lastRet1Entry = null;
                         }
                         else
                         {
-                            entry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Return,
-                                Taken = true,
-                                SourceImageId = source.imageData.ImageFileInfo.Id,
-                                SourceInstructionRelativeAddress = source.relativeEndAddress,
-                                DestinationImageId = destination.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = destination.relativeStartAddress
-                            };
+                            branchEntry.SourceImageId = source.imageData.ImageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = source.relativeEndAddress;
                         }
 
-                        entry.Store(traceFileWriter);
+                        branchEntry.Store(traceFileWriter);
 
                         break;
                     }
@@ -561,24 +605,25 @@ public class JsTracePreprocessor : PreprocessorStage
                         var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
-                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        if(_firstTestcase)
+                        {
+                            _requestedMapEntriesPrefix.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
-                        // Do not trace branches in prefix mode
-                        if(isPrefix)
+                            // Do not trace branches in prefix mode
                             break;
+                        }
+
+                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = location.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = location.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = location.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = location.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
                         }
 
@@ -597,24 +642,25 @@ public class JsTracePreprocessor : PreprocessorStage
                         var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
-                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        if(_firstTestcase)
+                        {
+                            _requestedMapEntriesPrefix.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
-                        // Do not trace branches in prefix mode
-                        if(isPrefix)
+                            // Do not trace branches in prefix mode
                             break;
+                        }
+
+                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = location.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = location.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = location.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = location.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
 
                             lastCondEntry = null;
@@ -634,27 +680,27 @@ public class JsTracePreprocessor : PreprocessorStage
                         var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
-                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        if(_firstTestcase)
+                            _requestedMapEntriesPrefix.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        else
+                            _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = location.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = location.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = location.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = location.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
 
                             lastCondEntry = null;
                         }
 
                         // Extract access data
-                        int objectId = int.Parse(objectIdPart);
+                        int objectId = ParseInt32NotSigned(objectIdPart);
                         string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
@@ -663,13 +709,10 @@ public class JsTracePreprocessor : PreprocessorStage
                             objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
                             heapObjects.Add(objectId, objectData);
 
-                            var heapAllocation = new HeapAllocation
-                            {
-                                Id = objectId,
-                                Address = nextHeapAllocationAddress,
-                                Size = 2 * heapAllocationChunkSize
-                            };
-                            heapAllocation.Store(traceFileWriter);
+                            heapAllocationEntry.Id = objectId;
+                            heapAllocationEntry.Address = nextHeapAllocationAddress;
+                            heapAllocationEntry.Size = 2 * heapAllocationChunkSize;
+                            heapAllocationEntry.Store(traceFileWriter);
 
                             nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
                         }
@@ -687,21 +730,18 @@ public class JsTracePreprocessor : PreprocessorStage
                             return objectData.NextPropertyAddress++;
                         });
 
-                        // Do not memory accesses in prefix mode
-                        if(isPrefix)
+                        // Do not trace memory accesses in prefix mode
+                        if(_firstTestcase)
                             break;
 
                         // Create memory access
-                        var memoryAccess = new HeapMemoryAccess
-                        {
-                            InstructionImageId = location.imageData.ImageFileInfo.Id,
-                            InstructionRelativeAddress = location.relativeStartAddress,
-                            HeapAllocationBlockId = objectId,
-                            MemoryRelativeAddress = offsetRelativeAddress,
-                            Size = 1,
-                            IsWrite = false
-                        };
-                        memoryAccess.Store(traceFileWriter);
+                        heapMemoryAccessEntry.InstructionImageId = location.imageData.ImageFileInfo.Id;
+                        heapMemoryAccessEntry.InstructionRelativeAddress = location.relativeStartAddress;
+                        heapMemoryAccessEntry.HeapAllocationBlockId = objectId;
+                        heapMemoryAccessEntry.MemoryRelativeAddress = offsetRelativeAddress;
+                        heapMemoryAccessEntry.Size = 1;
+                        heapMemoryAccessEntry.IsWrite = false;
+                        heapMemoryAccessEntry.Store(traceFileWriter);
 
                         break;
                     }
@@ -717,27 +757,27 @@ public class JsTracePreprocessor : PreprocessorStage
                         var location = ResolveLineInfoToImage(locationPart);
 
                         // Produce MAP entries
-                        _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        if(_firstTestcase)
+                            _requestedMapEntriesPrefix.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
+                        else
+                            _requestedMapEntries.TryAdd((location.imageData.ImageFileInfo.Id, location.relativeStartAddress), null);
 
                         // Create branch entry, if there is a pending conditional
                         if(lastCondEntry != null)
                         {
-                            var branchEntry = new Branch
-                            {
-                                BranchType = Branch.BranchTypes.Jump,
-                                Taken = true,
-                                SourceImageId = lastCondEntry.Value.imageFileInfo.Id,
-                                SourceInstructionRelativeAddress = lastCondEntry.Value.address,
-                                DestinationImageId = location.imageData.ImageFileInfo.Id,
-                                DestinationInstructionRelativeAddress = location.relativeStartAddress
-                            };
+                            branchEntry.BranchType = Branch.BranchTypes.Jump;
+                            branchEntry.Taken = true;
+                            branchEntry.SourceImageId = lastCondEntry.Value.imageFileInfo.Id;
+                            branchEntry.SourceInstructionRelativeAddress = lastCondEntry.Value.address;
+                            branchEntry.DestinationImageId = location.imageData.ImageFileInfo.Id;
+                            branchEntry.DestinationInstructionRelativeAddress = location.relativeStartAddress;
                             branchEntry.Store(traceFileWriter);
 
                             lastCondEntry = null;
                         }
 
                         // Extract access data
-                        int objectId = int.Parse(objectIdPart);
+                        int objectId = ParseInt32NotSigned(objectIdPart);
                         string offset = new string(offsetPart);
 
                         // Did we already encounter this object?
@@ -746,13 +786,10 @@ public class JsTracePreprocessor : PreprocessorStage
                             objectData = new HeapObjectData { NextPropertyAddress = 0x100000 };
                             heapObjects.Add(objectId, objectData);
 
-                            var heapAllocation = new HeapAllocation
-                            {
-                                Id = objectId,
-                                Address = nextHeapAllocationAddress,
-                                Size = 2 * heapAllocationChunkSize
-                            };
-                            heapAllocation.Store(traceFileWriter);
+                            heapAllocationEntry.Id = objectId;
+                            heapAllocationEntry.Address = nextHeapAllocationAddress;
+                            heapAllocationEntry.Size = 2 * heapAllocationChunkSize;
+                            heapAllocationEntry.Store(traceFileWriter);
 
                             nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
                         }
@@ -770,21 +807,18 @@ public class JsTracePreprocessor : PreprocessorStage
                             return objectData.NextPropertyAddress++;
                         });
 
-                        // Do not memory accesses in prefix mode
-                        if(isPrefix)
+                        // Do not trace memory accesses in prefix mode
+                        if(_firstTestcase)
                             break;
 
                         // Create memory access
-                        var memoryAccess = new HeapMemoryAccess
-                        {
-                            InstructionImageId = location.imageData.ImageFileInfo.Id,
-                            InstructionRelativeAddress = location.relativeStartAddress,
-                            HeapAllocationBlockId = objectId,
-                            MemoryRelativeAddress = offsetRelativeAddress,
-                            Size = 1,
-                            IsWrite = true
-                        };
-                        memoryAccess.Store(traceFileWriter);
+                        heapMemoryAccessEntry.InstructionImageId = location.imageData.ImageFileInfo.Id;
+                        heapMemoryAccessEntry.InstructionRelativeAddress = location.relativeStartAddress;
+                        heapMemoryAccessEntry.HeapAllocationBlockId = objectId;
+                        heapMemoryAccessEntry.MemoryRelativeAddress = offsetRelativeAddress;
+                        heapMemoryAccessEntry.Size = 1;
+                        heapMemoryAccessEntry.IsWrite = true;
+                        heapMemoryAccessEntry.Store(traceFileWriter);
 
                         break;
                     }
@@ -797,7 +831,7 @@ public class JsTracePreprocessor : PreprocessorStage
             }
         }
 
-        if(isPrefix)
+        if(_firstTestcase)
         {
             _prefixNextHeapAllocationAddress = nextHeapAllocationAddress;
             _prefixHeapObjects = heapObjects;
@@ -823,16 +857,29 @@ public class JsTracePreprocessor : PreprocessorStage
         string lineInfoString = new string(lineInfo);
 
         var part0 = NextSplit(ref lineInfo, separator);
-
-        // Try to read existing address data
         bool isExternal = part0[0] == 'E';
-        var imageData = _imageData[isExternal ? _externalFunctionsImageId : int.Parse(part0)];
-        var addressData = imageData.RelativeAddressLookup.GetOrAdd(lineInfoString, _ =>
-        {
-            // Address not known yet, compute it
 
+        // Try to read existing address data, or generate new one if not known yet
+        var imageData = _imageData[isExternal ? _externalFunctionsImageId : ParseInt32NotSigned(part0)];
+        (uint start, uint end) addressData;
+        if(_firstTestcase)
+        {
+            if(!imageData.RelativeAddressLookupPrefix.TryGetValue(lineInfoString, out addressData))
+            {
+                addressData = GenerateAddressLookupEntry();
+                imageData.RelativeAddressLookupPrefix.Add(lineInfoString, addressData);
+            }
+        }
+        else
+            addressData = imageData.RelativeAddressLookup.GetOrAdd(lineInfoString, _ => GenerateAddressLookupEntry());
+
+        return (imageData, addressData.start, addressData.end);
+
+        // Local function for generating new entry in address lookup
+        (uint start, uint end) GenerateAddressLookupEntry()
+        {
             // Split
-            var lineInfoStringSpan = _.AsSpan(); // We can't capture the lineInfo Span directly
+            var lineInfoStringSpan = lineInfoString.AsSpan(); // We can't capture the lineInfo Span directly
             NextSplit(ref lineInfoStringSpan, separator); // part0 is already handled
             var part1 = NextSplit(ref lineInfoStringSpan, separator);
 
@@ -840,10 +887,24 @@ public class JsTracePreprocessor : PreprocessorStage
             if(isExternal)
             {
                 // Get address of function, or generate a new one if it does not yet exist
-                // Necessary locking is done by the underlying concurrent dictionary
-                uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(new string(part1), _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
+                // Necessary locking is done by the underlying concurrent dictionary (if not in prefix mode)
+                string functionName = new string(part1);
+                if(_firstTestcase)
+                {
+                    if(!_externalFunctionAddressesPrefix.TryGetValue(functionName, out uint externalFunctionAddress))
+                    {
+                        externalFunctionAddress = ++_currentExternalFunctionAddress;
+                        _externalFunctionAddressesPrefix.Add(functionName, externalFunctionAddress);
+                    }
 
-                return (externalFunctionAddress, externalFunctionAddress);
+                    return (externalFunctionAddress, externalFunctionAddress);
+                }
+                else
+                {
+                    uint externalFunctionAddress = _externalFunctionAddresses.GetOrAdd(functionName, _ => Interlocked.Increment(ref _currentExternalFunctionAddress));
+
+                    return (externalFunctionAddress, externalFunctionAddress);
+                }
             }
 
             // Split
@@ -852,17 +913,15 @@ public class JsTracePreprocessor : PreprocessorStage
             var part4 = NextSplit(ref lineInfoStringSpan, separator);
 
             // Normal function
-            uint startLine = uint.Parse(part1);
-            uint startColumn = uint.Parse(part2);
-            uint endLine = uint.Parse(part3);
-            uint endColumn = uint.Parse(part4);
+            uint startLine = ParseUInt32(part1);
+            uint startColumn = ParseUInt32(part2);
+            uint endLine = ParseUInt32(part3);
+            uint endColumn = ParseUInt32(part4);
             uint startAddress = (startLine << _columnsBits) | startColumn;
             uint endAddress = (endLine << _columnsBits) | endColumn;
 
             return (startAddress, endAddress);
-        });
-
-        return (imageData, addressData.start, addressData.end);
+        }
     }
 
     protected override Task InitAsync(MappingNode? moduleOptions)
@@ -908,9 +967,11 @@ public class JsTracePreprocessor : PreprocessorStage
                 .ToList()
             );
         Dictionary<int, SortedList<(uint start, uint end), string>> sortedFunctionNameLookup = _imageData
-            .ToDictionary(i => i.Key, i => new SortedList<(uint start, uint end), string>(i.Value.FunctionNameLookup));
-        foreach(var (imageFileId, imageData) in _imageData)
+            .ToDictionary(i => i.ImageFileInfo.Id, i => new SortedList<(uint start, uint end), string>(i.FunctionNameLookup));
+        foreach(var imageData in _imageData)
         {
+            int imageFileId = imageData.ImageFileInfo.Id;
+
             string mapFileName = Path.Join(_mapDirectory.FullName, replaceChars.Aggregate(imageData.ImageFileInfo.Name, (current, invalidPathChar) => current.Replace(invalidPathChar, '_')) + ".map");
             await using var mapFileWriter = new StreamWriter(File.Open(mapFileName, FileMode.Create));
 
@@ -963,6 +1024,39 @@ public class JsTracePreprocessor : PreprocessorStage
         return tmp;
     }
 
+    /// <summary>
+    /// Parses an integer from the given string.
+    /// This method assumes that the integer is valid and _not_ signed.
+    /// </summary>
+    /// <param name="str">String to parse.</param>
+    /// <returns></returns>
+    private int ParseInt32NotSigned(ReadOnlySpan<char> str)
+    {
+        return unchecked((int)ParseUInt32(str));
+    }
+
+    /// <summary>
+    /// Parses an unsigned integer from the given string.
+    /// This method assumes that the integer is valid and not signed.
+    /// </summary>
+    /// <param name="str">String to parse.</param>
+    /// <returns></returns>
+    private unsafe uint ParseUInt32(ReadOnlySpan<char> str)
+    {
+        uint result = 0;
+        fixed(char* strBeginPtr = str)
+        {
+            char* strEndPtr = strBeginPtr + str.Length;
+            char* strPtr = strBeginPtr;
+            while(strPtr != strEndPtr)
+            {
+                result = result * 10 + unchecked((uint)(*(strPtr++) - '0'));
+            }
+        }
+
+        return result;
+    }
+
     private class HeapObjectData
     {
         public uint NextPropertyAddress { get; set; }
@@ -985,11 +1079,25 @@ public class JsTracePreprocessor : PreprocessorStage
         /// <summary>
         /// Lookup for all encoded relative addresses. Indexed by encoding ("script.js:1:2:1:3").
         /// </summary>
-        public ConcurrentDictionary<string, (uint start, uint end)> RelativeAddressLookup { get; } = new();
+        public ConcurrentDictionary<string, (uint start, uint end)> RelativeAddressLookup { get; set; } = null!;
+
+        /// <summary>
+        /// Lookup for all encoded relative addresses. Indexed by encoding ("script.js:1:2:1:3").
+        /// 
+        /// This variable used by the prefix preprocessing step exclusively, the data is copied to <see cref="RelativeAddressLookup"/> afterwards.
+        /// </summary>
+        public Dictionary<string, (uint start, uint end)> RelativeAddressLookupPrefix { get; set; } = new();
 
         /// <summary>
         /// Maps encoded start and end addresses to function names.
         /// </summary>
-        public ConcurrentDictionary<(uint start, uint end), string> FunctionNameLookup { get; } = new();
+        public ConcurrentDictionary<(uint start, uint end), string> FunctionNameLookup { get; set; } = null!;
+
+        /// <summary>
+        /// Maps encoded start and end addresses to function names.
+        /// 
+        /// This variable used by the prefix preprocessing step exclusively, the data is copied to <see cref="FunctionNameLookup"/> afterwards.
+        /// </summary>
+        public Dictionary<(uint start, uint end), string> FunctionNameLookupPrefix { get; set; } = new();
     }
 }
