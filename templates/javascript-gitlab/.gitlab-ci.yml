@@ -1,0 +1,19 @@
+image: 
+    name: microwalk/microwalk-jalangi2:latest
+    entrypoint: [""]
+  
+stages:
+    - test
+
+leakage-detection:
+    stage: test
+    tags:
+        - microwalk
+    script:
+        - cd microwalk
+        - bash analyze.sh
+    artifacts: 
+        paths:
+            - microwalk/results/
+        reports:
+            codequality: [microwalk/results/report.json]

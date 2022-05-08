@@ -1,6 +1,14 @@
 # Microwalk
 
-Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to identify and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
+Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
+
+## Usage (Docker)
+
+Microwalk now comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Due to licensing issues, we cannot offer binary versions of those images; however, they can be easily build on any system that supports Docker. See [the documentation](docker/README.md) for more details.
+
+In the [template/](directory) you can find several templates for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload.
+
+The following documentation is for building and running Microwalk from source without using a containerized environment.
 
 
 ## Compiling
@@ -11,7 +19,7 @@ The following guide is mostly for Linux systems and command line builds on Windo
 
 ### Main application
 
-The main application is based on [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0), so the .NET 5.0 SDK is required for compiling.
+The main application is based on [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0), so the .NET 6.0 SDK is required for compiling.
 
 Compile (optional):
 ```
@@ -56,23 +64,24 @@ Alternatively, it is also possible to use an own wrapper implementation, as long
 
 ## Running Microwalk
 
-The general steps for analyzing a library with Microwalk are:
+The general steps for analyzing a compiled library with Microwalk are:
 
-1. Copy and adjust the `PinTracerWrapper` program to load the investigated library, and read and execute test case files. It is advised to test the wrapper with a few dummy test cases, and use debug outputs to verify its correctness. Make to sure to remove these debug outputs afterwards, else they may clutter the I/O pipe which Microwalk uses for communication with the dynamic instrumentation framework, and lead to errors.
+1. (x86 binaries only) Copy and adjust the `PinTracerWrapper` program to load the investigated library, and read and execute test case files. It is advised to test the wrapper with a few dummy test cases, and use debug outputs to verify its correctness. Make to sure to remove these debug outputs afterwards, else they may clutter the I/O pipe which Microwalk uses for communication with the dynamic instrumentation framework, and lead to errors.
 
-2. Create a custom test case generator module, or check whether the built-in ones are able to yield the expected input formats. Guidelines for adding custom framework modules can be found in the section "[Creating own framework modules](#creating-own-framework-modules)".
+2. Create a custom test case generator module, or check whether the built-in ones are able to yield the expected input formats. Guidelines for adding custom framework modules can be found in the section "[Creating own framework modules](#creating-own-framework-modules)". Alternatively, you may create a set of static test cases and load them through the `load` module.
 
-3. Compose a configuration file which describes the steps to be executed by Microwalk.
+3. Compose a [configuration file](docs/config.md) which describes the steps to be executed by Microwalk.
 
 ### Configuration
 
 Microwalk takes the following command line arguments:
 
-- `-p <plugin directory>` (optional)<br>
-  A directory containing plugin binaries. This needs to be specified when the configuration references a plugin that is not in Microwalk's main build directory.
-  
 - `<configuration file>` (mandatory)<br>
-  The path to a [YAML-based configuration file](docs/config.md).
+  The path to the configuration file.
+  
+- `-p <plugin directory>` (optional)<br>
+  A directory containing plugin binaries. This needs to be specified when the configuration references a plugin that is not in Microwalk's main build directory. This option can be supplied multiple times.
+  
 
 ## Creating own framework modules
 
