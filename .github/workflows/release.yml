@@ -100,3 +100,14 @@ jobs:
             ghcr.io/microwalk-project/microwalk:${{ steps.get_version.outputs.VERSION }}-jalangi2
           platforms: linux/amd64
           file: docker/jalangi2/Dockerfile
+
+      - name: Build and push Microwalk Pin docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/microwalk-project/microwalk:pin
+            ghcr.io/microwalk-project/microwalk:${{ steps.get_version.outputs.VERSION }}-pin
+          platforms: linux/amd64
+          file: docker/pin/Dockerfile
