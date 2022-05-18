@@ -56,7 +56,7 @@ ENV PIN_PATH=/mw/pin
 # Build Pin tool
 WORKDIR /mw/pintool
 COPY PinTracer .
-RUN make PIN_ROOT=/mw/pin obj-intel64/PinTracer.so
+RUN mkdir -p obj-intel64 && make PIN_ROOT=/mw/pin obj-intel64/PinTracer.so
 ENV PINTOOL=/mw/pintool/obj-intel64/PinTracer.so
 
 # Prepare working directory
