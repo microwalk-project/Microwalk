@@ -1,19 +1,25 @@
 ﻿using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using CodeQualityReportGenerator;
+using CiReportGenerator;
 using Microwalk.FrameworkBase.Utilities;
 
-if(args.Length < 4)
+if(args.Length < 5)
 {
     Console.WriteLine("Please specify the following parameters:");
     Console.WriteLine("- Call stacks JSON file, e.g. \"/mw/call-stacks.json\"");
     Console.WriteLine("- Identifier for the report, e.g. name of the target");
     Console.WriteLine("- (output) Report file, e.g. \"/mw/report.json\"");
-    Console.WriteLine("- <mode>");
+    Console.WriteLine("- <format>");
+    Console.WriteLine("- <map mode>");
     Console.WriteLine("");
-    Console.WriteLine("Supported modes:");
+    Console.WriteLine("Supported output formats:");
+    Console.WriteLine("  gitlab-code-quality");
+    Console.WriteLine("  sarif");
+    Console.WriteLine("");
+    Console.WriteLine("Supported map modes:");
     Console.WriteLine("  dwarf");
     Console.WriteLine("  - Directory with DWARF dumps, e.g. \"/mw/dwarf/\"");
     Console.WriteLine("  - Path prefix which all source files share and which should be removed, e.g. \"/mw/src/\"");
@@ -22,10 +28,13 @@ if(args.Length < 4)
     return;
 }
 
-string argCallStacksFile = args[0];
-string argIdentifier = args[1];
-string argReportFile = args[2];
-string argMode = args[3];
+int argIndex = 0;
+string argCallStacksFile = args[argIndex++];
+string argIdentifier = args[argIndex++];
+string argReportFile = args[argIndex++];
+string argFormat = args[argIndex++];
+string argMode = args[argIndex++];
+
 
 
 // Read call stack data
@@ -41,8 +50,8 @@ if(callStackData == null)
 Dictionary<(string imageName, uint instructionOffset), (string fileName, int lineNumber, int columnNumber)> statements = new();
 if(argMode == "dwarf")
 {
-    string argDwarfDirectory = args[4];
-    string argUriPrefix = args[5];
+    string argDwarfDirectory = args[argIndex++];
+    string argUriPrefix = args[argIndex++];
 
     // Read DWARF files and extract statement info
     foreach(var dwarfFile in Directory.EnumerateFiles(argDwarfDirectory, "*.dwarf"))
@@ -110,7 +119,7 @@ if(argMode == "dwarf")
 }
 else if(argMode == "js-map")
 {
-    string argMapsDirectory = args[4];
+    string argMapsDirectory = args[argIndex++];
     
     // Parse all MAP files from the given directory
     foreach(var mapFileName in Directory.EnumerateFiles(argMapsDirectory))
@@ -134,11 +143,26 @@ else if(argMode == "js-map")
     }
 }
 
-// Produce code quality file
-var reports = callStackData.ProduceReport(statements, argIdentifier).ToList();
+// Produce report
+object? report = null;
+if(argFormat == "gitlab-code-quality")
+{
+    report = callStackData.ProduceCodeQualityReport(statements, argIdentifier).ToList();
+}
+else if(argFormat == "sarif")
+{
+    report = callStackData.ProduceSarifReport(statements, argIdentifier);
+}
+else
+{
+    throw new Exception($"Unknown output format: {argFormat}");
+}
+
+// Store serialized report
 await using var reportStream = File.Open(argReportFile, FileMode.Create, FileAccess.Write);
-await JsonSerializer.SerializeAsync(reportStream, reports, new JsonSerializerOptions
+await JsonSerializer.SerializeAsync(reportStream, report, new JsonSerializerOptions
 {
     WriteIndented = true,
-    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 });

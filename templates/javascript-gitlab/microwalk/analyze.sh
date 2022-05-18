@@ -35,7 +35,7 @@ do
   time dotnet Microwalk.dll $thisDir/config-analyze.yml
   
   cd $CQR_GENERATOR_PATH
-  dotnet CodeQualityReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $resultsDir/report-$targetName.json js-map $WORK_DIR/$targetName/work/maps
+  dotnet CiReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $resultsDir/report-$targetName.json js-map $WORK_DIR/$targetName/work/maps
   
   cd $thisDir
   cp $WORK_DIR/$targetName/persist/results/call-stacks.txt $resultsDir/call-stacks-$targetName.txt

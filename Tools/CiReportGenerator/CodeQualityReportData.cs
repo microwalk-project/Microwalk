@@ -2,7 +2,7 @@
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 #pragma warning disable CS8618
 
-namespace CodeQualityReportGenerator;
+namespace CiReportGenerator;
 
 public class CodeQualityReportEntry
 {

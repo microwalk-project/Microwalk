@@ -21,7 +21,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.QemuKerne
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.JavascriptTracer", "Microwalk.Plugins.JavascriptTracer\Microwalk.Plugins.JavascriptTracer.csproj", "{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeQualityReportGenerator", "Tools\CodeQualityReportGenerator\CodeQualityReportGenerator.csproj", "{1CD7183F-BAF1-41FE-9F26-401512C4C6DF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CiReportGenerator", "Tools\CiReportGenerator\CiReportGenerator.csproj", "{1CD7183F-BAF1-41FE-9F26-401512C4C6DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

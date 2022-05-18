@@ -23,7 +23,7 @@ The base structure of each image is as follows:
 /mw/                            # Base folder
   microwalk/                    # Microwalk binaries (including relevant plugins)
   mapfilegenerator/             # Tool for generating MAP files from binaries
-  codequalityreportgenerator/   # Tool for generating GitLab-compatible code
+  CiReportGenerator/   # Tool for generating GitLab-compatible code
                                     quality reports from the analysis result
   work/                         # Working directory (for traces, results etc.)
 ```

@@ -8,12 +8,12 @@ COPY Microwalk Microwalk
 COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
 COPY Microwalk.Plugins.PinTracer Microwalk.Plugins.PinTracer
 COPY Tools/MapFileGenerator Tools/MapFileGenerator
-COPY Tools/CodeQualityReportGenerator Tools/CodeQualityReportGenerator
+COPY Tools/CiReportGenerator Tools/CiReportGenerator
 
 RUN dotnet publish Microwalk/Microwalk.csproj -c Release -o /publish/microwalk
 RUN dotnet publish Microwalk.Plugins.PinTracer/Microwalk.Plugins.PinTracer.csproj -c Release -o /publish/microwalk
 RUN dotnet publish Tools/MapFileGenerator/MapFileGenerator.csproj -c Release -o /publish/mapfilegenerator
-RUN dotnet publish Tools/CodeQualityReportGenerator/CodeQualityReportGenerator.csproj -c Release -o /publish/codequalityreportgenerator
+RUN dotnet publish Tools/CiReportGenerator/CiReportGenerator.csproj -c Release -o /publish/CiReportGenerator
 
 
 
@@ -40,9 +40,9 @@ COPY --from=build /publish/mapfilegenerator .
 ENV MAP_GENERATOR_PATH=/mw/mapfilegenerator
 
 # Copy code quality report generator binaries
-WORKDIR /mw/codequalityreportgenerator
-COPY --from=build /publish/codequalityreportgenerator .
-ENV CQR_GENERATOR_PATH=/mw/codequalityreportgenerator
+WORKDIR /mw/CiReportGenerator
+COPY --from=build /publish/CiReportGenerator .
+ENV CQR_GENERATOR_PATH=/mw/CiReportGenerator
 
 # Get Pin SDK
 WORKDIR /mw
