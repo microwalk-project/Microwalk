@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\elftools\src\ElfTools\ElfTools.csproj" />
       <ProjectReference Include="..\Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj">
           <Private>false</Private>
           <ExcludeAssets>runtime</ExcludeAssets>
@@ -19,6 +18,10 @@
       <Compile Include="..\GlobalAssemblyInfo.cs">
         <Link>GlobalAssemblyInfo.cs</Link>
       </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="ElfTools" Version="0.1.0" />
     </ItemGroup>
 
 </Project>
