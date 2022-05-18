@@ -4,6 +4,9 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
 
 WORKDIR /src
 
+COPY *.props .
+COPY *.sln* .
+COPY *.cs .
 COPY Microwalk Microwalk
 COPY Microwalk.FrameworkBase Microwalk.FrameworkBase
 COPY Microwalk.Plugins.JavascriptTracer Microwalk.Plugins.JavascriptTracer
