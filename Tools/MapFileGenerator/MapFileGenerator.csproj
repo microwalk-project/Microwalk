@@ -11,4 +11,10 @@
       <PackageReference Include="ElfTools" Version="0.1.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Include="..\..\GlobalAssemblyInfo.cs">
+        <Link>GlobalAssemblyInfo.cs</Link>
+      </Compile>
+    </ItemGroup>
+
 </Project>

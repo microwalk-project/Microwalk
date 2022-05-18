@@ -2,6 +2,8 @@
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ClassNeverInstantiated.Global
 
+using System.Reflection;
+
 #pragma warning disable CS8618
 
 namespace CiReportGenerator;
@@ -17,6 +19,9 @@ public class CallStackData
 
     public SarifReport ProduceSarifReport(Dictionary<(string imageName, uint instructionOffset), (string fileName, int lineNumber, int columnNumber)> statements, string reportIdentifier)
     {
+        // Get assembly version
+        var version = Assembly.GetExecutingAssembly().GetName().Version ?? throw new Exception("Could not determine application version.");
+
         // Prepare report object
         var report = new SarifReport
         {
@@ -29,14 +34,14 @@ public class CallStackData
                         Driver = new SarifReportToolComponent
                         {
                             Name = "Microwalk",
-                            Version = "", // TODO
-                            SemanticVersion = "", // TODO
+                            Version = $"{version.Major}.{version.Minor}.{version.Build}",
+                            SemanticVersion = $"{version.Major}.{version.Minor}.{version.Build}",
                             Rules = new List<SarifReportReportingDescriptor>
                             {
                                 new()
                                 {
                                     Id = "branch-leakage",
-                                    Name = "Branch leakage",
+                                    Name = "BranchLeakage",
                                     ShortDescription = new SarifReportReportingDescriptorDescription { Text = "Secret-dependent branch" },
                                     FullDescription = new SarifReportReportingDescriptorDescription { Text = "This line branches depending on a secret input value. An attacker may monitor the branch targets of this line and learn something about the secret." },
                                     Help = new SarifReportReportingDescriptorHelp
@@ -55,7 +60,7 @@ public class CallStackData
                                 new()
                                 {
                                     Id = "memory-access-leakage",
-                                    Name = "Memory access leakage",
+                                    Name = "MemoryAccessLeakage",
                                     ShortDescription = new SarifReportReportingDescriptorDescription { Text = "Secret-dependent memory access" },
                                     FullDescription = new SarifReportReportingDescriptorDescription { Text = "This line accesses a memory location at a secret-dependent address or index. An attacker may monitor the addresses of memory accesses and learn something about the secret." },
                                     Help = new SarifReportReportingDescriptorHelp

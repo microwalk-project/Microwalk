@@ -11,4 +11,10 @@
       <ProjectReference Include="..\..\Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Include="..\..\GlobalAssemblyInfo.cs">
+        <Link>GlobalAssemblyInfo.cs</Link>
+      </Compile>
+    </ItemGroup>
+
 </Project>
