@@ -3,10 +3,10 @@ name: Build Microwalk
 on:
   push:
     paths:
-      - 'Microwalk*'
+      - 'Microwalk*/**'
   pull_request:
     paths:
-      - 'Microwalk*'
+      - 'Microwalk*/**'
   workflow_dispatch:
 
 jobs:
