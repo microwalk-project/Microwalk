@@ -35,12 +35,12 @@ do
   time dotnet Microwalk.dll $thisDir/config-analyze.yml
   
   cd $CQR_GENERATOR_PATH
-  dotnet CiReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $resultsDir/report-$targetName.json gitlab-code-quality js-map $WORK_DIR/$targetName/work/maps
+  dotnet CiReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $resultsDir/report-$targetName.sarif sarif js-map $WORK_DIR/$targetName/work/maps
   
   cd $thisDir
   cp $WORK_DIR/$targetName/persist/results/call-stacks.txt $resultsDir/call-stacks-$targetName.txt
   
-  reports="${reports} ${resultsDir}/report-${targetName}.json"
+  reports="${reports} ${resultsDir}/report-${targetName}.sarif"
 done
 
-cat $reports | jq -s 'add' > $resultsDir/report.json
+cat $reports | jq -s 'add' > $resultsDir/report.sarif

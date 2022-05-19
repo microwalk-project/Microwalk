@@ -1,0 +1,30 @@
+name: Build & Analyze with Microwalk
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-analyze:
+    runs-on: ubuntu-latest
+    steps:
+      # If necessary, add step for building the library / downloading necessary packages
+      
+      - name: Run Microwalk analysis
+        id: run_microwalk
+        uses: microwalk-project/microwalk-jalangi2-action@v1
+        with:
+          # Change this if the analysis script is not in a /microwalk directory
+          analysis-script-directory: microwalk
+      
+      - name: Upload analysis result
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: ${{ steps.run_microwalk.inputs.analysis-script-directory }}/results/report.sarif
+      
+      - name: Archive analysis artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: leakage-analysis-results
+          path: ${{ steps.run_microwalk.inputs.analysis-script-directory }}/results
