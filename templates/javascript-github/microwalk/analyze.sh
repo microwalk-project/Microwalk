@@ -35,12 +35,16 @@ do
   time dotnet Microwalk.dll $thisDir/config-analyze.yml
   
   cd $CQR_GENERATOR_PATH
-  dotnet CiReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $resultsDir/report-$targetName.sarif sarif js-map $WORK_DIR/$targetName/work/maps
+  reportFile=$resultsDir/report-$targetName.sarif
+  dotnet CiReportGenerator.dll $WORK_DIR/$targetName/persist/results/call-stacks.json $targetName $reportFile sarif js-map $WORK_DIR/$targetName/work/maps
   
   cd $thisDir
   cp $WORK_DIR/$targetName/persist/results/call-stacks.txt $resultsDir/call-stacks-$targetName.txt
   
-  reports="${reports} ${resultsDir}/report-${targetName}.sarif"
+  reports="${reports} ${reportFile}"
+  
+  echo "Running target ${targetName} successful, generated report ${reportFile}"
 done
 
-cat $reports | jq -s 'add' > $resultsDir/report.sarif
+echo "Merging report files..."
+cat $reports | jq -s '.[0].runs[0].results=([.[].runs[0].results]|flatten)|.[0]' > $resultsDir/report.sarif

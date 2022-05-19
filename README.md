@@ -6,7 +6,7 @@ Microwalk is a microarchitectural leakage detection framework, which combines dy
 
 Microwalk now comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [the documentation](docker/README.md) for more details.
 
-In the [template/](directory) you can find several templates for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload.
+In the [template/](directory) you can find several templates for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload. An example for using the GitHub workflow templates is in the [example-js](https://github.com/microwalk-project/example-js) repository.
 
 The following documentation is for building and running Microwalk from source without using a containerized environment.
 
