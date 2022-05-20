@@ -248,7 +248,6 @@ public class CallStackEntry
                 },
                 PartialFingerprints = new Dictionary<string, string>
                 {
-                    ["primaryLocationLineHash"] = $"{CallStackId}-{leakageEntry.ImageName}-{leakageEntry.Offset:x}" // TODO This syntax seems to be invalid
                 },
                 CodeFlows = new List<SarifCodeFlow>
                 {
