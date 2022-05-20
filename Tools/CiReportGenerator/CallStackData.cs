@@ -1,10 +1,12 @@
 ﻿// ReSharper disable CollectionNeverUpdated.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ClassNeverInstantiated.Global
-
-using System.Reflection;
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 #pragma warning disable CS8618
+
+using System.Reflection;
 
 namespace CiReportGenerator;
 
@@ -46,8 +48,16 @@ public class CallStackData
                                     FullDescription = new SarifReportReportingDescriptorDescription { Text = "This line branches depending on a secret input value. An attacker may monitor the branch targets of this line and learn something about the secret." },
                                     Help = new SarifReportReportingDescriptorHelp
                                     {
-                                        Text = "TODO", // TODO
-                                        Markdown = "TODO"
+                                        Text = "This line branches depending on a secret input value.\n" +
+                                               "An attacker may monitor the branch targets of this line and learn something about the secret.\n" +
+                                               "\n" +
+                                               "A high score means that almost every test case led to a unique sequence of branch decisions -> high leakage.\n" +
+                                               "A low score means that most test cases generate the same sequence of branch decisions, with a few outliers -> low leakage.\n",
+                                        Markdown = "This line branches depending on a secret input value.\n" +
+                                                   "An attacker may monitor the branch targets of this line and learn something about the secret.\n" +
+                                                   "\n" +
+                                                   "A **high score** means that almost every test case led to a unique sequence of branch decisions -> high leakage.\n" +
+                                                   "A **low score** means that most test cases generate the same sequence of branch decisions, with few outliers -> low leakage.\n"
                                     },
                                     Properties = new SarifReportReportingDescriptorProperties
                                     {
@@ -65,8 +75,16 @@ public class CallStackData
                                     FullDescription = new SarifReportReportingDescriptorDescription { Text = "This line accesses a memory location at a secret-dependent address or index. An attacker may monitor the addresses of memory accesses and learn something about the secret." },
                                     Help = new SarifReportReportingDescriptorHelp
                                     {
-                                        Text = "TODO", // TODO
-                                        Markdown = "TODO"
+                                        Text = "This line accesses a memory location at a secret-dependent address or index.\n" +
+                                               "An attacker may monitor the addresses of memory accesses and learn something about the secret.\n" +
+                                               "\n" +
+                                               "A high score means that almost every test case led to a unique sequence of accessed memory addresses -> high leakage.\n" +
+                                               "A low score means that most test cases generate the same sequence of accessed memory addresses, with a few outliers -> low leakage.\n",
+                                        Markdown = "This line accesses a memory location at a secret-dependent address or index.\n" +
+                                                   "An attacker may monitor the addresses of memory accesses and learn something about the secret.\n" +
+                                                   "\n" +
+                                                   "A **high score** means that almost every test case led to a unique sequence of accessed memory addresses -> high leakage.\n" +
+                                                   "A **low score** means that most test cases generate the same sequence of accessed memory addresses, with a few outliers -> low leakage.\n"
                                     },
                                     Properties = new SarifReportReportingDescriptorProperties
                                     {
@@ -230,8 +248,8 @@ public class CallStackEntry
                 },
                 PartialFingerprints = new Dictionary<string, string>
                 {
-                    ["primaryLocationLineHash"] = $"{CallStackId}-{leakageEntry.ImageName}-{leakageEntry.Offset:x}"
-                }
+                    ["primaryLocationLineHash"] = $"{CallStackId}-{leakageEntry.ImageName}-{leakageEntry.Offset:x}" // TODO This syntax seems to be invalid
+                } 
                 // TODO codeFlows[].threadFlows[].locations[] for call stack
             };
 
