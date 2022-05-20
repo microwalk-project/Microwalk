@@ -66,7 +66,7 @@ public class SarifReportReportingDescriptor
 
     [JsonPropertyName("help")]
     public SarifReportReportingDescriptorHelp Help { get; set; }
-    
+
     [JsonPropertyName("properties")]
     public SarifReportReportingDescriptorProperties Properties { get; set; }
 }
@@ -117,6 +117,9 @@ public class SarifReportResult
 
     [JsonPropertyName("partialFingerprints")]
     public Dictionary<string, string> PartialFingerprints { get; set; }
+
+    [JsonPropertyName("codeFlows")]
+    public List<SarifCodeFlow> CodeFlows { get; set; }
 }
 
 public class SarifReportLocation
@@ -162,4 +165,16 @@ public class SarifReportMessage
 {
     [JsonPropertyName("text")]
     public string Text { get; set; }
+}
+
+public class SarifCodeFlow
+{
+    [JsonPropertyName("threadFlows")]
+    public List<SarifThreadFlow> ThreadFlows { get; set; }
+}
+
+public class SarifThreadFlow
+{
+    [JsonPropertyName("locations")]
+    public List<SarifReportLocation> Locations { get; set; }
 }

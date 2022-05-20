@@ -103,7 +103,7 @@ public class CallStackData
         };
 
         // Generate results
-        report.Runs[0].Results = new List<SarifReportResult>(CallStack.SelectMany(c => c.ProduceSarifReportEntries("", statements)));
+        report.Runs[0].Results = new List<SarifReportResult>(CallStack.SelectMany(c => c.ProduceSarifReportEntries("", new Stack<(string fileName, int lineNumber, int columnNumber)?>(), statements)));
 
         return report;
     }
@@ -180,7 +180,7 @@ public class CallStackEntry
             yield return codeQualityReportEntry;
     }
 
-    public IEnumerable<SarifReportResult> ProduceSarifReportEntries(string formattedCallStack, Dictionary<(string imageName, uint instructionOffset), (string fileName, int lineNumber, int columnNumber)> statements)
+    public IEnumerable<SarifReportResult> ProduceSarifReportEntries(string formattedCallStack, Stack<(string fileName, int lineNumber, int columnNumber)?> callStack, Dictionary<(string imageName, uint instructionOffset), (string fileName, int lineNumber, int columnNumber)> statements)
     {
         formattedCallStack += $"  {SourceInstructionFormatted} -> {TargetInstructionFormatted}\n";
 
@@ -190,17 +190,17 @@ public class CallStackEntry
             // Find corresponding statement
             // We may have to look at earlier instructions, if a statement spans more than one
             (string fileName, int lineNumber, int columnNumber) statementInfo = ("", 0, 0);
-            bool found = false;
+            bool statementFound = false;
             for(uint i = 0; i < 4096; ++i)
             {
                 if(statements.TryGetValue((leakageEntry.ImageName, leakageEntry.Offset - i), out statementInfo))
                 {
-                    found = true;
+                    statementFound = true;
                     break;
                 }
             }
 
-            if(!found)
+            if(!statementFound)
             {
                 Console.WriteLine($"Warning: Could not find instruction info for leakage entry {leakageEntry.ImageName}+{leakageEntry.Offset:x} ({leakageEntry.Type})\n{formattedCallStack}");
                 continue;
@@ -243,22 +243,80 @@ public class CallStackEntry
                                 EndColumn = statementInfo.columnNumber
                             }
                         },
-                        Message = null
+                        Message = new SarifReportMessage { Text = "Code line associated with the leakage" }
                     }
                 },
                 PartialFingerprints = new Dictionary<string, string>
                 {
                     ["primaryLocationLineHash"] = $"{CallStackId}-{leakageEntry.ImageName}-{leakageEntry.Offset:x}" // TODO This syntax seems to be invalid
-                } 
-                // TODO codeFlows[].threadFlows[].locations[] for call stack
+                },
+                CodeFlows = new List<SarifCodeFlow>
+                {
+                    new()
+                    {
+                        ThreadFlows = new List<SarifThreadFlow>
+                        {
+                            new()
+                            {
+                                Locations = callStack
+                                    .Select((callStackElement, callStackIndex) => (callStackElement, callStackIndex))
+                                    .Where(callStackData => callStackData.callStackElement != null)
+                                    .Select(callStackData => new SarifReportLocation
+                                    {
+                                        PhysicalLocation = new SarifReportPhysicalLocation
+                                        {
+                                            ArtifactLocation = new SarifReportPhysicalLocationArtifactLocation
+                                            {
+                                                Uri = callStackData.callStackElement!.Value.fileName
+                                            },
+                                            Region = new SarifReportPhysicalLocationRegion
+                                            {
+                                                StartLine = callStackData.callStackElement!.Value.lineNumber,
+                                                StartColumn = callStackData.callStackElement!.Value.columnNumber,
+                                                EndLine = callStackData.callStackElement!.Value.lineNumber,
+                                                EndColumn = callStackData.callStackElement!.Value.columnNumber
+                                            }
+                                        },
+                                        Message = new SarifReportMessage
+                                        {
+                                            Text = $"Call stack entry #{callStackData.callStackIndex}"
+                                        }
+                                    })
+                                    .ToList()
+                            }
+                        }
+                    }
+                }
             };
 
             yield return resultEntry;
         }
 
+        // Get statement of call stack source instruction
+        (string fileName, int lineNumber, int columnNumber) sourceStatement = ("", 0, 0);
+        bool found = false;
+        for(uint i = 0; i < 4096; ++i)
+        {
+            if(statements.TryGetValue((SourceInstructionImageName, SourceInstructionOffset - i), out sourceStatement))
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if(found)
+            callStack.Push(sourceStatement);
+        else
+            callStack.Push(null);
+
+        // Remember source statement
+
         // Format children
-        foreach(var sarifResultEntry in Children.SelectMany(c => c.ProduceSarifReportEntries(formattedCallStack, statements)))
+        foreach(var sarifResultEntry in Children.SelectMany(c => c.ProduceSarifReportEntries(formattedCallStack, callStack, statements)))
             yield return sarifResultEntry;
+
+        // Return to parent call stack entry
+        callStack.Pop();
     }
 }
 
