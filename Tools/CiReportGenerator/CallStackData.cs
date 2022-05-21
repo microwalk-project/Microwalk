@@ -184,6 +184,24 @@ public class CallStackEntry
     {
         formattedCallStack += $"  {SourceInstructionFormatted} -> {TargetInstructionFormatted}\n";
 
+        // Get statement of call stack source instruction
+        (string fileName, int lineNumber, int columnNumber) sourceStatement = ("", 0, 0);
+        bool found = false;
+        for(uint i = 0; i < 4096; ++i)
+        {
+            if(statements.TryGetValue((SourceInstructionImageName, SourceInstructionOffset - i), out sourceStatement))
+            {
+                found = true;
+                break;
+            }
+        }
+
+        // Remember source statement
+        if(found)
+            callStack.Push(sourceStatement);
+        else
+            callStack.Push(null);
+
         // Format leakages for this call stack entry
         foreach(var leakageEntry in LeakageEntries)
         {
@@ -291,24 +309,6 @@ public class CallStackEntry
 
             yield return resultEntry;
         }
-
-        // Get statement of call stack source instruction
-        (string fileName, int lineNumber, int columnNumber) sourceStatement = ("", 0, 0);
-        bool found = false;
-        for(uint i = 0; i < 4096; ++i)
-        {
-            if(statements.TryGetValue((SourceInstructionImageName, SourceInstructionOffset - i), out sourceStatement))
-            {
-                found = true;
-                break;
-            }
-        }
-
-        // Remember source statement
-        if(found)
-            callStack.Push(sourceStatement);
-        else
-            callStack.Push(null);
 
         // Format children
         foreach(var sarifResultEntry in Children.SelectMany(c => c.ProduceSarifReportEntries(formattedCallStack, callStack, statements)))
