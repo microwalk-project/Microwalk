@@ -36,7 +36,6 @@ string argFormat = args[argIndex++];
 string argMode = args[argIndex++];
 
 
-
 // Read call stack data
 await using var callStackStream = File.Open(argCallStacksFile, FileMode.Open, FileAccess.Read);
 var callStackData = await JsonSerializer.DeserializeAsync<CallStackData>(callStackStream, new JsonSerializerOptions
@@ -78,9 +77,6 @@ if(argMode == "dwarf")
                 continue;
 
             uint offset = uint.Parse(match.Groups[1].ValueSpan, NumberStyles.HexNumber);
-            if(statements.ContainsKey((currentImageName, offset)))
-                continue;
-
             int lineNumber = int.Parse(match.Groups[2].ValueSpan);
             int columnNumber = int.Parse(match.Groups[3].ValueSpan);
 
@@ -90,6 +86,12 @@ if(argMode == "dwarf")
             {
                 switch(infoParts[i])
                 {
+                    case "ET":
+                    {
+                        // Skip, the next file may handle this entry
+                        continue;
+                    }
+
                     case "uri:":
                     {
                         // Read URI
@@ -113,14 +115,16 @@ if(argMode == "dwarf")
                 }
             }
 
-            statements.Add((currentImageName, offset), (currentFileName, lineNumber, columnNumber));
+            // Record entry, if not yet known
+            if(!statements.ContainsKey((currentImageName, offset)))
+                statements.Add((currentImageName, offset), (currentFileName, lineNumber, columnNumber));
         }
     }
 }
 else if(argMode == "js-map")
 {
     string argMapsDirectory = args[argIndex++];
-    
+
     // Parse all MAP files from the given directory
     foreach(var mapFileName in Directory.EnumerateFiles(argMapsDirectory))
     {
@@ -136,7 +140,7 @@ else if(argMode == "js-map")
             string[] symbolParts = symbol.Value.Split(':');
             if(symbolParts.Length < 3)
                 continue;
-            
+
             // The last two symbol parts are always line number and column
             statements.Add((mapFile.ImageName, symbol.Key), (strippedFileName, int.Parse(symbolParts[^2]), int.Parse(symbolParts[^1])));
         }

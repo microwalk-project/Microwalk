@@ -304,12 +304,11 @@ public class CallStackEntry
             }
         }
 
+        // Remember source statement
         if(found)
             callStack.Push(sourceStatement);
         else
             callStack.Push(null);
-
-        // Remember source statement
 
         // Format children
         foreach(var sarifResultEntry in Children.SelectMany(c => c.ProduceSarifReportEntries(formattedCallStack, callStack, statements)))
