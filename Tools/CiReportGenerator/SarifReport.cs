@@ -176,5 +176,11 @@ public class SarifCodeFlow
 public class SarifThreadFlow
 {
     [JsonPropertyName("locations")]
-    public List<SarifReportLocation> Locations { get; set; }
+    public List<SarifThreadFlowLocation> Locations { get; set; }
+}
+
+public class SarifThreadFlowLocation
+{
+    [JsonPropertyName("location")]
+    public SarifReportLocation Location { get; set; }
 }

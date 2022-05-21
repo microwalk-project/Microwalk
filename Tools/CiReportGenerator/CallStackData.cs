@@ -246,9 +246,7 @@ public class CallStackEntry
                         Message = new SarifReportMessage { Text = "Code line associated with the leakage" }
                     }
                 },
-                PartialFingerprints = new Dictionary<string, string>
-                {
-                },
+                PartialFingerprints = new Dictionary<string, string>(),
                 CodeFlows = new List<SarifCodeFlow>
                 {
                     new()
@@ -260,25 +258,28 @@ public class CallStackEntry
                                 Locations = callStack
                                     .Select((callStackElement, callStackIndex) => (callStackElement, callStackIndex))
                                     .Where(callStackData => callStackData.callStackElement != null)
-                                    .Select(callStackData => new SarifReportLocation
+                                    .Select(callStackData => new SarifThreadFlowLocation
                                     {
-                                        PhysicalLocation = new SarifReportPhysicalLocation
+                                        Location = new SarifReportLocation
                                         {
-                                            ArtifactLocation = new SarifReportPhysicalLocationArtifactLocation
+                                            PhysicalLocation = new SarifReportPhysicalLocation
                                             {
-                                                Uri = callStackData.callStackElement!.Value.fileName
+                                                ArtifactLocation = new SarifReportPhysicalLocationArtifactLocation
+                                                {
+                                                    Uri = callStackData.callStackElement!.Value.fileName
+                                                },
+                                                Region = new SarifReportPhysicalLocationRegion
+                                                {
+                                                    StartLine = callStackData.callStackElement!.Value.lineNumber,
+                                                    StartColumn = callStackData.callStackElement!.Value.columnNumber,
+                                                    EndLine = callStackData.callStackElement!.Value.lineNumber,
+                                                    EndColumn = callStackData.callStackElement!.Value.columnNumber
+                                                }
                                             },
-                                            Region = new SarifReportPhysicalLocationRegion
+                                            Message = new SarifReportMessage
                                             {
-                                                StartLine = callStackData.callStackElement!.Value.lineNumber,
-                                                StartColumn = callStackData.callStackElement!.Value.columnNumber,
-                                                EndLine = callStackData.callStackElement!.Value.lineNumber,
-                                                EndColumn = callStackData.callStackElement!.Value.columnNumber
+                                                Text = $"Call stack entry #{callStackData.callStackIndex}"
                                             }
-                                        },
-                                        Message = new SarifReportMessage
-                                        {
-                                            Text = $"Call stack entry #{callStackData.callStackIndex}"
                                         }
                                     })
                                     .ToList()
