@@ -2,16 +2,18 @@
 
 Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
 
-## Usage (Docker)
+## Usage
 
-Microwalk now comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [the documentation](docker/README.md) for more details.
+Microwalk comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [the documentation](docker/README.md) for more details.
 
-In the [templates](templates/) directory you can find several templates for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload. An example for using the GitHub workflow templates is in the [example-js](https://github.com/microwalk-project/example-js) repository.
+A small tutorial showing the necessary steps for running Microwalk locally is in [docs/usage.md](docs/usage.md).
+
+In addition, we offer a number of simple [templates](templates/) for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload. This also includes templates for running Microwalk within a continuous integration pipeline (CI) like GitHub Actions (feel free to also checkout the [example-c](https://github.com/microwalk-project/example-c) and [example-js](https://github.com/microwalk-project/example-js) repositories for a demo of Microwalk's GitHub integration).
 
 
 ## Compiling
 
-The following documentation is for building and running Microwalk from source without using a containerized environment.
+The following documentation is for building and running Microwalk from source without using a containerized environment, as is required when working on the Microwalk code. This is not necessary if you just plan to use Microwalk with your project: For that, we recommend using the Docker images.
 
 For Windows, it is recommended to install Visual Studio, as it brings almost all dependencies and compilers, as well as debugging support. The solution can then be built directly in the IDE.
 
@@ -64,17 +66,7 @@ Alternatively, it is also possible to use an own wrapper implementation, as long
 
 ## Running Microwalk
 
-The general steps for analyzing a compiled library with Microwalk are:
-
-1. (x86 binaries only) Copy and adjust the `PinTracerWrapper` program to load the investigated library, and read and execute test case files. It is advised to test the wrapper with a few dummy test cases, and use debug outputs to verify its correctness. Make to sure to remove these debug outputs afterwards, else they may clutter the I/O pipe which Microwalk uses for communication with the dynamic instrumentation framework, and lead to errors.
-
-2. Create a custom test case generator module, or check whether the built-in ones are able to yield the expected input formats. Guidelines for adding custom framework modules can be found in the section "[Creating own framework modules](#creating-own-framework-modules)". Alternatively, you may create a set of static test cases and load them through the `load` module.
-
-3. Compose a [configuration file](docs/config.md) which describes the steps to be executed by Microwalk.
-
-### Configuration
-
-Microwalk takes the following command line arguments:
+After composing a suitable configuration file (see [documentation](docs/config.md)), you can run Microwalk with the following command line arguments:
 
 - `<configuration file>` (mandatory)<br>
   The path to the configuration file.
@@ -112,4 +104,4 @@ Contributions are appreciated! Feel free to submit issues and pull requests.
 
 ## License
 
-The entire system is licensed under the MIT license. For further information refer to the [LICENSE](LICENSE) file.
+The entire project is licensed under the MIT license. For further information refer to the [LICENSE](LICENSE) file.

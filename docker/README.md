@@ -50,6 +50,41 @@ Depending on the tracing backend, the individual images have a few more folders.
 	  PinTracer.so
 ```
 
+## Environment variables
+
+### All images
+
+#### `WORK_DIR` (value: `/mw/work`)
+Path to a working directory. This is where intermediate and result files should be stored. The path and this variable are never changed, so they can be safely used for mounting Docker volumes.
+
+#### `MICROWALK_PATH`
+Path to Microwalk binaries (both main application and plugins).
+
+#### `MAP_GENERATOR_PATH`
+Path to MAP file generator binaries.
+
+#### `CQR_GENERATOR_PATH`
+Path to CI report generator binaries.
+
+
+### Jalangi2
+
+#### `JALANGI2_PATH`
+Path to Jalangi2 repository, with all dependencies installed.
+
+#### `TRACE_TOOL`
+Path to analysis tool which is used with Jalangi2.
+
+
+### Pin
+
+#### `PIN_PATH`
+Path to Pin tree. The Pin executable is at `$PIN_PATH/pin`.
+
+#### `PINTOOL`
+Path to the Pintool binary (`PinTracer.so`).
+
+
 ## Usage
 
 In general, one can create a container from a given image by running
@@ -59,4 +94,4 @@ docker run microwalk/microwalk-<NAME>
 
 One may then copy/pull the relevant implementation and run the various tools present in the container.
 
-In [templates/](../template) there are several templates for generic analysis tasks, which can be adapted to the specific use cases.
+In [templates/](../template) there are several templates for generic analysis tasks, which can be adapted to the specific use cases. See also [docs/usage.md](/docs/usage.md) for a tutorial for locally analyzing a C library with Microwalk.

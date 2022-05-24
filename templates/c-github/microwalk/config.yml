@@ -1,0 +1,58 @@
+constants:
+  TARGET_PATH: $$CONFIG_PATH$$/$$$TARGET_NAME$$$
+  LIBRARY_PATH: $$CONFIG_PATH$$/../
+  WORK_DIR: $$$WORK_DIR$$$/$$$TARGET_NAME$$$
+---
+
+general:
+  logger:
+    log-level: warning
+    file: $$WORK_DIR$$/work/log.txt
+  monitor:
+    enable: true
+    sample-rate: 50
+   
+testcase:
+  module: load
+  module-options:
+    input-directory: $$$TESTCASE_DIRECTORY$$$
+
+trace:
+  module: pin
+  module-options:
+    output-directory: $$WORK_DIR$$/work/traces
+    pin-tool-path: $$$PINTOOL$$$
+    pin-path: $$$PIN_PATH$$$/pin
+    wrapper-path: $$TARGET_PATH$$
+    environment:
+      LD_LIBRARY_PATH: $$LIBRARY_PATH$$
+    images:
+      - $$$TARGET_NAME$$$
+      - libexample.so
+  options:
+    input-buffer-size: 4
+    
+preprocess:
+  module: pin
+  module-options:
+    output-directory: $$WORK_DIR$$/work/traces
+    store-traces: true
+    keep-raw-traces: false
+  options:
+    input-buffer-size: 2
+    max-parallel-threads: 4
+  
+analysis:
+  modules:
+    - module: control-flow-leakage
+      module-options:
+        output-directory: $$WORK_DIR$$/persist/results
+        map-files:
+          - $$TARGET_PATH$$.map
+          - libexample.map
+        dump-call-tree: false
+        include-testcases-in-call-stacks: false
+        
+  options:
+    input-buffer-size: 1
+    max-parallel-threads: 1
