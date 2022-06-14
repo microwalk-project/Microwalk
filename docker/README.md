@@ -23,8 +23,8 @@ The base structure of each image is as follows:
 /mw/                            # Base folder
   microwalk/                    # Microwalk binaries (including relevant plugins)
   mapfilegenerator/             # Tool for generating MAP files from binaries
-  CiReportGenerator/   # Tool for generating GitLab-compatible code
-                                    quality reports from the analysis result
+  CiReportGenerator/            # Tool for generating GitLab-compatible code
+                                #   quality reports from the analysis result
   work/                         # Working directory (for traces, results etc.)
 ```
 
@@ -94,4 +94,4 @@ docker run microwalk/microwalk-<NAME>
 
 One may then copy/pull the relevant implementation and run the various tools present in the container.
 
-In [templates/](../template) there are several templates for generic analysis tasks, which can be adapted to the specific use cases. See also [docs/usage.md](/docs/usage.md) for a tutorial for locally analyzing a C library with Microwalk.
+In [templates/](../templates) there are several templates for generic analysis tasks, which can be adapted to the specific use cases. See also [docs/usage.md](/docs/usage.md) for a tutorial for locally analyzing a C library with Microwalk.

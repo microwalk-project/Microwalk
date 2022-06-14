@@ -13,7 +13,7 @@ In addition, we offer a number of simple [templates](templates/) for generic ana
 
 ## Compiling
 
-The following documentation is for building and running Microwalk from source without using a containerized environment, as is required when working on the Microwalk code. This is not necessary if you just plan to use Microwalk with your project: For that, we recommend using the Docker images.
+If you just want to use Microwalk with your project, you don't need to read further -- we recommend using our templates and the pre-built Docker images, as detailed above. The following documentation is for building and running Microwalk directly from source, as is required when working on the Microwalk code and adding new analysis plugins.
 
 For Windows, it is recommended to install Visual Studio, as it brings almost all dependencies and compilers, as well as debugging support. The solution can then be built directly in the IDE.
 
@@ -35,7 +35,7 @@ cd Microwalk
 dotnet run -c Release <args>
 ```
 
-The command line arguments `<args>` are documented in Section "[Configuration](#configuration)"
+The command line arguments `<args>` are documented in Section "[Running Microwalk](#running-microwalk)".
 
 ### Pin tool
 
