@@ -1220,6 +1220,8 @@ public partial class ControlFlowLeakage : AnalysisStage
         currentCallStackNode = rootCallStackNode;
         level = -1; // Ignore root node for indentation
         indentation = "";
+        HashSet<ulong> uniqueLeakingInstructions = new();
+        int totalNumberLeakages = 0;
         while(true)
         {
             bool nodeIsInteresting = interestingCallStackIds.Contains(currentCallStackNode.Id);
@@ -1242,6 +1244,9 @@ public partial class ControlFlowLeakage : AnalysisStage
                 // Write analysis results
                 foreach(var analysisResult in currentCallStackNode.InstructionAnalysisData)
                 {
+                    ++totalNumberLeakages;
+                    uniqueLeakingInstructions.Add(analysisResult.Key);
+                    
                     string instructionTypeName = analysisResult.Value.Type switch
                     {
                         AnalysisData.InstructionType.Call => "call",
@@ -1392,6 +1397,9 @@ public partial class ControlFlowLeakage : AnalysisStage
         }
 
         await callStacksWriter.WriteAsync("]}");
+        
+        await Logger.LogInfoAsync($"{logMessagePrefix} Total number of leakages: {totalNumberLeakages}");
+        await Logger.LogInfoAsync($"{logMessagePrefix} Unique leaking instructions: {uniqueLeakingInstructions.Count}");
     }
 
     protected override async Task InitAsync(MappingNode? moduleOptions)
