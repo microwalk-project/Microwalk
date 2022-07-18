@@ -1398,8 +1398,8 @@ public partial class ControlFlowLeakage : AnalysisStage
 
         await callStacksWriter.WriteAsync("]}");
         
-        await Logger.LogInfoAsync($"{logMessagePrefix} Total number of leakages: {totalNumberLeakages}");
-        await Logger.LogInfoAsync($"{logMessagePrefix} Unique leaking instructions: {uniqueLeakingInstructions.Count}");
+        await Logger.LogResultAsync($"{logMessagePrefix} Total number of leakages: {totalNumberLeakages}");
+        await Logger.LogResultAsync($"{logMessagePrefix} Unique leaking instructions: {uniqueLeakingInstructions.Count}");
     }
 
     protected override async Task InitAsync(MappingNode? moduleOptions)
