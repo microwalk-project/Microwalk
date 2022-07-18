@@ -28,7 +28,7 @@ RUN apt-get update -y && apt-get install -y \
   wget \
   git \
   jq
-RUN wget -q -O - https://deb.nodesource.com/setup_17.x | bash -
+RUN wget -q -O - https://deb.nodesource.com/setup_18.x | bash -
 RUN apt-get install -y nodejs
 
 # Copy Microwalk binaries
