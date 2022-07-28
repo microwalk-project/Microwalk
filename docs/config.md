@@ -443,7 +443,7 @@ The leakage measures are computed over each unique combination of instruction an
 Additionally, the `dump-full-data` mode outputs detailed information over the encountered call stacks and their respective hit counts.
 
 Note that a leakage shown for a given memory access does not imply that this access is non-constant-time: The leakage may have also been caused by a control flow variation higher up in the call chain.
-Thus, while this module is quite fast due to its focus on memory access traces, it fails at accurately localizing and attributing leakages. If possible, we recommend using the `control-flow-leakage`
+Thus, while this module is quite fast due to its focus on memory access traces, it fails at accurately localizing and attributing control flow leakages. If possible, we recommend using the `control-flow-leakage`
 module, which needs a bit more resources, but yields very accurate leakage assessments.
 
 Options:
@@ -473,6 +473,10 @@ Options:
     - wrapper.exe.map
     - mylibrary.dll.map
   ```
+
+- `map-directory` (optional)<br>
+  Path to a directory containing [MAP files](docs/mapfile.md). This loads all files that end with `.map` from the given directory, in addition to the ones specified manually through the
+  `map-files` key.
 
 ### Module: `control-flow-leakage`
 

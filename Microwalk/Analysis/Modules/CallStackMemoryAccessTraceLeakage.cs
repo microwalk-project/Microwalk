@@ -576,8 +576,17 @@ namespace Microwalk.Analysis.Modules
             _mapFileCollection = new MapFileCollection(Logger);
             var mapFilesNode = moduleOptions.GetChildNodeOrDefault("map-files");
             if(mapFilesNode is ListNode mapFileListNode)
+            {
                 foreach(var mapFileNode in mapFileListNode.Children)
                     await _mapFileCollection.LoadMapFileAsync(mapFileNode.AsString() ?? throw new ConfigurationException("Invalid node type in map file list."));
+            }
+
+            var mapDirectory = moduleOptions.GetChildNodeOrDefault("map-directory")?.AsString();
+            if(mapDirectory != null)
+            {
+                foreach(var mapFile in Directory.EnumerateFiles(mapDirectory, "*.map"))
+                    await _mapFileCollection.LoadMapFileAsync(mapFile);
+            }
        
             // Check output format
             string outputFormat = moduleOptions.GetChildNodeOrDefault("output-format")?.AsString() ?? throw new ConfigurationException("Missing output format.");
