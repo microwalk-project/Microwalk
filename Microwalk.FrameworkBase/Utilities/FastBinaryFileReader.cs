@@ -45,7 +45,7 @@ public class FastBinaryFileReader : IFastBinaryReader, IDisposable
     public FastBinaryFileReader(string filename)
     {
         // Open file
-        _fileStream = File.Open(filename, FileMode.Open, FileAccess.Read);
+        _fileStream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
         Position = 0;
         _chunkPosition = 0;
         Length = (int)_fileStream.Length;
