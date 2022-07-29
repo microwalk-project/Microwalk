@@ -74,6 +74,10 @@ namespace Microwalk.Analysis.Modules
                 InstructionHashes = new Dictionary<ulong, byte[]>()
             };
             currentCallTree.Push(rootNode);
+            
+            // Try to unify allocation IDs
+            int nextUnifiedAllocationId = 1;
+            Dictionary<int, int> allocationIdToUnifiedIdMap = new();
 
             // Iterate trace entries
             byte[] callStackHashBuffer = new byte[16];
@@ -83,6 +87,13 @@ namespace Microwalk.Analysis.Modules
                 var currentNode = currentCallTree.Peek();
                 BinaryPrimitives.WriteUInt64LittleEndian(callStackHashBuffer, currentNode.CallStackId);
 
+                // Handle allocations
+                if(traceEntry.EntryType == TraceEntryTypes.HeapAllocation)
+                {
+                    var allocation = (HeapAllocation)traceEntry;
+                    allocationIdToUnifiedIdMap.Add(allocation.Id,nextUnifiedAllocationId++);
+                }
+                
                 // Handle branch instructions
                 if(traceEntry.EntryType == TraceEntryTypes.Branch)
                 {
@@ -149,8 +160,12 @@ namespace Microwalk.Analysis.Modules
                     case TraceEntryTypes.HeapMemoryAccess:
                     {
                         var heapMemoryAccess = (HeapMemoryAccess)traceEntry;
+
+                        if(!allocationIdToUnifiedIdMap.TryGetValue(heapMemoryAccess.HeapAllocationBlockId, out int unifiedAllocationId))
+                            unifiedAllocationId = 1000000 + heapMemoryAccess.HeapAllocationBlockId;
+                        
                         instructionId = ((ulong)heapMemoryAccess.InstructionImageId << 32) | heapMemoryAccess.InstructionRelativeAddress;
-                        memoryAddressId = ((ulong)heapMemoryAccess.HeapAllocationBlockId << 32) | heapMemoryAccess.MemoryRelativeAddress;
+                        memoryAddressId = ((ulong)unifiedAllocationId << 32) | heapMemoryAccess.MemoryRelativeAddress;
 
                         // Format instruction
                         StoreFormattedInstruction(instructionId,
@@ -373,16 +388,16 @@ namespace Microwalk.Analysis.Modules
                 // Sort instructions by leakage in descending order
                 var numberFormat = new NumberFormatInfo { NumberDecimalSeparator = ".", NumberDecimalDigits = 3 };
                 foreach(var instructionData in instructionLeakage.OrderByDescending(l => l.Value.MutualInformation).ThenBy(mi => mi.Key))
-                    await mutualInformationWriter.WriteLineAsync($"Instruction CS-{FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
+                    await mutualInformationWriter.WriteLineAsync($"Instruction {FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
                                                                  $"{instructionData.Value.MutualInformation.ToString("N", numberFormat)} bits");
                 foreach(var instructionData in instructionLeakage.OrderByDescending(l => l.Value.MinEntropy).ThenBy(mi => mi.Key))
-                    await minEntropyWriter.WriteLineAsync($"Instruction CS-{FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
+                    await minEntropyWriter.WriteLineAsync($"Instruction {FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
                                                           $"{instructionData.Value.MinEntropy.ToString("N", numberFormat)} bits");
                 foreach(var instructionData in instructionLeakage.OrderBy(l => l.Value.ConditionalGuessingEntropy).ThenBy(mi => mi.Key))
-                    await condGuessEntropyWriter.WriteLineAsync($"Instruction CS-{FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
+                    await condGuessEntropyWriter.WriteLineAsync($"Instruction {FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
                                                                 $"{instructionData.Value.ConditionalGuessingEntropy.ToString("N", numberFormat)} guesses");
                 foreach(var instructionData in instructionLeakage.OrderBy(l => l.Value.MinConditionalGuessingEntropy).ThenBy(mi => mi.Key))
-                    await minCondGuessEntropyWriter.WriteLineAsync($"Instruction CS-{FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
+                    await minCondGuessEntropyWriter.WriteLineAsync($"Instruction {FormatCallStackId(instructionData.Key.Item1)}...{_formattedInstructions[instructionData.Key.Item2]}: " +
                                                                    $"{instructionData.Value.MinConditionalGuessingEntropy.ToString("N", numberFormat)} guesses " +
                                                                    $"[IN-{string.Concat(instructionData.Value.MinConditionalGuessingEntropyHash.Take(8).Select(b => b.ToString("X2")))}]");
             }
