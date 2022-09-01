@@ -4,7 +4,7 @@ The `control-flow-leakage` analysis module merges all traces into a single call 
 
 Contrary to its name, the analysis also produces detailed leakage analysis results for memory accesses. Its results are more accurate than those of the legacy `*-memory-access-trace-leakage` modules, at the cost of a slightly higher resource consumption.
 
-For details about the reasoning and the implementation we refer to the accompanying [paper](TODO).
+For details about the reasoning and the implementation we refer to the accompanying [paper](https://arxiv.org/abs/2208.14942).
 
 ## Reports
 

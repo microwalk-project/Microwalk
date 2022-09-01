@@ -1,6 +1,8 @@
 # Microwalk
 
-Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages. For the scientific background, consult the corresponding [paper](https://arxiv.org/abs/1808.05575).
+<img align="right" width="100px" height="100px" src="resources/logo/microwalk.svg">
+
+Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages.
 
 ## Usage
 
@@ -97,6 +99,10 @@ Follow these steps to create a custom framework plugin with a new module:
 7. Run Microwalk and pass the plugin's build folder via the `-p` command line switch.
 
 Look into the `Microwalk.Plugins.PinTracer` project for some examples.
+
+## Papers
+- Jan Wichelmann, Ahmad Moghimi, Thomas Eisenbarth, and Berk Sunar. 2018. **MicroWalk: A Framework for Finding Side Channels in Binaries**. In Proceedings of the 34th Annual Computer Security Applications Conference (ACSAC '18). Association for Computing Machinery, New York, NY, USA, 161–173. ([DOI](https://doi.org/10.1145/3274694.3274741), [arXiv](https://arxiv.org/abs/1808.05575))
+- Jan Wichelmann, Florian Sieck, Anna Pätschke, and Thomas Eisenbarth. 2022. **Microwalk-CI: Practical Side-Channel Analysis for JavaScript Applications**. In Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security (CCS ’22), November 7–11, 2022, Los Angeles, CA, USA. ACM, New York, NY, USA, 16 pages. ([DOI](https://doi.org/10.1145/3548606.3560654), [arXiv](https://arxiv.org/abs/2208.14942))
 
 ## Contributing
 
