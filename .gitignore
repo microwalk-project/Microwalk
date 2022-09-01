@@ -350,3 +350,4 @@ healthchecksdb
 # Private debugging settings
 /Microwalk/Properties/launchSettings.json
 /Tools/MapFileConverter/Properties/launchSettings.json
+/resources/logo/*.png
