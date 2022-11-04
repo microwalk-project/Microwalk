@@ -4,15 +4,15 @@
 
 Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages.
 
-If you are not yet familiar with side-channel attacks, read our quick [introduction](docs/introduction.md).
+If you are not yet familiar with side-channel attacks and Microwalk's analysis approach, read our quick [introduction](docs/introduction.md).
 
 ## Usage
 
-Microwalk comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [the documentation](docker/README.md) for more details.
-
-A small tutorial showing the necessary steps for running Microwalk locally is in [docs/usage.md](docs/usage.md).
+A tutorial showing the necessary steps for running Microwalk locally is in [docs/usage.md](docs/usage.md).
 
 In addition, we offer a number of simple [templates](templates/) for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload. This also includes templates for running Microwalk within a continuous integration pipeline (CI) like GitHub Actions (feel free to also checkout the [example-c](https://github.com/microwalk-project/example-c) and [example-js](https://github.com/microwalk-project/example-js) repositories for a demo of Microwalk's GitHub integration).
+
+Microwalk comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration, and are used by the various template. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [Microwalk Docker Images](docker/README.md) for details.
 
 
 ## Compiling

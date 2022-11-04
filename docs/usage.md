@@ -9,11 +9,13 @@ This documentation focuses on analyzing compiled code locally with our Pin trace
 
 ## Preparation
 
-While there are little restrictions with setting up Microwalk with a custom directory structure, we recommend storing the configuration in the library source within a `microwalk` directory. Please check out the [templates/c](/templates/c) directory for the full example.
+While Microwalk can be used with any custom directory structure, we recommend storing the configuration in the library source repository within a `microwalk` directory. Please check out the [templates/c](/templates/c) directory for the full template.
 
 Microwalk works as follows: It first executes a given _target_ (e.g., a cryptographic primitive) with a number of input files (test cases). For each test case, it collects the resulting execution trace. Then, these traces are preprocessed, i.e., brought into a generic format that is suitable for analysis. Finally, the preprocessed traces are fed into a number of analysis modules.
 
-Thus, for each primitive that should be analyzed, you need to create a (small) source file that reads a test case from a file and then calls that primitive. In addition, you need a _wrapper_ that communicates both with the framework's main process and the Pin tool that collects the traces. This wrapper is located in the `microwalk/main.c` file in our template; you typically don't need to change it.
+![Microwalk pipeline: Generate raw traces, preprocess raw traces, analyze preprocessed traces.](../resources/images/MicrowalkPipeline.drawio.svg)
+
+For each primitive that should be analyzed, you need to create a (small) source file that reads a test case from a file and then calls that primitive. In addition, you need a _wrapper_ that communicates both with the framework's main process and the Pin tool that collects the traces. This wrapper is located in the `microwalk/main.c` file in our template; you typically don't need to change it.
 
 ### Creating targets
 
@@ -69,6 +71,9 @@ mkdir -p $WORK_DIR/persist/$TARGET_NAME
 cd $MICROWALK_PATH
 dotnet Microwalk.dll /mw/library/microwalk/config.yml
 ```
+
+### Interpreting the results
+For a guide about interpreting the results of the `control-flow-leakage` analysis module, see [here](control-flow-leakage.md).
 
 ## Troubleshooting
 

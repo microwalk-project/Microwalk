@@ -3,6 +3,7 @@
 ## What is a side-channel attack?
 A side-channel attacker does not try to _directly_ extract information (e.g., through a buffer overflow), but only "monitors" the execution of a piece of code. For example, the attacker may measure variations in the execution time to find out how many expensive operations were executed (maybe giving an indication about the structure of a secret key), or employ a so-called _cache attack_, where they observe which data and code the victim process accesses, which in turn allows them to reconstruct the control flow and memory access pattern.
 
+Most side-channel attacks are restricted to a single system, so the attacker needs to be on the same machine as the vulnerable code. However, this is a common scenario in practice, as code may run in a cloud environment (where multiple customers share the same machine) or in browsers (which may execute scripts served by the attacker).
 
 ## How does a side-channel leakage look in the code?
 A side-channel leakage is present whenever there is _secret-dependent_ control flow or a memory access to a _secret-dependent_ location.
@@ -17,7 +18,7 @@ for(int i = 0; i < key_length; ++i) {
     }
 }
 ```
-If an attacker is able to tell apart which line of code is executed, they immediately learn a key bit.
+If an attacker is able to distinguish which line of code is executed, they immediately learn a key bit.
 
 **Leaking memory access:**
 ```c
