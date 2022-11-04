@@ -4,6 +4,8 @@
 
 Microwalk is a microarchitectural leakage detection framework, which combines dynamic instrumentation and statistical methods in order to localize and quantify side-channel leakages.
 
+If you are not yet familiar with side-channel attacks, read our quick [introduction](docs/introduction.md).
+
 ## Usage
 
 Microwalk comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [the documentation](docker/README.md) for more details.
@@ -101,7 +103,7 @@ Follow these steps to create a custom framework plugin with a new module:
 Look into the `Microwalk.Plugins.PinTracer` project for some examples.
 
 ## Papers
-- Jan Wichelmann, Ahmad Moghimi, Thomas Eisenbarth, and Berk Sunar. 2018. **MicroWalk: A Framework for Finding Side Channels in Binaries**. In Proceedings of the 34th Annual Computer Security Applications Conference (ACSAC '18). Association for Computing Machinery, New York, NY, USA, 161–173. ([DOI](https://doi.org/10.1145/3274694.3274741), [arXiv](https://arxiv.org/abs/1808.05575))
+- Jan Wichelmann, Ahmad Moghimi, Thomas Eisenbarth, and Berk Sunar. 2018. **Microwalk: A Framework for Finding Side Channels in Binaries**. In Proceedings of the 34th Annual Computer Security Applications Conference (ACSAC '18). Association for Computing Machinery, New York, NY, USA, 161–173. ([DOI](https://doi.org/10.1145/3274694.3274741), [arXiv](https://arxiv.org/abs/1808.05575))
 - Jan Wichelmann, Florian Sieck, Anna Pätschke, and Thomas Eisenbarth. 2022. **Microwalk-CI: Practical Side-Channel Analysis for JavaScript Applications**. In Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security (CCS ’22), November 7–11, 2022, Los Angeles, CA, USA. ACM, New York, NY, USA, 16 pages. ([DOI](https://doi.org/10.1145/3548606.3560654), [arXiv](https://arxiv.org/abs/2208.14942))
 
 ## Contributing
@@ -111,3 +113,5 @@ Contributions are appreciated! Feel free to submit issues and pull requests.
 ## License
 
 The entire project is licensed under the MIT license. For further information refer to the [LICENSE](LICENSE) file.
+
+The Microwalk logo can be used under the CC-BY-SA license.
