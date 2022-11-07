@@ -1,7 +1,9 @@
 # Introduction
 
 ## What is a side-channel attack?
-A side-channel attacker does not try to _directly_ extract information (e.g., through a buffer overflow), but only "monitors" the execution of a piece of code. For example, the attacker may measure variations in the execution time to find out how many expensive operations were executed (maybe giving an indication about the structure of a secret key), or employ a so-called _cache attack_, where they observe which data and code the victim process accesses, which in turn allows them to reconstruct the control flow and memory access pattern.
+A side-channel attacker does not try to _directly_ extract information (e.g., through a buffer overflow), but only "monitors" the execution of a piece of code.
+
+For example, the attacker may measure variations in the execution time to find out how many expensive operations were executed, and thus learn something about the structure of a secret key. They may also employ a so-called _cache attack_, where they observe which data and code the victim process accesses, allowing them to reconstruct the control flow and memory access pattern.
 
 Most side-channel attacks are restricted to a single system, so the attacker needs to be on the same machine as the vulnerable code. However, this is a common scenario in practice, as code may run in a cloud environment (where multiple customers share the same machine) or in browsers (which may execute scripts served by the attacker).
 
@@ -57,6 +59,6 @@ Memory accesses:
 
 If we now assume that the attacker gets full access to those execution traces (which is realistic with a side-channel attack), they can easily read the traces to infer the values of `key1` and `key2`!
 
-So we somehow have to ensure that _every secret input_ leads to _the same execution trace_. In this case, the attacker would learn nothing by looking at a trace.
+So we somehow have to ensure that _every secret input_ leads to _the same execution trace_. Then, the attacker would learn nothing by looking at a trace.
 
 This is how Microwalk works: The framework generates execution traces for a variety of secret inputs, and checks whether those traces are identical. If Microwalk finds differences, those are reported as leakage.
