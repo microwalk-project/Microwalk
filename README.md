@@ -12,6 +12,10 @@ A tutorial showing the necessary steps for running Microwalk locally is in [docs
 
 In addition, we offer a number of simple [templates](templates/) for generic analysis tasks, which serve as configuration examples and can be adapted for your specific workload. This also includes templates for running Microwalk within a continuous integration pipeline (CI) like GitHub Actions (feel free to also checkout the [example-c](https://github.com/microwalk-project/example-c) and [example-js](https://github.com/microwalk-project/example-js) repositories for a demo of Microwalk's GitHub integration).
 
+<p align="center">
+  <img width="500px" src="resources/images/screenshot.png" alt="Microwalk analysis report embedded into the source code, as shown in the GitHub UI">
+</p>
+
 Microwalk comes with a set of preconfigured Docker images, which hold all necessary dependencies and configuration, and are used by the various template. Pre-built images are located in [GitHub's container registry](https://github.com/microwalk-project/Microwalk/pkgs/container/microwalk). See [Microwalk Docker Images](docker/README.md) for details.
 
 
