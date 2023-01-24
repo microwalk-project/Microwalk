@@ -351,3 +351,5 @@ healthchecksdb
 /Microwalk/Properties/launchSettings.json
 /Tools/MapFileConverter/Properties/launchSettings.json
 /resources/logo/*.png
+
+/Tools/MapFileGenerator/Properties/launchSettings.json
