@@ -18,6 +18,10 @@ let scriptsFile = fs.openSync(`${traceDirectory}/scripts.txt`, "w");
 let nextCodeFileIndex = 0;
 let knownCodeFiles = {};
 
+// If set to true, trace compression is disabled.
+// WARNING: This may lead to huge files, and is incompatible to Microwalk's preprocessor module!
+let disableTraceCompression = false;
+
 // Compressed lines from the trace prefix can be reused in all other traces
 let nextCompressedLineIndex = 0;
 let compressedLines = {};
@@ -70,6 +74,12 @@ function writeTraceLine(line)
         traceData = [];
     }
 
+    if(disableTraceCompression)
+    {
+        traceData.push(line);
+        return;
+    }
+
     let encodedLine = "";
 
     let lineIndex = getCompressedLine(line);
@@ -95,6 +105,12 @@ function writePrefixedTraceLine(prefix, line)
     {
         persistTrace();
         traceData = [];
+    }
+
+    if(disableTraceCompression)
+    {
+        traceData.push(`${prefix}${line}`);
+        return;
     }
 
     let encodedLine = "";
