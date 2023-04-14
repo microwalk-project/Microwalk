@@ -21,7 +21,7 @@ RUN dotnet publish Tools/CiReportGenerator/CiReportGenerator.csproj -c Release -
 
 ## RUNTIME ##
 
-FROM mcr.microsoft.com/dotnet/runtime:6.0-focal
+FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy
 
 # Get some dependencies
 RUN apt-get update -y && apt-get install -y \

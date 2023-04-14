@@ -22,7 +22,7 @@ RUN dotnet publish Tools/CiReportGenerator/CiReportGenerator.csproj -c Release -
 
 ## RUNTIME ##
 
-FROM mcr.microsoft.com/dotnet/runtime:6.0-focal
+FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy
 
 # Get some dependencies
 RUN apt-get update -y && apt-get install -y \
@@ -49,8 +49,8 @@ ENV CQR_GENERATOR_PATH=/mw/CiReportGenerator
 
 # Get Pin SDK
 WORKDIR /mw
-RUN wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.21-98484-ge7cd811fd-gcc-linux.tar.gz
-RUN mkdir -p pin && tar -xf pin-3* -C pin --strip-components 1 && rm pin-3*
+RUN wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.27-98718-gbeaa5d51e-gcc-linux.tar.gz
+RUN mkdir -p pin && tar -xf pin-3* -C pin --strip-components 1 --no-same-owner && rm pin-3*
 ENV PIN_PATH=/mw/pin
 
 # Build Pin tool
