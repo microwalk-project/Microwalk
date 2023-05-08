@@ -168,9 +168,10 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
 		if(img == nullptr)
 		{
 			// Should not happen, since images should have been loaded before they can be instrumented...
-			std::cerr << "Error: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << " (instrumenting as 'interesting')" << std::endl;
+			// ...though Pin sometimes executes a few blocks of libc before recording its load
+			std::cerr << "Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << " - probably part of libc and can be safely ignored" << std::endl;
 
-			// If it _does_ happen for some weird reason, we err on the side of caution here, and don't want to lose potential valuable data
+			// The affected blocks are most likely early blocks from libc and are never executed again - so no harm in marking them as 'interesting' just in case
 			interesting = true;
 		}
 		else
