@@ -624,7 +624,7 @@ namespace Microwalk.Analysis.Modules
                 return;
 
             // Store formatted instruction
-            _formattedInstructions.TryAdd(instructionKey, _mapFileCollection.FormatAddress(imageFileInfo, instructionAddress));
+            _formattedInstructions.TryAdd(instructionKey, _mapFileCollection.FormatAddress(imageFileInfo.Id, imageFileInfo.Name, instructionAddress));
         }
 
         private class CallTreeNode

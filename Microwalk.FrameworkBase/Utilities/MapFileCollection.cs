@@ -16,12 +16,12 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <summary>
         /// Loaded MAP files.
         /// </summary>
-        private readonly List<MapFile> _mapFiles = new List<MapFile>();
+        private readonly List<MapFile> _mapFiles = new();
 
         /// <summary>
         /// Contains (image ID, map file) pairs.
         /// </summary>
-        private readonly Dictionary<int, MapFile> _mapFileIdLookup = new Dictionary<int, MapFile>();
+        private readonly Dictionary<int, MapFile> _mapFileIdLookup = new();
 
         /// <summary>
         /// Creates a new MAP file collection.
@@ -48,39 +48,41 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <summary>
         /// Formats the given address data.
         /// </summary>
-        /// <param name="imageFile">Image file.</param>
+        /// <param name="imageId">Image ID.</param>
+        /// <param name="imageFileName">Image file name.</param>
         /// <param name="address">Image relative address.</param>
         /// <returns></returns>
-        public string FormatAddress(TracePrefixFile.ImageFileInfo imageFile, uint address)
+        public string FormatAddress(int imageId, string imageFileName, uint address)
         {
             // Does a map file exist? Does it contain a suitable entry?
-            var mapFile = ResolveMapFile(imageFile);
+            var mapFile = ResolveMapFile(imageId, imageFileName);
             var symbolData = mapFile?.GetSymbolDataByAddress(address);
             if(symbolData == null)
             {
                 // Just format the image name and the image offset
-                return $"{imageFile.Name}:{address:x}";
+                return $"{imageFileName}:{address:x}";
             }
 
             // Format image name, symbol name and symbol offset
-            return $"{imageFile.Name}:{symbolData.Value.Name}+{(address - symbolData.Value.StartAddress):x}";
+            return $"{imageFileName}:{symbolData.Value.Name}+{(address - symbolData.Value.StartAddress):x}";
         }
 
         /// <summary>
         /// Returns the MAP file object matching the given image ID and name. Caches the resolved ID in the map file ID lookup.
         /// </summary>
-        /// <param name="imageFile">Image data.</param>
+        /// <param name="imageId">Image ID.</param>
+        /// <param name="imageFileName">Image file name.</param>
         /// <returns></returns>
-        private MapFile? ResolveMapFile(TracePrefixFile.ImageFileInfo imageFile)
+        private MapFile? ResolveMapFile(int imageId, string imageFileName)
         {
             // Map file known?
-            if(_mapFileIdLookup.TryGetValue(imageFile.Id, out var mapFile))
+            if(_mapFileIdLookup.TryGetValue(imageId, out var mapFile))
                 return mapFile;
 
             // Find MAP file with matching image name
-            mapFile = _mapFiles.FirstOrDefault(m => string.Compare(imageFile.Name, m.ImageName, true, CultureInfo.InvariantCulture) == 0);
+            mapFile = _mapFiles.FirstOrDefault(m => string.Compare(imageFileName, m.ImageName, true, CultureInfo.InvariantCulture) == 0);
             if(mapFile != null)
-                _mapFileIdLookup.Add(imageFile.Id, mapFile);
+                _mapFileIdLookup.Add(imageId, mapFile);
             return mapFile;
         }
     }

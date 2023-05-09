@@ -119,7 +119,8 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Print entry
                         var allocationEntry = (StackAllocation)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId], allocationEntry.InstructionRelativeAddress);
+                        var imageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[allocationEntry.InstructionImageId];
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(imageFileInfo.Id, imageFileInfo.Name, allocationEntry.InstructionRelativeAddress);
 
                         await writer.WriteLineAsync($"{entryPrefix}StackAlloc: S#{allocationEntry.Id}, <{formattedInstructionAddress}>, {allocationEntry.Address:x16}...{(allocationEntry.Address + allocationEntry.Size):x16}, {allocationEntry.Size} bytes");
 
@@ -130,9 +131,11 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function names of instructions
                         var branchEntry = (Branch)entry;
-                        string formattedSource = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId], branchEntry.SourceInstructionRelativeAddress);
+                        var sourceImageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[branchEntry.SourceImageId];
+                        var destinationImageFileInfo = traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId];
+                        string formattedSource = _mapFileCollection.FormatAddress(sourceImageFileInfo.Id, sourceImageFileInfo.Name, branchEntry.SourceInstructionRelativeAddress);
                         string formattedDestination = branchEntry.Taken
-                            ? _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[branchEntry.DestinationImageId], branchEntry.DestinationInstructionRelativeAddress)
+                            ? _mapFileCollection.FormatAddress(destinationImageFileInfo.Id, destinationImageFileInfo.Name, branchEntry.DestinationInstructionRelativeAddress)
                             : "?";
 
                         // Output entry and update call level
@@ -180,7 +183,8 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (HeapMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        var imageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId];
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(imageFileInfo.Id, imageFileInfo.Name, accessEntry.InstructionRelativeAddress);
                         string formattedAccessType = accessEntry.IsWrite ? "HeapWrite" : "HeapRead";
 
                         // Find allocation block
@@ -206,7 +210,8 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (StackMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        var imageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId];
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(imageFileInfo.Id, imageFileInfo.Name, accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
                         string formattedMemoryAddress = $"S#{(accessEntry.StackAllocationBlockId == -1 ? "?" : accessEntry.StackAllocationBlockId)}+{accessEntry.MemoryRelativeAddress:x8}";
@@ -222,10 +227,12 @@ namespace Microwalk.Analysis.Modules
                     {
                         // Retrieve function name of executed instruction
                         var accessEntry = (ImageMemoryAccess)entry;
-                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId], accessEntry.InstructionRelativeAddress);
+                        var instructionImageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.InstructionImageId];
+                        string formattedInstructionAddress = _mapFileCollection.FormatAddress(instructionImageFileInfo.Id, instructionImageFileInfo.Name, accessEntry.InstructionRelativeAddress);
 
                         // Format accessed address
-                        string formattedMemoryAddress = _mapFileCollection.FormatAddress(traceEntity.PreprocessedTraceFile.Prefix.ImageFiles[accessEntry.MemoryImageId], accessEntry.MemoryRelativeAddress);
+                        var memoryImageFileInfo = traceEntity.PreprocessedTraceFile.Prefix!.ImageFiles[accessEntry.MemoryImageId];
+                        string formattedMemoryAddress = _mapFileCollection.FormatAddress(memoryImageFileInfo.Id, memoryImageFileInfo.Name, accessEntry.MemoryRelativeAddress);
 
                         // Print entry
                         string formattedAccessType = accessEntry.IsWrite ? "ImageWrite" : "ImageRead";

@@ -1450,7 +1450,7 @@ public partial class ControlFlowLeakage : AnalysisStage
 
         // Address already known?
         if(!_formattedImageAddresses.ContainsKey(key))
-            _formattedImageAddresses.TryAdd(key, _mapFileCollection.FormatAddress(imageFileInfo, address));
+            _formattedImageAddresses.TryAdd(key, _mapFileCollection.FormatAddress(imageFileInfo.Id, imageFileInfo.Name, address));
         if(!_imageAddresses.ContainsKey(key))
             _imageAddresses.Add(key, (imageFileInfo.Name, address));
 
