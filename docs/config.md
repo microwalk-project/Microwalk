@@ -313,6 +313,23 @@ Options:
 - `output-directory`<br>
   Output directory for trace text files.
 
+- `map-files` (optional)<br>
+  A list of [MAP files](docs/mapfile.md) which contain a mapping of image offsets to symbol names.
+
+  Example:
+  ```yaml
+  map-files:
+    - wrapper.exe.map
+    - mylibrary.dll.map
+  ```                       
+  
+  Note that the `pin-dump` module is a debugging tool, so for the sake of stability it is pretty conservative when trying to retrieve symbol information. 
+  The raw trace will always include the raw address, independent from the success of the symbol resolution.
+
+- `map-directory` (optional)<br>
+  Path to a directory containing [MAP files](docs/mapfile.md). This loads all files that end with `.map` from the given directory, in addition to the ones specified manually through the
+  `map-files` key.
+
 ### Module: `js` [JavascriptTracer]
 
 Preprocesses raw traces generated with the Microwalk Jalangi2 tracer backend.
