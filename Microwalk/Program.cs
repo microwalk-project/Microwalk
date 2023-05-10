@@ -119,7 +119,7 @@ namespace Microwalk
             }
 
             // Configuration file supplied?
-            if(commandLineOptions.ConfigurationFile == null)
+            if(string.IsNullOrWhiteSpace(commandLineOptions.ConfigurationFile))
             {
                 Console.WriteLine("Please specify a configuration file, as described in the documentation.");
                 Console.WriteLine();
@@ -148,7 +148,7 @@ namespace Microwalk
             }
 
             // Our working directory is where the configuration resides
-            Environment.CurrentDirectory = Path.GetDirectoryName(commandLineOptions.ConfigurationFile) ?? throw new Exception("Could not determine working directory.");
+            Environment.CurrentDirectory = Path.GetDirectoryName(Path.GetFullPath(commandLineOptions.ConfigurationFile)) ?? throw new Exception("Could not determine working directory.");
 
             // Global cancellation token for graceful shutdown
             CancellationTokenSource globalCancellationToken = new();
