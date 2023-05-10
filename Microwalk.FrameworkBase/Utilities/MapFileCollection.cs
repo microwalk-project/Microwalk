@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,7 +22,7 @@ namespace Microwalk.FrameworkBase.Utilities
         /// <summary>
         /// Contains (image ID, map file) pairs.
         /// </summary>
-        private readonly Dictionary<int, MapFile> _mapFileIdLookup = new();
+        private readonly ConcurrentDictionary<int, MapFile> _mapFileIdLookup = new();
 
         /// <summary>
         /// Creates a new MAP file collection.
@@ -82,7 +83,7 @@ namespace Microwalk.FrameworkBase.Utilities
             // Find MAP file with matching image name
             mapFile = _mapFiles.FirstOrDefault(m => string.Compare(imageFileName, m.ImageName, true, CultureInfo.InvariantCulture) == 0);
             if(mapFile != null)
-                _mapFileIdLookup.Add(imageId, mapFile);
+                _mapFileIdLookup[imageId] = mapFile;
             return mapFile;
         }
     }
