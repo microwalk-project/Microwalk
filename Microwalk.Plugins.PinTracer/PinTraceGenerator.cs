@@ -127,14 +127,17 @@ namespace Microwalk.Plugins.PinTracer
             pinToolProcessStartInfo.ArgumentList.AddRange(pinArgs);
 
             // Environment variables
-            if(moduleOptions.GetChildNodeOrDefault("environment") is MappingNode environmentNode)
+            var environmentNode = moduleOptions.GetChildNodeOrDefault("environment");
+            if(environmentNode is MappingNode environmentMappingNode)
             {
-                foreach(var variable in environmentNode.Children)
+                foreach(var variable in environmentMappingNode.Children)
                 {
                     string value = variable.Value.AsString() ?? throw new ConfigurationException($"Invalid value for environment variable '{variable.Key}'");
                     pinToolProcessStartInfo.EnvironmentVariables[variable.Key] = value;
                 }
             }
+            else if(environmentNode != null)
+                throw new ConfigurationException($"The 'environment' node is not a mapping node.");
 
             pinToolProcessStartInfo.EnvironmentVariables["PATH"] += Path.PathSeparator + Path.GetDirectoryName(wrapperPath);
 
