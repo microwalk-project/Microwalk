@@ -2,7 +2,7 @@
 #pragma ide diagnostic ignored "bugprone-reserved-identifier"
 /*
 IMPORTANT: The instrumented program or one of its dependencies MUST contain (named) "malloc" and "free" functions.
-To get meaningful outputs, make sure that these functions are called with "call" and have a "ret" instruction (no "jmp" to another function).
+To get meaningful outputs, make sure that these functions are called with "call".
 */
 
 
@@ -10,6 +10,10 @@ To get meaningful outputs, make sure that these functions are called with "call"
 #include "TraceWriter.h"
 #include "Utilities.h"
 #include "CpuOverride.h"
+
+// Feature flag for legacy allocation function return tracking.
+// Sometimes the compiler replaces tail calls by jump instructions, tripping Pin's IPOINT_AFTER function end detection, leading to missing allocation address returns.
+//#define USE_LEGACY_ALLOC_RETURN_TRACKING
 
 
 /* GLOBAL VARIABLES */
@@ -60,6 +64,11 @@ bool _enableStackAllocationTracking = false;
 // The fixed random number to be returned after each RDRAND instruction.
 UINT64 _fixedRandomNumber = 0;
 
+// Depth of the allocation call stack.
+// 0 is the call stack level of the allocation function itself.
+// -1 indicates that allocation tracking is inactive.
+int _allocationCallStackDepth = -1;
+
 
 /* CALLBACK PROTOTYPES */
 
@@ -72,6 +81,9 @@ TraceEntry* TestcaseEnd(TraceWriter *traceWriter, TraceEntry* nextEntry);
 EXCEPT_HANDLING_RESULT HandlePinToolException([[maybe_unused]] THREADID tid, EXCEPTION_INFO* exceptionInfo,
                                               [[maybe_unused]] PHYSICAL_CONTEXT* physicalContext, [[maybe_unused]] VOID* v);
 ADDRINT CheckNextTraceEntryPointerValid(TraceEntry* nextEntry);
+VOID StartAllocationTracking(TraceEntry *nextEntry);
+VOID TrackAllocationCall();
+TraceEntry* TrackAllocationReturn(TraceWriter *traceWriter, TraceEntry *nextEntry, ADDRINT returnValue);
 void ChangeRandomNumber(ADDRINT* outputReg);
 
 
@@ -270,6 +282,15 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 						IARG_END);
 				}
 
+#ifndef USE_LEGACY_ALLOC_RETURN_TRACKING
+                // Trace allocation function returns
+                INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
+                    IARG_REG_VALUE, _nextBufferEntryReg,
+                    IARG_END);
+                INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TrackAllocationCall),
+                    IARG_END);
+#endif
+
 				continue;
 			}
 			if(INS_IsBranch(ins) && INS_IsControlFlow(ins))
@@ -319,6 +340,18 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 						IARG_END);
 				}
 
+#ifndef USE_LEGACY_ALLOC_RETURN_TRACKING
+                // Trace allocation function returns
+                INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckNextTraceEntryPointerValid),
+                    IARG_REG_VALUE, _nextBufferEntryReg,
+                    IARG_END);
+                INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TrackAllocationReturn),
+                    IARG_REG_VALUE, _traceWriterReg,
+                    IARG_REG_VALUE, _nextBufferEntryReg,
+                    IARG_FUNCRET_EXITPOINT_VALUE,
+                    IARG_RETURN_REGS, _nextBufferEntryReg,
+                    IARG_END);
+#endif
 				continue;
 			}
 
@@ -553,12 +586,19 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 			IARG_END);
 
 		// Trace returned address
+#ifdef USE_LEGACY_ALLOC_RETURN_TRACKING
 		RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
             IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
 			IARG_REG_VALUE, REG_RAX,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
+#else
+        RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(StartAllocationTracking),
+           IARG_REG_VALUE, _nextBufferEntryReg,
+           IARG_END);
+#endif
+
 		RTN_Close(mallocRtn);
 
 		std::cerr << "    RtlAllocateHeap() instrumented." << std::endl;
@@ -596,12 +636,19 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 				IARG_END);
 
 			// Trace returned address
+#ifdef USE_LEGACY_ALLOC_RETURN_TRACKING
 			RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
+#else
+            RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(StartAllocationTracking),
+               IARG_REG_VALUE, _nextBufferEntryReg,
+               IARG_END);
+#endif
+
 			RTN_Close(mallocRtn);
 
 			std::cerr << "    malloc() instrumented." << std::endl;
@@ -621,12 +668,19 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 				IARG_END);
 
 			// Trace returned address
+#ifdef USE_LEGACY_ALLOC_RETURN_TRACKING
 			RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
+#else
+            RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(StartAllocationTracking),
+               IARG_REG_VALUE, _nextBufferEntryReg,
+               IARG_END);
+#endif
+
 			RTN_Close(callocRtn);
 
 			std::cerr << "    calloc() instrumented." << std::endl;
@@ -645,12 +699,19 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 				IARG_END);
 
 			// Trace returned address
+#ifdef USE_LEGACY_ALLOC_RETURN_TRACKING
 			RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
                 IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
+#else
+            RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(StartAllocationTracking),
+               IARG_REG_VALUE, _nextBufferEntryReg,
+               IARG_END);
+#endif
+
 			RTN_Close(reallocRtn);
 
 			std::cerr << "    realloc() instrumented." << std::endl;
@@ -703,6 +764,38 @@ EXCEPT_HANDLING_RESULT HandlePinToolException([[maybe_unused]] THREADID tid, EXC
 ADDRINT CheckNextTraceEntryPointerValid(TraceEntry* nextEntry)
 {
 	return reinterpret_cast<ADDRINT>(nextEntry);
+}
+
+VOID StartAllocationTracking(TraceEntry *nextEntry)
+{
+    // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
+    if(nextEntry == nullptr)
+        return;
+
+    _allocationCallStackDepth = 0;
+}
+
+VOID TrackAllocationCall()
+{
+    if(_allocationCallStackDepth >= 0)
+        ++_allocationCallStackDepth;
+}
+
+// Checks whether the current allocation tracking call stack is exited. If it is, the returned allocation address is stored in the trace.
+TraceEntry* TrackAllocationReturn(TraceWriter *traceWriter, TraceEntry *nextEntry, ADDRINT returnValue)
+{
+    // Tracking active?
+    if(_allocationCallStackDepth < 0)
+        return nextEntry;
+
+    // Return
+    --_allocationCallStackDepth;
+
+    // Have we reached the end of the call stack?
+    if(_allocationCallStackDepth < 0)
+        return TraceWriter::InsertHeapAllocAddressReturnEntry(traceWriter, nextEntry, returnValue);
+
+    return nextEntry;
 }
 
 // Overwrites the given destination register of the RDRAND instruction with a constant value.
