@@ -138,32 +138,46 @@ void TraceWriter::WriteImageLoadData(int interesting, uint64_t startAddress, uin
     _prefixDataFileStream << "i\t" << interesting << "\t" << std::hex << startAddress << "\t" << std::hex << endAddress << "\t" << name << std::endl;
 }
 
-bool TraceWriter::CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBufferEnd)
+TraceEntry* TraceWriter::CheckBufferAndStore(TraceWriter *traceWriter, TraceEntry* nextEntry)
 {
-    return nextEntry != nullptr && nextEntry == entryBufferEnd;
+    if(traceWriter == nullptr || nextEntry == nullptr)
+        return nullptr;
+
+    // Entry list full?
+    if(nextEntry == traceWriter->End())
+    {
+        // Write entries to file, restart writing entries at the list begin
+        traceWriter->WriteBufferToFile(traceWriter->End());
+        return traceWriter->Begin();
+    }
+
+    // Nothing to do here
+    return nextEntry;
 }
 
-TraceEntry* TraceWriter::InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
+TraceEntry* TraceWriter::InsertMemoryReadEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::MemoryRead;
     nextEntry->Param0 = size;
     nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = memoryAddress;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
+TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::MemoryWrite;
     nextEntry->Param0 = size;
     nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = memoryAddress;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size)
+TraceEntry* TraceWriter::InsertHeapAllocSizeParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, UINT64 size)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == nullptr)
@@ -172,15 +186,16 @@ TraceEntry* TraceWriter::InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry
     // Create entry
     nextEntry->Type = TraceEntryTypes::HeapAllocSizeParameter;
     nextEntry->Param1 = size;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size)
+TraceEntry* TraceWriter::InsertCallocSizeParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, UINT64 count, UINT64 size)
 {
-    return InsertHeapAllocSizeParameterEntry(nextEntry, count * size);
+    return InsertHeapAllocSizeParameterEntry(traceWriter, nextEntry, count * size);
 }
 
-TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == nullptr)
@@ -189,10 +204,11 @@ TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry
     // Create entry
     nextEntry->Type = TraceEntryTypes::HeapAllocAddressReturn;
     nextEntry->Param2 = memoryAddress;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
+TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
     if(nextEntry == nullptr)
@@ -201,34 +217,33 @@ TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEnt
     // Create entry
     nextEntry->Type = TraceEntryTypes::HeapFreeAddressParameter;
     nextEntry->Param2 = memoryAddress;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags)
+TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags)
 {
-    // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == nullptr)
-        return nextEntry;
-
     // Create entry
     nextEntry->Type = TraceEntryTypes::StackPointerModification;
     nextEntry->Flag = flags;
     nextEntry->Param1 = instructionAddress;
     nextEntry->Param2 = newStackPointer;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type)
+TraceEntry* TraceWriter::InsertBranchEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::Branch;
     nextEntry->Param1 = sourceAddress;
     nextEntry->Param2 = targetAddress;
     nextEntry->Flag = static_cast<UINT8>(type) | static_cast<UINT8>(taken == 0 ? TraceEntryFlags::BranchNotTaken : TraceEntryFlags::BranchTaken);
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
-TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, CONTEXT* contextAfterRet)
+TraceEntry* TraceWriter::InsertRetBranchEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress)
 {
     // Skip the very first return after testcase begin (else we get an invalid call stack)
     if(!_sawFirstReturn)
@@ -238,18 +253,17 @@ TraceEntry* TraceWriter::InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sou
     }
     
     // Create entry
-    ADDRINT retAddress;
-    PIN_GetContextRegval(contextAfterRet, REG_INST_PTR, reinterpret_cast<UINT8*>(&retAddress));
-    return InsertBranchEntry(nextEntry, sourceAddress, retAddress, true, static_cast<UINT8>(TraceEntryFlags::BranchTypeReturn));
+    return InsertBranchEntry(traceWriter, nextEntry, sourceAddress, targetAddress, true, static_cast<UINT8>(TraceEntryFlags::BranchTypeReturn));
 }
 
-TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax)
+TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax)
 {
     // Create entry
     nextEntry->Type = TraceEntryTypes::StackPointerInfo;
     nextEntry->Param1 = stackPointerMin;
 	nextEntry->Param2 = stackPointerMax;
-    return ++nextEntry;
+
+    return CheckBufferAndStore(traceWriter, nextEntry + 1);
 }
 
 ImageData::ImageData(bool interesting, std::string name, UINT64 startAddress, UINT64 endAddress)

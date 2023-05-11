@@ -33,8 +33,8 @@ KNOB<int> KnobEnableStackAllocationTracking(KNOB_MODE_WRITEONCE, "pintool", "s",
 // The names of interesting images, parsed from the command line option.
 std::vector<std::string> _interestingImages;
 
-// The thread local storage key for the trace logger objects.
-TLS_KEY _traceWriterTlsKey;
+// The trace writer object (per thread).
+REG _traceWriterReg;
 
 // The next writable entry buffer position (per thread).
 REG _nextBufferEntryReg;
@@ -67,9 +67,8 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v);
 VOID ThreadStart(THREADID tid, CONTEXT* ctxt, [[maybe_unused]] INT32 flags, [[maybe_unused]] VOID* v);
 VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, [[maybe_unused]] INT32 code, [[maybe_unused]] VOID* v);
 VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v);
-TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEnd, THREADID tid);
-TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextEntry);
-TraceEntry* TestcaseEnd(TraceEntry* nextEntry, THREADID tid);
+TraceEntry* TestcaseStart(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT newTestcaseId);
+TraceEntry* TestcaseEnd(TraceWriter *traceWriter, TraceEntry* nextEntry);
 EXCEPT_HANDLING_RESULT HandlePinToolException([[maybe_unused]] THREADID tid, EXCEPTION_INFO* exceptionInfo,
                                               [[maybe_unused]] PHYSICAL_CONTEXT* physicalContext, [[maybe_unused]] VOID* v);
 ADDRINT CheckNextTraceEntryPointerValid(TraceEntry* nextEntry);
@@ -100,7 +99,7 @@ int main(int argc, char* argv[])
 		}
 
 	// Create trace entry buffer and all associated variables
-	_traceWriterTlsKey = PIN_CreateThreadDataKey(nullptr);
+    _traceWriterReg = PIN_ClaimToolRegister();
 	_nextBufferEntryReg = PIN_ClaimToolRegister();
 	_entryBufferEndReg = PIN_ClaimToolRegister();
 
@@ -238,10 +237,6 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 				continue;
 			}
 
-			// TODO potential performance optimization:
-			//    The trace buffer should never be full when an instruction generates no new entry,
-			//    so the following CheckBuffer... if/then could be merged into the first then call
-
 			// Trace branch instructions (conditional and unconditional)
 			if(INS_IsCall(ins) && INS_IsControlFlow(ins))
 			{
@@ -250,21 +245,12 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertBranchEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_BRANCH_TARGET_ADDR,
 					IARG_BOOL, 1,
 					IARG_UINT32, TraceEntryFlags::BranchTypeCall,
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 
@@ -275,20 +261,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 						IARG_REG_VALUE, _nextBufferEntryReg,
 						IARG_END);
 					INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                        IARG_REG_VALUE, _traceWriterReg,
 						IARG_REG_VALUE, _nextBufferEntryReg,
 						IARG_INST_PTR,
 						IARG_REG_VALUE, REG_RSP,
 						IARG_UINT32, TraceEntryFlags::StackIsCall,
-						IARG_RETURN_REGS, _nextBufferEntryReg,
-						IARG_END);
-					INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::CheckBufferFull),
-						IARG_REG_VALUE, _nextBufferEntryReg,
-						IARG_REG_VALUE, _entryBufferEndReg,
-						IARG_END);
-					INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckBufferAndStore),
-						IARG_REG_VALUE, _nextBufferEntryReg,
-						IARG_REG_VALUE, _entryBufferEndReg,
-						IARG_THREAD_ID,
 						IARG_RETURN_REGS, _nextBufferEntryReg,
 						IARG_END);
 				}
@@ -301,21 +278,12 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertBranchEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_BRANCH_TARGET_ADDR,
 					IARG_BRANCH_TAKEN,
 					IARG_UINT32, TraceEntryFlags::BranchTypeJump,
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 
@@ -328,19 +296,10 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::InsertRetBranchEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
-					IARG_CONTEXT, // TODO why not use IARG_BRANCH_TARGET_ADDR?
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
+					IARG_BRANCH_TARGET_ADDR,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 
@@ -351,20 +310,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 						IARG_REG_VALUE, _nextBufferEntryReg,
 						IARG_END);
 					INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                        IARG_REG_VALUE, _traceWriterReg,
 						IARG_REG_VALUE, _nextBufferEntryReg,
 						IARG_INST_PTR,
 						IARG_REG_VALUE, REG_RSP,
 						IARG_UINT32, TraceEntryFlags::StackIsReturn,
-						IARG_RETURN_REGS, _nextBufferEntryReg,
-						IARG_END);
-					INS_InsertIfCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(TraceWriter::CheckBufferFull),
-						IARG_REG_VALUE, _nextBufferEntryReg,
-						IARG_REG_VALUE, _entryBufferEndReg,
-						IARG_END);
-					INS_InsertThenCall(ins, IPOINT_TAKEN_BRANCH, AFUNPTR(CheckBufferAndStore),
-						IARG_REG_VALUE, _nextBufferEntryReg,
-						IARG_REG_VALUE, _entryBufferEndReg,
-						IARG_THREAD_ID,
 						IARG_RETURN_REGS, _nextBufferEntryReg,
 						IARG_END);
 				}
@@ -384,20 +334,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertStackPointerModificationEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_REG_VALUE, REG_RSP,
 					IARG_UINT32, TraceEntryFlags::StackIsOther,
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_AFTER, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 			}
@@ -409,20 +350,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertMemoryReadEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_MEMORYREAD_EA,
 					IARG_MEMORYREAD_SIZE,
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 			}
@@ -434,20 +366,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertMemoryReadEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_MEMORYREAD2_EA,
-					IARG_MEMORYREAD_SIZE, // NOTE IARG_MEMORYREAD2_SIZE does not exist, but we can assume that both operands have the same size
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
+					IARG_MEMORYREAD_SIZE, // IARG_MEMORYREAD2_SIZE does not exist, but we can assume that both operands have the same size
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 			}
@@ -459,20 +382,11 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_END);
 				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertMemoryWriteEntry),
+                    IARG_REG_VALUE, _traceWriterReg,
 					IARG_REG_VALUE, _nextBufferEntryReg,
 					IARG_INST_PTR,
 					IARG_MEMORYWRITE_EA,
 					IARG_MEMORYWRITE_SIZE,
-					IARG_RETURN_REGS, _nextBufferEntryReg,
-					IARG_END);
-				INS_InsertIfCall(ins, IPOINT_BEFORE, AFUNPTR(TraceWriter::CheckBufferFull),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_END);
-				INS_InsertThenCall(ins, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-					IARG_REG_VALUE, _nextBufferEntryReg,
-					IARG_REG_VALUE, _entryBufferEndReg,
-					IARG_THREAD_ID,
 					IARG_RETURN_REGS, _nextBufferEntryReg,
 					IARG_END);
 			}
@@ -489,8 +403,8 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, [[maybe_unused]] INT32 flags, [[ma
 		// Create new trace logger for this thread
 		auto* traceWriter = new TraceWriter(trim(KnobOutputFilePrefix.Value()));
 
-		// Put logger into local storage of this thread
-		PIN_SetThreadData(_traceWriterTlsKey, traceWriter, tid);
+		// Store logger
+        PIN_SetContextReg(ctxt, _traceWriterReg, reinterpret_cast<ADDRINT>(traceWriter));
 
 		// Initialize entry buffer pointers
 		PIN_SetContextReg(ctxt, _nextBufferEntryReg, reinterpret_cast<ADDRINT>(traceWriter->Begin()));
@@ -500,6 +414,7 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, [[maybe_unused]] INT32 flags, [[ma
 	{
 		// Set entry buffer pointers as null pointers
 		std::cerr << "Ignoring thread #" << tid << std::endl;
+        PIN_SetContextReg(ctxt, _traceWriterReg, 0);
 		PIN_SetContextReg(ctxt, _nextBufferEntryReg, 0);
 		PIN_SetContextReg(ctxt, _entryBufferEndReg, 0);
 	}
@@ -513,10 +428,9 @@ VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, [[maybe_unused]] INT32 code, 
 		return;
 
 	// Finalize trace logger of this thread
-	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
+	auto* traceWriter = reinterpret_cast<TraceWriter*>(PIN_GetContextReg(ctxt, _traceWriterReg));
 	traceWriter->WriteBufferToFile(reinterpret_cast<TraceEntry*>(PIN_GetContextReg(ctxt, _nextBufferEntryReg)));
 	delete traceWriter;
-	PIN_SetThreadData(_traceWriterTlsKey, nullptr, tid);
 }
 
 // [Callback] Instruments the memory allocation/deallocation functions.
@@ -559,9 +473,9 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Switch to next testcase
 		RTN_Open(notifyStartRtn);
 		RTN_InsertCall(notifyStartRtn, IPOINT_BEFORE, AFUNPTR(TestcaseStart),
-			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-			IARG_THREAD_ID,
+			IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 		RTN_Close(notifyStartRtn);
@@ -574,8 +488,8 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Close testcase
 		RTN_Open(notifyEndRtn);
 		RTN_InsertCall(notifyEndRtn, IPOINT_BEFORE, AFUNPTR(TestcaseEnd),
+            IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_THREAD_ID,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 		RTN_Close(notifyEndRtn);
@@ -590,15 +504,10 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Save stack pointer value
 		RTN_Open(notifyStackPointerRtn);
 		RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertStackPointerInfoEntry),
+            IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-			IARG_RETURN_REGS, _nextBufferEntryReg,
-			IARG_END);
-		RTN_InsertCall(notifyStackPointerRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_REG_VALUE, _entryBufferEndReg,
-			IARG_THREAD_ID,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 		RTN_Close(notifyStackPointerRtn);
@@ -613,25 +522,15 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Send allocation info
 		RTN_Open(notifyAllocationRtn);
 		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
+            IARG_REG_VALUE, _traceWriterReg,
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
             IARG_RETURN_REGS, _nextBufferEntryReg,
             IARG_END);
-		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_REG_VALUE, _entryBufferEndReg,
-			IARG_THREAD_ID,
-			IARG_RETURN_REGS, _nextBufferEntryReg,
-			IARG_END);
 		RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+            IARG_REG_VALUE, _traceWriterReg,
             IARG_REG_VALUE, _nextBufferEntryReg,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_RETURN_REGS, _nextBufferEntryReg,
-            IARG_END);
-        RTN_InsertCall(notifyAllocationRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-            IARG_REG_VALUE, _nextBufferEntryReg,
-            IARG_REG_VALUE, _entryBufferEndReg,
-            IARG_THREAD_ID,
             IARG_RETURN_REGS, _nextBufferEntryReg,
             IARG_END);
 		RTN_Close(notifyAllocationRtn);
@@ -647,27 +546,17 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Trace size parameter
 		RTN_Open(mallocRtn);
 		RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
+            IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-			IARG_RETURN_REGS, _nextBufferEntryReg,
-			IARG_END);
-		RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_REG_VALUE, _entryBufferEndReg,
-			IARG_THREAD_ID,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 
 		// Trace returned address
 		RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+            IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
 			IARG_REG_VALUE, REG_RAX,
-			IARG_RETURN_REGS, _nextBufferEntryReg,
-			IARG_END);
-		RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_REG_VALUE, _entryBufferEndReg,
-			IARG_THREAD_ID,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 		RTN_Close(mallocRtn);
@@ -681,14 +570,9 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 		// Trace address parameter
 		RTN_Open(freeRtn);
 		RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapFreeAddressParameterEntry),
+            IARG_REG_VALUE, _traceWriterReg,
 			IARG_REG_VALUE, _nextBufferEntryReg,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-			IARG_RETURN_REGS, _nextBufferEntryReg,
-			IARG_END);
-		RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-			IARG_REG_VALUE, _nextBufferEntryReg,
-			IARG_REG_VALUE, _entryBufferEndReg,
-			IARG_THREAD_ID,
 			IARG_RETURN_REGS, _nextBufferEntryReg,
 			IARG_END);
 		RTN_Close(freeRtn);
@@ -705,27 +589,17 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 			// Trace size parameter
 			RTN_Open(mallocRtn);
 			RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(mallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 
 			// Trace returned address
 			RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(mallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 			RTN_Close(mallocRtn);
@@ -739,28 +613,18 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 			// Trace size parameter
 			RTN_Open(callocRtn);
 			RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertCallocSizeParameterEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 				IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
-			RTN_InsertCall(callocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
 
 			// Trace returned address
 			RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(callocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 			RTN_Close(callocRtn);
@@ -774,27 +638,17 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 			// Trace size parameter
 			RTN_Open(reallocRtn);
 			RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapAllocSizeParameterEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(reallocRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 
 			// Trace returned address
 			RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(TraceWriter::InsertHeapAllocAddressReturnEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCRET_EXITPOINT_VALUE,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(reallocRtn, IPOINT_AFTER, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 			RTN_Close(reallocRtn);
@@ -808,14 +662,9 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 			// Trace address parameter
 			RTN_Open(freeRtn);
 			RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(TraceWriter::InsertHeapFreeAddressParameterEntry),
+                IARG_REG_VALUE, _traceWriterReg,
 				IARG_REG_VALUE, _nextBufferEntryReg,
 				IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-				IARG_RETURN_REGS, _nextBufferEntryReg,
-				IARG_END);
-			RTN_InsertCall(freeRtn, IPOINT_BEFORE, AFUNPTR(CheckBufferAndStore),
-				IARG_REG_VALUE, _nextBufferEntryReg,
-				IARG_REG_VALUE, _entryBufferEndReg,
-				IARG_THREAD_ID,
 				IARG_RETURN_REGS, _nextBufferEntryReg,
 				IARG_END);
 			RTN_Close(freeRtn);
@@ -826,38 +675,18 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 #endif
 }
 
-// Determines whether the given trace entry buffer is full, and stores its contents if neccessary.
-TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEnd, THREADID tid)
-{
-	// Only the main thread is instrumented
-	if(tid != 0 || nextEntry == nullptr || entryBufferEnd == nullptr)
-		return nextEntry;
-
-	// Buffer full?
-	if(TraceWriter::CheckBufferFull(nextEntry, entryBufferEnd))
-	{
-		// Get trace logger object and store contents
-		auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
-		traceWriter->WriteBufferToFile(entryBufferEnd);
-		return traceWriter->Begin();
-    }
-    return nextEntry;
-}
-
 // Handles the beginning of a testcase.
-TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextEntry)
+TraceEntry* TestcaseStart(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT newTestcaseId)
 {
 	// Get trace logger object and set the new testcase ID
-	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 	traceWriter->TestcaseStart(static_cast<int>(newTestcaseId), nextEntry);
 	return traceWriter->Begin();
 }
 
 // Handles the ending of a testcase.
-TraceEntry* TestcaseEnd(TraceEntry* nextEntry, THREADID tid)
+TraceEntry* TestcaseEnd(TraceWriter *traceWriter, TraceEntry* nextEntry)
 {
 	// Get trace logger object and set the new testcase ID
-	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 	traceWriter->TestcaseEnd(nextEntry);
 	return traceWriter->Begin();
 }

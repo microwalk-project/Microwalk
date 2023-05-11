@@ -152,36 +152,37 @@ public:
 
 public:
 
-    // Determines whether the given buffer pointers are identical.
-    static bool CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBufferEnd);
+    // Checks whether the next entry points beyond the entry list, and flushes the entry list to the trace file in that case.
+    // The function returns a pointer to the next entry.
+    static TraceEntry* CheckBufferAndStore(TraceWriter *traceWriter, TraceEntry* nextEntry);
 
     // Creates a new MemoryRead entry.
-    static TraceEntry* InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
+    static TraceEntry* InsertMemoryReadEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
 
     // Creates a new MemoryWrite entry.
-    static TraceEntry* InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
+    static TraceEntry* InsertMemoryWriteEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size);
 
     // Creates a new HeapAllocSizeParameter entry.
-    static TraceEntry* InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size);
-    static TraceEntry* InsertCallocSizeParameterEntry(TraceEntry* nextEntry, UINT64 count, UINT64 size);
+    static TraceEntry* InsertHeapAllocSizeParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, UINT64 size);
+    static TraceEntry* InsertCallocSizeParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, UINT64 count, UINT64 size);
 
     // Creates a new HeapAllocAddressReturn entry.
-    static TraceEntry* InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
+    static TraceEntry* InsertHeapAllocAddressReturnEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT memoryAddress);
 
     // Creates a new HeapFreeAddressParameter entry.
-    static TraceEntry* InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress);
+    static TraceEntry* InsertHeapFreeAddressParameterEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT memoryAddress);
 
     // Creates a new StackPointerModification entry.
-    static TraceEntry* InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags);
+    static TraceEntry* InsertStackPointerModificationEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags);
 
     // Creates a new Branch entry.
-    static TraceEntry* InsertBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type);
+    static TraceEntry* InsertBranchEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress, UINT8 taken, UINT8 type);
 
     // Creates a new "ret" Branch entry.
-    static TraceEntry* InsertRetBranchEntry(TraceEntry* nextEntry, ADDRINT sourceAddress, CONTEXT* contextAfterRet);
+    static TraceEntry* InsertRetBranchEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT sourceAddress, ADDRINT targetAddress);
 
     // Creates a new StackPointerInfo entry.
-    static TraceEntry* InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax);
+    static TraceEntry* InsertStackPointerInfoEntry(TraceWriter *traceWriter, TraceEntry* nextEntry, ADDRINT stackPointerMin, ADDRINT stackPointerMax);
 
     // Initializes the static part of the prefix mode (record image loads, even when the thread's TraceWriter object is not yet initialized).
     // -> filenamePrefix: The path prefix of the output file. Existing files are overwritten.
