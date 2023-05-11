@@ -289,6 +289,9 @@ namespace Microwalk.Plugins.PinTracer
                                 break;
                             if(!heapAllocationLookup.TryGetValue(rawTraceEntry.Param2, out var allocationEntry))
                             {
+                                // Reasons why this may happen:
+                                // - We missed a heap allocation (unknown function, missed heap allocation address return due to tail call, ...)
+                                // - The allocation was within the prefix or another trace. Due to parallelism we do not carry over allocations from preceding traces
                                 Logger.LogWarningAsync($"{logPrefix} Free of address {rawTraceEntry.Param2:x16} does not correspond to any heap allocation, skipping").Wait();
                                 break;
                             }
