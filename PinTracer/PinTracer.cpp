@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "bugprone-reserved-identifier"
 /*
 IMPORTANT: The instrumented program or one of its dependencies MUST contain (named) "malloc" and "free" functions.
 To get meaningful outputs, make sure that these functions are called with "call" and have a "ret" instruction (no "jmp" to another function).
@@ -6,7 +8,6 @@ To get meaningful outputs, make sure that these functions are called with "call"
 
 /* INCLUDES */
 #include "TraceWriter.h"
-#include <xed-interface.h>
 #include "Utilities.h"
 #include "CpuOverride.h"
 
@@ -62,17 +63,17 @@ UINT64 _fixedRandomNumber = 0;
 
 /* CALLBACK PROTOTYPES */
 
-VOID InstrumentTrace(TRACE trace, VOID* v);
-VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v);
-VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v);
-VOID InstrumentImage(IMG img, VOID* v);
+VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v);
+VOID ThreadStart(THREADID tid, CONTEXT* ctxt, [[maybe_unused]] INT32 flags, [[maybe_unused]] VOID* v);
+VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, [[maybe_unused]] INT32 code, [[maybe_unused]] VOID* v);
+VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v);
 TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEnd, THREADID tid);
 TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextEntry);
 TraceEntry* TestcaseEnd(TraceEntry* nextEntry, THREADID tid);
-EXCEPT_HANDLING_RESULT HandlePinToolException(THREADID tid, EXCEPTION_INFO* exceptionInfo, PHYSICAL_CONTEXT* physicalContext, VOID* v);
+EXCEPT_HANDLING_RESULT HandlePinToolException([[maybe_unused]] THREADID tid, EXCEPTION_INFO* exceptionInfo,
+                                              [[maybe_unused]] PHYSICAL_CONTEXT* physicalContext, [[maybe_unused]] VOID* v);
 ADDRINT CheckNextTraceEntryPointerValid(TraceEntry* nextEntry);
 void ChangeRandomNumber(ADDRINT* outputReg);
-void ChangeCpuId(UINT32 inputEax, UINT32 inputEcx, UINT32* outputEax, UINT32* outputEbx, UINT32* outputEcx, UINT32* outputEdx);
 
 
 /* FUNCTIONS */
@@ -99,7 +100,7 @@ int main(int argc, char* argv[])
 		}
 
 	// Create trace entry buffer and all associated variables
-	_traceWriterTlsKey = PIN_CreateThreadDataKey(0);
+	_traceWriterTlsKey = PIN_CreateThreadDataKey(nullptr);
 	_nextBufferEntryReg = PIN_ClaimToolRegister();
 	_entryBufferEndReg = PIN_ClaimToolRegister();
 
@@ -129,15 +130,15 @@ int main(int argc, char* argv[])
 	TraceWriter::InitPrefixMode(trim(KnobOutputFilePrefix.Value()));
 
 	// Instrument instructions and routines
-	IMG_AddInstrumentFunction(InstrumentImage, 0);
-	TRACE_AddInstrumentFunction(InstrumentTrace, 0);
+	IMG_AddInstrumentFunction(InstrumentImage, nullptr);
+	TRACE_AddInstrumentFunction(InstrumentTrace, nullptr);
 
 	// Set thread event handlers
-	PIN_AddThreadStartFunction(ThreadStart, 0);
-	PIN_AddThreadFiniFunction(ThreadFini, 0);
+	PIN_AddThreadStartFunction(ThreadStart, nullptr);
+	PIN_AddThreadFiniFunction(ThreadFini, nullptr);
 
 	// Handle internal exceptions (for debugging)
-	PIN_AddInternalExceptionHandler(HandlePinToolException, NULL);
+	PIN_AddInternalExceptionHandler(HandlePinToolException, nullptr);
 
 	// Load symbols to access function name information
 	PIN_InitSymbols();
@@ -151,7 +152,7 @@ int main(int argc, char* argv[])
 /* CALLBACKS */
 
 // [Callback] Instruments memory access instructions.
-VOID InstrumentTrace(TRACE trace, VOID* v)
+VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 {
 	// Check each instruction in each basic block
 	for(BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
@@ -480,13 +481,13 @@ VOID InstrumentTrace(TRACE trace, VOID* v)
 }
 
 // [Callback] Creates a new trace logger for the given new thread.
-VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
+VOID ThreadStart(THREADID tid, CONTEXT* ctxt, [[maybe_unused]] INT32 flags, [[maybe_unused]] VOID* v)
 {
 	// Only instrument main thread
 	if(tid == 0)
 	{
 		// Create new trace logger for this thread
-		TraceWriter* traceWriter = new TraceWriter(trim(KnobOutputFilePrefix.Value()));
+		auto* traceWriter = new TraceWriter(trim(KnobOutputFilePrefix.Value()));
 
 		// Put logger into local storage of this thread
 		PIN_SetThreadData(_traceWriterTlsKey, traceWriter, tid);
@@ -505,21 +506,21 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 }
 
 // [Callback] Cleans up after thread exit.
-VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
+VOID ThreadFini(THREADID tid, const CONTEXT* ctxt, [[maybe_unused]] INT32 code, [[maybe_unused]] VOID* v)
 {
 	// Only the main thread is instrumented
 	if(tid != 0)
 		return;
 
 	// Finalize trace logger of this thread
-	TraceWriter* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
+	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 	traceWriter->WriteBufferToFile(reinterpret_cast<TraceEntry*>(PIN_GetContextReg(ctxt, _nextBufferEntryReg)));
 	delete traceWriter;
 	PIN_SetThreadData(_traceWriterTlsKey, nullptr, tid);
 }
 
 // [Callback] Instruments the memory allocation/deallocation functions.
-VOID InstrumentImage(IMG img, VOID* v)
+VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 {
 	// Retrieve image name
 	std::string imageName = IMG_Name(img);
@@ -829,14 +830,14 @@ VOID InstrumentImage(IMG img, VOID* v)
 TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEnd, THREADID tid)
 {
 	// Only the main thread is instrumented
-	if(tid != 0 || nextEntry == NULL || entryBufferEnd == NULL)
+	if(tid != 0 || nextEntry == nullptr || entryBufferEnd == nullptr)
 		return nextEntry;
 
 	// Buffer full?
 	if(TraceWriter::CheckBufferFull(nextEntry, entryBufferEnd))
 	{
 		// Get trace logger object and store contents
-		TraceWriter* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
+		auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 		traceWriter->WriteBufferToFile(entryBufferEnd);
 		return traceWriter->Begin();
     }
@@ -847,7 +848,7 @@ TraceEntry* CheckBufferAndStore(TraceEntry* nextEntry, TraceEntry* entryBufferEn
 TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextEntry)
 {
 	// Get trace logger object and set the new testcase ID
-	TraceWriter* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
+	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 	traceWriter->TestcaseStart(static_cast<int>(newTestcaseId), nextEntry);
 	return traceWriter->Begin();
 }
@@ -856,13 +857,13 @@ TraceEntry* TestcaseStart(ADDRINT newTestcaseId, THREADID tid, TraceEntry* nextE
 TraceEntry* TestcaseEnd(TraceEntry* nextEntry, THREADID tid)
 {
 	// Get trace logger object and set the new testcase ID
-	TraceWriter* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
+	auto* traceWriter = static_cast<TraceWriter*>(PIN_GetThreadData(_traceWriterTlsKey, tid));
 	traceWriter->TestcaseEnd(nextEntry);
 	return traceWriter->Begin();
 }
 
 // Handles an internal exception of this trace tool.
-EXCEPT_HANDLING_RESULT HandlePinToolException(THREADID tid, EXCEPTION_INFO* exceptionInfo, PHYSICAL_CONTEXT* physicalContext, VOID* v)
+EXCEPT_HANDLING_RESULT HandlePinToolException([[maybe_unused]] THREADID tid, EXCEPTION_INFO* exceptionInfo, [[maybe_unused]] PHYSICAL_CONTEXT* physicalContext, [[maybe_unused]] VOID* v)
 {
 	// Output exception data
 	std::cerr << "Internal exception: " << PIN_ExceptionToString(exceptionInfo) << std::endl;
@@ -880,3 +881,4 @@ void ChangeRandomNumber(ADDRINT* outputReg)
 {
 	*outputReg = static_cast<ADDRINT>(_fixedRandomNumber);
 }
+#pragma clang diagnostic pop

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <utility>
 
 
 /* STATIC VARIABLES */
@@ -15,7 +16,7 @@ bool TraceWriter::_sawFirstReturn;
 
 /* TYPES */
 
-TraceWriter::TraceWriter(std::string filenamePrefix)
+TraceWriter::TraceWriter(const std::string& filenamePrefix)
 {
     // Remember prefix
     _outputFilenamePrefix = filenamePrefix;
@@ -76,7 +77,7 @@ void TraceWriter::WriteBufferToFile(TraceEntry* end)
 {
     // Write buffer contents
     if(_testcaseId != -1 || _prefixMode)
-        _outputFileStream.write(reinterpret_cast<char*>(_entries), reinterpret_cast<ADDRINT>(end) - reinterpret_cast<ADDRINT>(_entries));
+        _outputFileStream.write(reinterpret_cast<char*>(_entries), static_cast<std::streamsize>(reinterpret_cast<ADDRINT>(end) - reinterpret_cast<ADDRINT>(_entries)));
 }
 
 void TraceWriter::TestcaseStart(int testcaseId, TraceEntry* nextEntry)
@@ -139,7 +140,7 @@ void TraceWriter::WriteImageLoadData(int interesting, uint64_t startAddress, uin
 
 bool TraceWriter::CheckBufferFull(TraceEntry* nextEntry, TraceEntry* entryBufferEnd)
 {
-    return nextEntry != NULL && nextEntry == entryBufferEnd;
+    return nextEntry != nullptr && nextEntry == entryBufferEnd;
 }
 
 TraceEntry* TraceWriter::InsertMemoryReadEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT memoryAddress, UINT32 size)
@@ -165,7 +166,7 @@ TraceEntry* TraceWriter::InsertMemoryWriteEntry(TraceEntry* nextEntry, ADDRINT i
 TraceEntry* TraceWriter::InsertHeapAllocSizeParameterEntry(TraceEntry* nextEntry, UINT64 size)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == NULL)
+    if(nextEntry == nullptr)
         return nextEntry;
 
     // Create entry
@@ -182,7 +183,7 @@ TraceEntry* TraceWriter::InsertCallocSizeParameterEntry(TraceEntry* nextEntry, U
 TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == NULL)
+    if(nextEntry == nullptr)
         return nextEntry;
 
     // Create entry
@@ -194,7 +195,7 @@ TraceEntry* TraceWriter::InsertHeapAllocAddressReturnEntry(TraceEntry* nextEntry
 TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEntry, ADDRINT memoryAddress)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == NULL)
+    if(nextEntry == nullptr)
         return nextEntry;
 
     // Create entry
@@ -206,7 +207,7 @@ TraceEntry* TraceWriter::InsertHeapFreeAddressParameterEntry(TraceEntry* nextEnt
 TraceEntry* TraceWriter::InsertStackPointerModificationEntry(TraceEntry* nextEntry, ADDRINT instructionAddress, ADDRINT newStackPointer, UINT8 flags)
 {
     // Check whether given entry pointer is valid (we might be in a non-instrumented thread)
-    if(nextEntry == NULL)
+    if(nextEntry == nullptr)
         return nextEntry;
 
     // Create entry
@@ -254,18 +255,18 @@ TraceEntry* TraceWriter::InsertStackPointerInfoEntry(TraceEntry* nextEntry, ADDR
 ImageData::ImageData(bool interesting, std::string name, UINT64 startAddress, UINT64 endAddress)
 {
     _interesting = interesting;
-    _name = name;
+    _name = std::move(name);
     _startAddress = startAddress;
     _endAddress = endAddress;
 }
 
-bool ImageData::ContainsBasicBlock(BBL basicBlock)
+bool ImageData::ContainsBasicBlock(BBL basicBlock) const
 {
     // Check start address
     return _startAddress <= INS_Address(BBL_InsHead(basicBlock)) && INS_Address(BBL_InsTail(basicBlock)) <= _endAddress;
 }
 
-bool ImageData::IsInteresting()
+bool ImageData::IsInteresting() const
 {
     return _interesting;
 }

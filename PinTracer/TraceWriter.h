@@ -106,7 +106,7 @@ private:
 	std::string _currentOutputFilename;
 
     // The buffer entries.
-    TraceEntry _entries[ENTRY_BUFFER_SIZE];
+    TraceEntry _entries[ENTRY_BUFFER_SIZE]{};
 
     // The current testcase ID.
     int _testcaseId = -1;
@@ -129,7 +129,7 @@ public:
 
     // Creates a new trace logger.
     // -> filenamePrefix: The path prefix of the output file. Existing files are overwritten.
-    TraceWriter(std::string filenamePrefix);
+    explicit TraceWriter(const std::string& filenamePrefix);
 
     // Frees resources.
     ~TraceWriter();
@@ -205,8 +205,8 @@ public:
     ImageData(bool interesting, std::string name, UINT64 startAddress, UINT64 endAddress);
 
     // Checks whether the given basic block is contained in this image.
-    bool ContainsBasicBlock(BBL basicBlock);
+    [[nodiscard]] bool ContainsBasicBlock(BBL basicBlock) const;
 
     // Returns whether this image is considered interesting.
-    bool IsInteresting();
+    [[nodiscard]] bool IsInteresting() const;
 };
