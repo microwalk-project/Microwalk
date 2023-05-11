@@ -53,6 +53,8 @@ namespace Microwalk.Analysis.Modules
             if(traceEntity.PreprocessedTraceFile == null)
                 throw new Exception("Preprocessed trace is null. Is the preprocessor stage missing?");
 
+            string logPrefix = $"[dump:{traceEntity.Id}]";
+
             // Open output file for writing
             string outputFilePath;
             if(traceEntity.PreprocessedTraceFilePath != null)
@@ -101,7 +103,7 @@ namespace Microwalk.Analysis.Modules
                         var freeEntry = (HeapFree)entry;
                         if(!allocations.TryGetValue(freeEntry.Id, out HeapAllocation? allocationEntry))
                         {
-                            await Logger.LogErrorAsync($"Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
+                            await Logger.LogErrorAsync($"{logPrefix} Could not find associated allocation block #{freeEntry.Id} for free entry {i}, skipping");
                             await writer.WriteLineAsync($"{entryPrefix}HeapFree: An error occured when formatting this trace entry.");
                         }
                         else
@@ -166,7 +168,7 @@ namespace Microwalk.Analysis.Modules
                                 // Ignore the very first return statement if it is not preceded by a call: This is a part of the "begin" marker of a trace.
                                 // If the prefix is omitted, the preceding "call" is not encountered by this loop.
                                 if(!firstReturn)
-                                    await Logger.LogWarningAsync($"Encountered return entry {i}, but call stack is empty; indentation might break here.");
+                                    await Logger.LogWarningAsync($"{logPrefix} Encountered return entry {i}, but call stack is empty; indentation might break here.");
                             }
 
                             firstReturn = false;
@@ -190,7 +192,7 @@ namespace Microwalk.Analysis.Modules
                         // Find allocation block
                         if(!allocations.TryGetValue(accessEntry.HeapAllocationBlockId, out HeapAllocation? allocationEntry))
                         {
-                            await Logger.LogErrorAsync($"Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
+                            await Logger.LogErrorAsync($"{logPrefix} Could not find associated allocation block H#{accessEntry.HeapAllocationBlockId} for heap access entry {i}, skipping");
                             await writer.WriteLineAsync($"{entryPrefix}{formattedAccessType}: An error occured when formatting this trace entry.");
                         }
                         else
