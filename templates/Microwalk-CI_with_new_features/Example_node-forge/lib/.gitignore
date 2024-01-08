@@ -1,0 +1,15 @@
+*.py[co]
+*.sw[nop]
+*~
+.cdtproject
+.classpath
+.cproject
+.nyc_output
+.project
+.settings
+.vscode
+TAGS
+coverage
+dist
+node_modules
+npm-debug.log

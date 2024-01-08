@@ -1,0 +1,5007 @@
+[
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cb800c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1628
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 97.78% +/- 4.97%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cba00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1629
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cbc00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1630
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cbe00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1631
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "401ACAB2A6FE6B4B-/node_modules/node-forge/lib/aes.js-566009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 691
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "401ACAB2A6FE6B4B-/node_modules/node-forge/lib/aes.js-568009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 692
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "401ACAB2A6FE6B4B-/node_modules/node-forge/lib/aes.js-56a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 693
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "401ACAB2A6FE6B4B-/node_modules/node-forge/lib/aes.js-56c009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 694
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7b2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 985
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7b4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 986
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7b6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 987
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 988
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7bc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 990
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7be007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 991
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7c0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 992
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7c2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 993
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7c6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 995
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7c8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 996
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7ca007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 997
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7cc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 998
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7d0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1000
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7d2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1001
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1002
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7d6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1003
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7fc006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1022
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-7fe006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1023
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-800006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1024
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-802006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1025
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-806006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1027
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-808006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1028
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-80a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1029
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-80c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1030
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-810006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1032
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-812006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1033
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-814006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1034
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-816006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1035
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-81a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1037
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-81c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1038
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-81e006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1039
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "471D008474C005CD-/node_modules/node-forge/lib/aes.js-820006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1040
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7b2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 985
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7b4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 986
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7b6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 987
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 988
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7bc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 990
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7be007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 991
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7c0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 992
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7c2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 993
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7c6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 995
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7c8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 996
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7ca007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 997
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7cc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 998
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7d0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1000
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7d2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1001
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1002
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7d6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1003
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7fc006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1022
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-7fe006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1023
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-800006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1024
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-802006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1025
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-806006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1027
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-808006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1028
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-80a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1029
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-80c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1030
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-810006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1032
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-812006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1033
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-814006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1034
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-816006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1035
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-81a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1037
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-81c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1038
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-81e006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1039
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8B1F7016EE43032A-/node_modules/node-forge/lib/aes.js-820006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1040
+      }
+    }
+  },
+  {
+    "description": "(target-ECB) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B9B5B137D40E8854-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "079873A44F3F83E9-/node_modules/node-forge/lib/aes.js-566009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 691
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "079873A44F3F83E9-/node_modules/node-forge/lib/aes.js-568009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 692
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "079873A44F3F83E9-/node_modules/node-forge/lib/aes.js-56a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 693
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "079873A44F3F83E9-/node_modules/node-forge/lib/aes.js-56c009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 694
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7b2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 985
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7b4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 986
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7b6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 987
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 988
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7bc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 990
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7be007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 991
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7c0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 992
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7c2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 993
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7c6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 995
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7c8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 996
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7ca007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 997
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7cc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 998
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7d0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1000
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7d2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1001
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1002
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7d6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1003
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7fc006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1022
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-7fe006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1023
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-800006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1024
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-802006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1025
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-806006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1027
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-808006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1028
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-80a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1029
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-80c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1030
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-810006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1032
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-812006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1033
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-814006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1034
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-816006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1035
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-81a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1037
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-81c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1038
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-81e006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1039
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "2E2643A22ABD5EEC-/node_modules/node-forge/lib/aes.js-820006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1040
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB506D0665E1FD93-/node_modules/node-forge/lib/cipherModes.js-73800d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 924
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB506D0665E1FD93-/node_modules/node-forge/lib/cipherModes.js-76c00d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 950
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB506D0665E1FD93-/node_modules/node-forge/lib/cipherModes.js-76c01c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 950
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB506D0665E1FD93-/node_modules/node-forge/lib/cipherModes.js-76c02b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 950
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB506D0665E1FD93-/node_modules/node-forge/lib/cipherModes.js-76c03a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 950
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7b2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 985
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7b4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 986
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7b6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 987
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 988
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7bc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 990
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7be007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 991
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7c0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 992
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7c2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 993
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7c6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 995
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7c8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 996
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7ca007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 997
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7cc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 998
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7d0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1000
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7d2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1001
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1002
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7d6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1003
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7fc006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1022
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-7fe006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1023
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-800006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1024
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-802006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1025
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-806006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1027
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-808006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1028
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-80a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1029
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-80c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1030
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-810006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1032
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-812006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1033
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-814006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1034
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-816006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1035
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-81a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1037
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-81c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1038
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-81e006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1039
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DFB41E831E4EA90-/node_modules/node-forge/lib/aes.js-820006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1040
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 66.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D846CF41980EA427-/node_modules/node-forge/lib/cipherModes.js-6ca003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 869
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 66.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D846CF41980EA427-/node_modules/node-forge/lib/cipherModes.js-6cc003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 870
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 66.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D846CF41980EA427-/node_modules/node-forge/lib/cipherModes.js-6ce003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 871
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 66.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D846CF41980EA427-/node_modules/node-forge/lib/cipherModes.js-6d0003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 872
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-6a000e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 848
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 99.68% +/- 1.42%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-6a200d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 849
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-6a400d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 850
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-6a600d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 851
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-6a800d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 852
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 96.30% +/- 8.67%. Check analysis result in artifacts for details.",
+    "fingerprint": "CE0C2F6D1F0F68DC-/node_modules/node-forge/lib/cipherModes.js-69e010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 847
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 66.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9D20D49289AC4F7E-/node_modules/node-forge/lib/cipherModes.js-5e6017",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 755
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "056660B3A9E093A5-/node_modules/node-forge/lib/cipherModes.js-6ca003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 869
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "056660B3A9E093A5-/node_modules/node-forge/lib/cipherModes.js-6cc003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 870
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "056660B3A9E093A5-/node_modules/node-forge/lib/cipherModes.js-6ce003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 871
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "056660B3A9E093A5-/node_modules/node-forge/lib/cipherModes.js-6d0003",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 872
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 93.33% +/- 11.37%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-69e010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 847
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-6a000e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 848
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-6a200d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 849
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-6a400d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 850
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-6a600d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 851
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D0405944308DFEDD-/node_modules/node-forge/lib/cipherModes.js-6a800d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/cipherModes.js",
+      "lines": {
+        "begin": 852
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7b2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 985
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7b4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 986
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7b6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 987
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 988
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7bc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 990
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7be007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 991
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7c0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 992
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7c2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 993
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7c6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 995
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7c8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 996
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7ca007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 997
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7cc007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 998
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7d0007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1000
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7d2007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1001
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1002
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7d6007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1003
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7fc006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1022
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-7fe006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1023
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-800006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1024
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-802006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1025
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-806006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1027
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-808006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1028
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-80a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1029
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-80c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1030
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-810006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1032
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-812006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1033
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-814006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1034
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-816006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1035
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-81a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1037
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-81c006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1038
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-81e006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1039
+      }
+    }
+  },
+  {
+    "description": "(target-GCM) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "33ABF6AD5616E27B-/node_modules/node-forge/lib/aes.js-820006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/aes.js",
+      "lines": {
+        "begin": 1040
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "84FECB9236C1C0F4-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4CDEBEB5BDE0946-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "AF22E969720D3FCD-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E3FC2F6B342659FA-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BB3098B569B56E5A-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "562A7250CF432862-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3832E6DF77AB6C52-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 99.95% +/- 0.59%. Check analysis result in artifacts for details.",
+    "fingerprint": "1F54DC56FD061631-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "10B81AD29BFB0771-/node_modules/node-forge/lib/jsbn.js-182009",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 193
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "71FD853A0A185A78-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "FB150C2C18BEBBB1-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 99.79% +/- 1.65%. Check analysis result in artifacts for details.",
+    "fingerprint": "A10E41F9114FA2F1-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "575DEE4B18BB7242-/node_modules/node-forge/lib/jsbn.js-182009",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 193
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7ABAC68159650F0E-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DDB89EC4E2BB0BC2-/node_modules/node-forge/lib/jsbn.js-182009",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 193
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "A3FD3DD61947E47C-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E155B18D6F4E7551-/node_modules/node-forge/lib/jsbn.js-182009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 193
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C60181F2AA6DC451-/node_modules/node-forge/lib/jsbn.js-13a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 157
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6E9C4FA1927982C0-/node_modules/node-forge/lib/rsa.js-43e00e",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/rsa.js",
+      "lines": {
+        "begin": 543
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 80.00% +/- 20%. Check analysis result in artifacts for details.",
+    "fingerprint": "EE766E09E1066123-/node_modules/node-forge/lib/rsa.js-3bc009",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/rsa.js",
+      "lines": {
+        "begin": 478
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "EE766E09E1066123-/node_modules/node-forge/lib/rsa.js-3be00a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/rsa.js",
+      "lines": {
+        "begin": 479
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "EE766E09E1066123-/node_modules/node-forge/lib/rsa.js-3c600b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/rsa.js",
+      "lines": {
+        "begin": 483
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "A16D38283739A43D-/node_modules/node-forge/lib/jsbn.js-874005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1082
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "A16D38283739A43D-/node_modules/node-forge/lib/jsbn.js-876005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1083
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "A16D38283739A43D-/node_modules/node-forge/lib/jsbn.js-878005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1084
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6C2659BD3C4BE450-/node_modules/node-forge/lib/jsbn.js-64c004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 806
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 97.78% +/- 3.14%. Check analysis result in artifacts for details.",
+    "fingerprint": "6C2659BD3C4BE450-/node_modules/node-forge/lib/jsbn.js-64e004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 807
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 8.16%. Check analysis result in artifacts for details.",
+    "fingerprint": "6C2659BD3C4BE450-/node_modules/node-forge/lib/jsbn.js-650004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 808
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 98.67% +/- 2.67%. Check analysis result in artifacts for details.",
+    "fingerprint": "D9EE0155C4A842CE-/node_modules/node-forge/lib/jsbn.js-64e004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 807
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D9EE0155C4A842CE-/node_modules/node-forge/lib/jsbn.js-650004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 808
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4DF4BC7203BC9C48-/node_modules/node-forge/lib/jsbn.js-292015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 329
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9294C6B30D170F2F-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9294C6B30D170F2F-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9294C6B30D170F2F-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9294C6B30D170F2F-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "AF0983693FA403F2-/node_modules/node-forge/lib/jsbn.js-2aa009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 341
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "A04A13F82ADB7B1B-/node_modules/node-forge/lib/jsbn.js-292015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 329
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "63FCEF3CB93CD853-/node_modules/node-forge/lib/jsbn.js-2aa009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 341
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E139725DC16BD375-/node_modules/node-forge/lib/jsbn.js-292015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 329
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "41A4FFBE29B39261-/node_modules/node-forge/lib/jsbn.js-306009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "41A4FFBE29B39261-/node_modules/node-forge/lib/jsbn.js-306013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1E26439AC3B7DF14-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1E26439AC3B7DF14-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "11D26D51B0270A46-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4C43D5150E9F01A8-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60191C16936C49A4-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7775F70F8695489C-/node_modules/node-forge/lib/jsbn.js-26a015",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 309
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7775F70F8695489C-/node_modules/node-forge/lib/jsbn.js-26c017",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7775F70F8695489C-/node_modules/node-forge/lib/jsbn.js-26c005",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 73.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7775F70F8695489C-/node_modules/node-forge/lib/jsbn.js-26e00a",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 311
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6663057C7FA6693F-/node_modules/node-forge/lib/jsbn.js-35a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 429
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6663057C7FA6693F-/node_modules/node-forge/lib/jsbn.js-35e00f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6663057C7FA6693F-/node_modules/node-forge/lib/jsbn.js-35e033",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6663057C7FA6693F-/node_modules/node-forge/lib/jsbn.js-35e041",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6663057C7FA6693F-/node_modules/node-forge/lib/jsbn.js-360009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 432
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "386F490EC1080F72-/node_modules/node-forge/lib/jsbn.js-246010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "386F490EC1080F72-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "386F490EC1080F72-/node_modules/node-forge/lib/jsbn.js-24601d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "85837842453C43AE-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "85837842453C43AE-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1BE9FB443AB59974-/node_modules/node-forge/lib/jsbn.js-e001f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 112
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1BE9FB443AB59974-/node_modules/node-forge/lib/jsbn.js-e4005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 114
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-826005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1043
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-82200b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1041
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-834008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1050
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-84a008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1061
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-83a004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1053
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "60B0EE2179B16D84-/node_modules/node-forge/lib/jsbn.js-836005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1051
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "0E21B369C793ABD3-/node_modules/node-forge/lib/jsbn.js-238023",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 284
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4003C873F62FC00F-/node_modules/node-forge/lib/jsbn.js-222006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 273
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "4003C873F62FC00F-/node_modules/node-forge/lib/jsbn.js-228006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 276
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4003C873F62FC00F-/node_modules/node-forge/lib/jsbn.js-22a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 277
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4003C873F62FC00F-/node_modules/node-forge/lib/jsbn.js-224006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 274
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4AF6AF0A49B95FA3-/node_modules/node-forge/lib/jsbn.js-244015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4AF6AF0A49B95FA3-/node_modules/node-forge/lib/jsbn.js-244030",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4AF6AF0A49B95FA3-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3342101C50F831BD-/node_modules/node-forge/lib/jsbn.js-26a015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 309
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3342101C50F831BD-/node_modules/node-forge/lib/jsbn.js-26c017",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3342101C50F831BD-/node_modules/node-forge/lib/jsbn.js-26c005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3342101C50F831BD-/node_modules/node-forge/lib/jsbn.js-26e00a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 311
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 98.67% +/- 2.67%. Check analysis result in artifacts for details.",
+    "fingerprint": "32C4BC89AF761A26-/node_modules/node-forge/lib/jsbn.js-2f200e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 377
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DBBFCB52A8582DFF-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DBBFCB52A8582DFF-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 97.58% +/- 4.29%. Check analysis result in artifacts for details.",
+    "fingerprint": "64858142ED2E5DE5-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 97.58% +/- 4.29%. Check analysis result in artifacts for details.",
+    "fingerprint": "8656BC54B5AF68BC-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "8656BC54B5AF68BC-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E7FD2885A733DAB9-/node_modules/node-forge/lib/jsbn.js-222006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 273
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "E7FD2885A733DAB9-/node_modules/node-forge/lib/jsbn.js-228006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 276
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E7FD2885A733DAB9-/node_modules/node-forge/lib/jsbn.js-22a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 277
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E7FD2885A733DAB9-/node_modules/node-forge/lib/jsbn.js-224006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 274
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6EABAFB510E5DF6F-/node_modules/node-forge/lib/jsbn.js-14600f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 163
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6EABAFB510E5DF6F-/node_modules/node-forge/lib/jsbn.js-146032",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 163
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6EABAFB510E5DF6F-/node_modules/node-forge/lib/jsbn.js-148009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 164
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6EABAFB510E5DF6F-/node_modules/node-forge/lib/jsbn.js-14a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 165
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7C0360093FD45249-/node_modules/node-forge/lib/jsbn.js-306009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7C0360093FD45249-/node_modules/node-forge/lib/jsbn.js-306013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3125E2421C84AB05-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3125E2421C84AB05-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "627352C65E7D456F-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8323DB6F47691705-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "223F8F78786EAA56-/node_modules/node-forge/lib/jsbn.js-35a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 429
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "223F8F78786EAA56-/node_modules/node-forge/lib/jsbn.js-35e00f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "223F8F78786EAA56-/node_modules/node-forge/lib/jsbn.js-35e033",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "223F8F78786EAA56-/node_modules/node-forge/lib/jsbn.js-35e041",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "223F8F78786EAA56-/node_modules/node-forge/lib/jsbn.js-360009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 432
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "62A4B53D8FD7C42D-/node_modules/node-forge/lib/jsbn.js-246010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "62A4B53D8FD7C42D-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "62A4B53D8FD7C42D-/node_modules/node-forge/lib/jsbn.js-24601d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "320ACA730E709502-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "320ACA730E709502-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "345445BF25516738-/node_modules/node-forge/lib/jsbn.js-e001f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 112
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "345445BF25516738-/node_modules/node-forge/lib/jsbn.js-e4005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 114
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-826005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1043
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-82200b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1041
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-834008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1050
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-83a004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1053
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-836005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1051
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-84a008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1061
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B98C8A0F863C1670-/node_modules/node-forge/lib/jsbn.js-84400f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1058
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "AD504D2263A34901-/node_modules/node-forge/lib/jsbn.js-238023",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 284
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "525B94751056E2E8-/node_modules/node-forge/lib/jsbn.js-222006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 273
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 80.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "525B94751056E2E8-/node_modules/node-forge/lib/jsbn.js-228006",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 276
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 83.33% +/- 10%. Check analysis result in artifacts for details.",
+    "fingerprint": "525B94751056E2E8-/node_modules/node-forge/lib/jsbn.js-22a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 277
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1A0C58C960BB9E16-/node_modules/node-forge/lib/jsbn.js-244015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1A0C58C960BB9E16-/node_modules/node-forge/lib/jsbn.js-244030",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1A0C58C960BB9E16-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8874684E9F2CF1BF-/node_modules/node-forge/lib/jsbn.js-26a015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 309
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8874684E9F2CF1BF-/node_modules/node-forge/lib/jsbn.js-26c017",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8874684E9F2CF1BF-/node_modules/node-forge/lib/jsbn.js-26c005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 310
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8874684E9F2CF1BF-/node_modules/node-forge/lib/jsbn.js-26e00a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 311
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "76A7BE084B012FF9-/node_modules/node-forge/lib/jsbn.js-306009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "76A7BE084B012FF9-/node_modules/node-forge/lib/jsbn.js-306013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8BE0FB4AAD9BEE04-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8BE0FB4AAD9BEE04-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B4FDED0A0347CCDB-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "0BACBE8EB2419C94-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1880845927AEA47B-/node_modules/node-forge/lib/jsbn.js-2f0009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 376
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "1880845927AEA47B-/node_modules/node-forge/lib/jsbn.js-2f0013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 376
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 95.33% +/- 3.06%. Check analysis result in artifacts for details.",
+    "fingerprint": "1880845927AEA47B-/node_modules/node-forge/lib/jsbn.js-2f200e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 377
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 97.14% +/- 3.3%. Check analysis result in artifacts for details.",
+    "fingerprint": "7CC3C21AE95CC982-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 97.14% +/- 3.3%. Check analysis result in artifacts for details.",
+    "fingerprint": "7CC3C21AE95CC982-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 95.56% +/- 3.14%. Check analysis result in artifacts for details.",
+    "fingerprint": "902E3206090CB79C-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 95.56% +/- 3.14%. Check analysis result in artifacts for details.",
+    "fingerprint": "E94609B308AFD982-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E94609B308AFD982-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "FBBCFF4C9E7FC61B-/node_modules/node-forge/lib/jsbn.js-222006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 273
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 80.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "FBBCFF4C9E7FC61B-/node_modules/node-forge/lib/jsbn.js-228006",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 276
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 83.33% +/- 10%. Check analysis result in artifacts for details.",
+    "fingerprint": "FBBCFF4C9E7FC61B-/node_modules/node-forge/lib/jsbn.js-22a006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 277
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8E48A316687B0F82-/node_modules/node-forge/lib/jsbn.js-14600f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 163
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8E48A316687B0F82-/node_modules/node-forge/lib/jsbn.js-146032",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 163
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8E48A316687B0F82-/node_modules/node-forge/lib/jsbn.js-148009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 164
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "8E48A316687B0F82-/node_modules/node-forge/lib/jsbn.js-14a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 165
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D75CF08008666C98-/node_modules/node-forge/lib/jsbn.js-306009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D75CF08008666C98-/node_modules/node-forge/lib/jsbn.js-306013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D75CF08008666C98-/node_modules/node-forge/lib/jsbn.js-30c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 390
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "59A820770FDF91AB-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "59A820770FDF91AB-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "A16F1082D0DAB5DB-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "6100EFEAF451832F-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "7E653A4004B9E577-/node_modules/node-forge/lib/jsbn.js-254012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 298
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4308084DF3B595B4-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "0EE183CB2E05466C-/node_modules/node-forge/lib/jsbn.js-306009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "0EE183CB2E05466C-/node_modules/node-forge/lib/jsbn.js-306013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 387
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "01FEB2D8B19C6831-/node_modules/node-forge/lib/jsbn.js-41e009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 527
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "01FEB2D8B19C6831-/node_modules/node-forge/lib/jsbn.js-420005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 528
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "14EB9F01232FC6D6-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4E3D3B68A401512-/node_modules/node-forge/lib/jsbn.js-2ea01b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 373
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4E3D3B68A401512-/node_modules/node-forge/lib/jsbn.js-2ee00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 375
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4E3D3B68A401512-/node_modules/node-forge/lib/jsbn.js-2f2012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 377
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4E3D3B68A401512-/node_modules/node-forge/lib/jsbn.js-2f2033",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 377
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "E4E3D3B68A401512-/node_modules/node-forge/lib/jsbn.js-2f8010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 380
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "78F0A5494A1A2428-/node_modules/node-forge/lib/jsbn.js-20201c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 257
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 86.67% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-20a00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 261
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-20a012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 261
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-20e00b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 263
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-210009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 264
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "DD94E42892365151-/node_modules/node-forge/lib/jsbn.js-212016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3C7A683B52368DB8-/node_modules/node-forge/lib/jsbn.js-6f4024",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 890
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 860
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6b6024",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 859
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6ba007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 861
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6bc012",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 862
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6be008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 863
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6c200a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 865
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBA809FC010BE51-/node_modules/node-forge/lib/jsbn.js-6d4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 874
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "EF9DCB0DCB1F3C34-/node_modules/node-forge/lib/jsbn.js-6fa029",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 893
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2a8022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 340
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2ac017",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 342
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2b4006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 346
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2c800f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 356
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2d200a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 361
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2aa009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 341
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2a8026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 340
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2ac00a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 342
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2ae015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 343
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2b000b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 344
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2b400c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 346
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2c600a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 355
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2b600a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 347
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2b800f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 348
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2ba00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 349
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2bc017",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 350
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2be00d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 351
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C9732051210F5C90-/node_modules/node-forge/lib/jsbn.js-2c200a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 353
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4CCF7BB1E29B363E-/node_modules/node-forge/lib/jsbn.js-2f200e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 377
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "4CCF7BB1E29B363E-/node_modules/node-forge/lib/jsbn.js-2f0009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 376
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 96.67% +/- 3.33%. Check analysis result in artifacts for details.",
+    "fingerprint": "4CCF7BB1E29B363E-/node_modules/node-forge/lib/jsbn.js-2f0013",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 376
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4B48BB8140BAEDAC-/node_modules/node-forge/lib/jsbn.js-35a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 429
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4B48BB8140BAEDAC-/node_modules/node-forge/lib/jsbn.js-35e00f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4B48BB8140BAEDAC-/node_modules/node-forge/lib/jsbn.js-35e033",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4B48BB8140BAEDAC-/node_modules/node-forge/lib/jsbn.js-35e041",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4B48BB8140BAEDAC-/node_modules/node-forge/lib/jsbn.js-360009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 432
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D3F43433E5261151-/node_modules/node-forge/lib/jsbn.js-246010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D3F43433E5261151-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "D3F43433E5261151-/node_modules/node-forge/lib/jsbn.js-24601d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4F2D82CDC40684B6-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "4F2D82CDC40684B6-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "32508B94F7466AC6-/node_modules/node-forge/lib/jsbn.js-e001f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 112
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "32508B94F7466AC6-/node_modules/node-forge/lib/jsbn.js-e4005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 114
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B059A5DCB1F307D2-/node_modules/node-forge/lib/jsbn.js-6b6020",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 859
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B059A5DCB1F307D2-/node_modules/node-forge/lib/jsbn.js-6ba014",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 861
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B059A5DCB1F307D2-/node_modules/node-forge/lib/jsbn.js-6c2004",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 865
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B059A5DCB1F307D2-/node_modules/node-forge/lib/jsbn.js-6c4007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 866
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B059A5DCB1F307D2-/node_modules/node-forge/lib/jsbn.js-6b8007",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 860
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "293D47BEB0267E61-/node_modules/node-forge/lib/jsbn.js-8cc00e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1126
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "293D47BEB0267E61-/node_modules/node-forge/lib/jsbn.js-8bc00e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 1118
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9235A7721945A616-/node_modules/node-forge/lib/jsbn.js-214016",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "9235A7721945A616-/node_modules/node-forge/lib/jsbn.js-212006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 265
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "66C7AD2963008AFB-/node_modules/node-forge/lib/jsbn.js-292015",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 329
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "465FB2E86221EFA2-/node_modules/node-forge/lib/jsbn.js-2aa009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 341
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "BAFFE5288FB7A3CC-/node_modules/node-forge/lib/jsbn.js-2ea01b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 373
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6508BE56B95BF951-/node_modules/node-forge/lib/jsbn.js-35a009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 429
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6508BE56B95BF951-/node_modules/node-forge/lib/jsbn.js-35e00f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6508BE56B95BF951-/node_modules/node-forge/lib/jsbn.js-35e033",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6508BE56B95BF951-/node_modules/node-forge/lib/jsbn.js-35e041",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 431
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6508BE56B95BF951-/node_modules/node-forge/lib/jsbn.js-360009",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 432
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B87D8EEADF67E3E4-/node_modules/node-forge/lib/jsbn.js-246010",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B87D8EEADF67E3E4-/node_modules/node-forge/lib/jsbn.js-244022",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 290
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "B87D8EEADF67E3E4-/node_modules/node-forge/lib/jsbn.js-24601d",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 291
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "5D91D7FF06C7BFA9-/node_modules/node-forge/lib/jsbn.js-214019",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "5D91D7FF06C7BFA9-/node_modules/node-forge/lib/jsbn.js-214026",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 266
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "13F7E992888663BD-/node_modules/node-forge/lib/jsbn.js-e001f",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 112
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "13F7E992888663BD-/node_modules/node-forge/lib/jsbn.js-e4005",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 114
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1ec00a",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 246
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1c4006",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 226
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1d4030",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 234
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1d600b",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 235
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1d6016",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 235
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 60.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1da00c",
+    "severity": "major",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 237
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 89.59% +/- 15.52%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1e600e",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 243
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable memory access instruction, leakage score 92.22% +/- 14.61%. Check analysis result in artifacts for details.",
+    "fingerprint": "C2B61947EF2EE3FB-/node_modules/node-forge/lib/jsbn.js-1e801b",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/jsbn.js",
+      "lines": {
+        "begin": 244
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 93.33% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "6F61FAF46E14C31B-/node_modules/node-forge/lib/util.js-bb0006",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1496
+      }
+    }
+  },
+  {
+    "description": "(target-RSASIGN) Found vulnerable jump instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "3F748735278B4CF0-/node_modules/node-forge/lib/util.js-57c008",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 702
+      }
+    }
+  }
+]

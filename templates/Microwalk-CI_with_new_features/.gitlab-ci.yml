@@ -1,0 +1,42 @@
+default:
+  image:
+    name: ghcr.io/easywalk-ci-project/easywalk-ci/jalangi3:latest
+    entrypoint: [""]
+  tags:
+    - large
+    - ci.inria.fr
+
+stages:
+    - test
+
+leak-detection-and-coverage:
+    stage: test
+    variables:
+        NUMBER_OF_TESTCASES: '16' ## Feel free to change '16' with another integer greater than 1
+        SIZE_OF_TESTCASES: '16' ## Feel free to change with another integer greater than 1
+        SCRIPT: '' # Can add script for testcases generation into the format '[["RSA","keygen-rsa.sh"],["ED25519","gen-ED25519.sh"],...]' for instance
+
+    script:
+
+        # - npm install library-name
+
+        ## Install other libraries if needed
+        - cd features
+        - node test_generation.js
+        - node testcase_generation.js $NUMBER_OF_TESTCASES $SIZE_OF_TESTCASES $SCRIPT
+
+        - cd ../microwalk
+        - bash analyze.sh
+
+        - cd ../features
+        - node code_quality_html_generation.mjs
+        - node function_name_in_source_code.mjs '../lib'
+        - node function_wanted.mjs
+
+    artifacts:
+        when: always
+        paths:
+            - microwalk/results/
+            - microwalk/ct_reports/
+            - microwalk/coverage/
+            - microwalk/testcases/

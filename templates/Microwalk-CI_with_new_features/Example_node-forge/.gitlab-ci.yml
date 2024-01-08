@@ -1,0 +1,44 @@
+default:
+  image:
+    name: ghcr.io/easywalk-ci-project/easywalk-ci/jalangi3:latest
+    entrypoint: [""]
+  tags:
+    - large
+    - ci.inria.fr
+
+stages:
+    - test
+
+leak-detection-and-coverage:
+    stage: test
+    variables:
+        NUMBER_OF_TESTCASES: '16'
+        SIZE_OF_TESTCASES: '16'
+        SCRIPT: "[['target-RSASIGN','generate-rsa-private-keys.sh'],['target-ED25519','generate-ed25519-private-keys.sh']]"
+
+    script:
+        - npm install node-forge ## Here you need to install node-forge
+
+        - cd features
+        - /usr/bin/time --verbose node test_generation.js
+        - /usr/bin/time --verbose node testcase_generation.js $NUMBER_OF_TESTCASES $SIZE_OF_TESTCASES $SCRIPT
+
+        - cd ../microwalk
+
+        - /usr/bin/time --verbose bash analyze.sh
+
+        - cd ../features
+        
+        - /usr/bin/time --verbose node code_quality_html_generation.mjs
+
+        - /usr/bin/time --verbose node function_name_in_source_code.mjs '../lib'
+        - /usr/bin/time --verbose node function_wanted.mjs
+
+    artifacts:
+        when: always
+        paths:
+            - microwalk/
+            - microwalk/results/
+            - microwalk/ct_reports/
+            - microwalk/coverage/
+            - microwalk/testcases/

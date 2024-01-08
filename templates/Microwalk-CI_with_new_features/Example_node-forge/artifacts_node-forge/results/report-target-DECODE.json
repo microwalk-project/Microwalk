@@ -1,0 +1,46 @@
+[
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cb800c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1628
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 97.78% +/- 4.97%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cba00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1629
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cbc00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1630
+      }
+    }
+  },
+  {
+    "description": "(target-DECODE) Found vulnerable memory access instruction, leakage score 100.00% +/- 0%. Check analysis result in artifacts for details.",
+    "fingerprint": "ECBF84F3C4FEE326-/node_modules/node-forge/lib/util.js-cbe00c",
+    "severity": "critical",
+    "location": {
+      "path": "node_modules/node-forge/lib/util.js",
+      "lines": {
+        "begin": 1631
+      }
+    }
+  }
+]
