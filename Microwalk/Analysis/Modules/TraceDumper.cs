@@ -268,6 +268,9 @@ namespace Microwalk.Analysis.Modules
             _skipMemoryAccesses = moduleOptions.GetChildNodeOrDefault("skip-memory-accesses")?.AsBoolean() ?? false;
             _skipJumps = moduleOptions.GetChildNodeOrDefault("skip-jumps")?.AsBoolean() ?? false;
             _skipReturns = moduleOptions.GetChildNodeOrDefault("skip-returns")?.AsBoolean() ?? false;
+            
+            if(!_includePrefix)
+                await Logger.LogWarningAsync("[dump] Processing of the trace prefix is turned off. This may lead to false-positive errors regarding missing heap allocations.");
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);
