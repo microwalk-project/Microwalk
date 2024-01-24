@@ -29,7 +29,11 @@ namespace Microwalk.TestcaseGeneration.Modules
 
             // Read all testcase file names
             _testcaseFileNames = new Queue<string>(inputDirectory.EnumerateFiles("*.testcase", SearchOption.TopDirectoryOnly).Select(f => f.FullName));
-            await Logger.LogInfoAsync($"Found {_testcaseFileNames.Count} testcase files.");
+            
+            if(_testcaseFileNames.Count == 0)
+                await Logger.LogWarningAsync("No testcase files found.");
+            else
+                await Logger.LogInfoAsync($"Found {_testcaseFileNames.Count} testcase files.");
         }
 
         public override Task UnInitAsync()
