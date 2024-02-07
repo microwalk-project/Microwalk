@@ -61,6 +61,13 @@ bool _useFixedRandomNumber = false;
 // Controls whether stack allocation tracking is enabled.
 bool _enableStackAllocationTracking = false;
 
+// Tracks whether libc was loaded.
+#ifdef WIN32
+	bool _libcLoadDetected = true;
+#else
+	bool _libcLoadDetected = false;
+#endif
+
 // The fixed random number to be returned after each RDRAND instruction.
 UINT64 _fixedRandomNumber = 0;
 
@@ -181,7 +188,10 @@ VOID InstrumentTrace(TRACE trace, [[maybe_unused]] VOID* v)
 		{
 			// Should not happen, since images should have been loaded before they can be instrumented...
 			// ...though Pin sometimes executes a few blocks of libc before recording its load
-			std::cerr << "Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << " - probably part of libc and can be safely ignored" << std::endl;
+			if(!_libcLoadDetected)
+				std::cerr << "Warning: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << " - very likely an early loaded part of libc, so this can be safely ignored" << std::endl;
+			else
+				std::cerr << "Error: Cannot resolve image of basic block " << std::hex << BBL_Address(bbl) << std::endl;
 
 			// The affected blocks are most likely early blocks from libc and are never executed again - so no harm in marking them as 'interesting' just in case
 			interesting = true;
@@ -498,6 +508,13 @@ VOID InstrumentImage(IMG img, [[maybe_unused]] VOID* v)
 	// Remember image for filtered trace instrumentation
 	_images.push_back(new ImageData(interesting, imageName, imageStart, imageEnd));
 	std::cerr << "Image '" << imageName << "' loaded at " << std::hex << imageStart << " ... " << std::hex << imageEnd << (interesting != 0 ? " [interesting]" : "") << std::endl;
+
+	// libc?
+	if (!_libcLoadDetected && imageName.find("libc.so") != std::string::npos)
+	{
+		_libcLoadDetected = true;
+		std::cerr << "    libc detected" << std::endl;
+	}
 
 	// Find the Pin notification functions to insert testcase markers
 	RTN notifyStartRtn = RTN_FindByName(img, "PinNotifyTestcaseStart");
