@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 #pragma warning disable CS8618
 
@@ -8,10 +9,10 @@ public class CodeQualityReportEntry
 {
     [JsonPropertyName("description")]
     public string Description { get; set; }
-    
+
     [JsonPropertyName("fingerprint")]
     public string Fingerprint { get; set; }
-    
+
     [JsonPropertyName("severity")]
     public string Severity { get; set; }
 
@@ -23,8 +24,8 @@ public class CodeQualityReportEntryLocation
 {
     [JsonPropertyName("path")]
     public string Path { get; set; }
-    
-    
+
+
     [JsonPropertyName("lines")]
     public CodeQualityReportEntryLocationLines Lines { get; set; }
 }

@@ -718,7 +718,7 @@ public class JsTracePreprocessor : PreprocessorStage
                             // Create entry for current access
                             // Numeric index, or named property?
                             offsetRelativeAddress = uint.TryParse(offset, out uint offsetInt)
-                                ? offsetInt 
+                                ? offsetInt
                                 : objectData.NextPropertyAddress++;
                             objectData.PropertyAddressMapping.TryAdd(offset, offsetRelativeAddress);
                         }
@@ -801,11 +801,11 @@ public class JsTracePreprocessor : PreprocessorStage
                             heapAllocationEntry.Store(traceFileWriter);
 
                             nextHeapAllocationAddress += 2 * heapAllocationChunkSize;
-                            
+
                             // Create entry for accessed offset
                             // Numeric index, or named property?
                             offsetRelativeAddress = uint.TryParse(offset, out uint offsetInt)
-                                ? offsetInt 
+                                ? offsetInt
                                 : objectData.NextPropertyAddress++;
                             objectData.PropertyAddressMapping.TryAdd(offset, offsetRelativeAddress);
                         }

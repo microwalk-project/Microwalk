@@ -96,9 +96,9 @@ public partial class ControlFlowLeakage : AnalysisStage
     {
         /*
          * Runs linearly through a trace and stores it in a radix trie-like call tree structure.
-         * 
+         *
          * Each node has a linear list of _successors_, followed by a tree of _split successors_.
-         * 
+         *
          * The tree branches when
          * a) a call is encountered (one level down);
          * b) a conflict to an existing entry in a successor list is found (split).
@@ -530,11 +530,11 @@ public partial class ControlFlowLeakage : AnalysisStage
                 }
 
                 /*
-                * Step 2: Handle individual cases, same as for branches.
-                *
-                * We split when the allocation size differs; else we re-use existing allocation nodes, and map all subsequent memory accesses
-                * to its unique ID.
-                */
+                 * Step 2: Handle individual cases, same as for branches.
+                 *
+                 * We split when the allocation size differs; else we re-use existing allocation nodes, and map all subsequent memory accesses
+                 * to its unique ID.
+                 */
 
                 var allocationIdMapping = isHeap ? heapAllocationIdMapping : stackAllocationIdMapping;
 
@@ -1246,7 +1246,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                 {
                     ++totalNumberLeakages;
                     uniqueLeakingInstructions.Add(analysisResult.Key);
-                    
+
                     string instructionTypeName = analysisResult.Value.Type switch
                     {
                         AnalysisData.InstructionType.Call => "call",
@@ -1397,7 +1397,7 @@ public partial class ControlFlowLeakage : AnalysisStage
         }
 
         await callStacksWriter.WriteAsync("]}");
-        
+
         await Logger.LogResultAsync($"{logMessagePrefix} Total number of leakages: {totalNumberLeakages}");
         await Logger.LogResultAsync($"{logMessagePrefix} Unique leaking instructions: {uniqueLeakingInstructions.Count}");
     }

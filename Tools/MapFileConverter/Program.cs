@@ -18,6 +18,7 @@ namespace MapFileConverter
                 Console.WriteLine("The constant offset usually is 1000");
                 return;
             }
+
             string inputFormat = args[0];
             uint constantOffset = uint.Parse(args[1], NumberStyles.HexNumber);
             string inputFile = args[2];
@@ -83,6 +84,7 @@ namespace MapFileConverter
                     Console.WriteLine($"Cannot parse line \"{currentLine}\"");
                     return;
                 }
+
                 segmentBaseAddresses.Add(segmentId, segmentBaseAddress);
             }
 

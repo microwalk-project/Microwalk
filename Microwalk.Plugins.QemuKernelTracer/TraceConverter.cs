@@ -227,7 +227,7 @@ public class TraceConverter : TraceStage
                 }
             }
         }
-        
+
         // Store modified trace file
         File.WriteAllBytes(outputFilePath, traceFile);
     }
@@ -253,7 +253,7 @@ public class TraceConverter : TraceStage
     {
         if(moduleOptions == null)
             throw new ConfigurationException("Missing module configuration.");
-        
+
         // Check trace input directory
         var inputDirectoryPath = moduleOptions.GetChildNodeOrDefault("input-directory")?.AsString() ?? throw new ConfigurationException("Missing input directory.");
         _inputDirectory = new DirectoryInfo(inputDirectoryPath);

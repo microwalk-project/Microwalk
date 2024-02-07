@@ -1,19 +1,18 @@
 ﻿using System;
 
-namespace Microwalk.FrameworkBase.Exceptions
+namespace Microwalk.FrameworkBase.Exceptions;
+
+/// <summary>
+/// This exception type is used when the user passes an invalid configuration file.
+/// </summary>
+public class ConfigurationException : Exception
 {
     /// <summary>
-    /// This exception type is used when the user passes an invalid configuration file.
+    /// Creates a new exception with the given message.
     /// </summary>
-    public class ConfigurationException : Exception
+    /// <param name="message">Message.</param>
+    public ConfigurationException(string message)
+        : base(message)
     {
-        /// <summary>
-        /// Creates a new exception with the given message.
-        /// </summary>
-        /// <param name="message">Message.</param>
-        public ConfigurationException(string message)
-            : base(message)
-        {
-        }
     }
 }

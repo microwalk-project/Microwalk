@@ -1,20 +1,19 @@
 ﻿using System;
 using Microwalk.FrameworkBase.TraceFormat;
 
-namespace Microwalk.FrameworkBase.Exceptions
+namespace Microwalk.FrameworkBase.Exceptions;
+
+/// <summary>
+/// Used when encountering problems during (de)serializing and handling <see cref="TraceFile"/> objects.
+/// </summary>
+public class TraceFormatException : Exception
 {
     /// <summary>
-    /// Used when encountering problems during (de)serializing and handling <see cref="TraceFile"/> objects.
+    /// Creates a new exception with the given message.
     /// </summary>
-    public class TraceFormatException : Exception
+    /// <param name="message">Message.</param>
+    public TraceFormatException(string message)
+        : base(message)
     {
-        /// <summary>
-        /// Creates a new exception with the given message.
-        /// </summary>
-        /// <param name="message">Message.</param>
-        public TraceFormatException(string message)
-            : base(message)
-        {
-        }
     }
 }

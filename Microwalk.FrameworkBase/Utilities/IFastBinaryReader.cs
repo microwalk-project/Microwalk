@@ -8,7 +8,7 @@ public interface IFastBinaryReader
     /// Returns or sets the current read position.
     /// </summary>
     int Position { get; set; }
-    
+
     /// <summary>
     /// Total length of the binary data.
     /// </summary>

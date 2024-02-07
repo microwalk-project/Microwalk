@@ -108,6 +108,7 @@ if(argMode == "dwarf")
                             if(uri.StartsWith(prefix))
                                 uri = uri.Substring(prefix.Length);
                         }
+
                         uri = uri.Replace("/./", "/");
                         if(uri.StartsWith("./"))
                             uri = uri.Substring(2);
