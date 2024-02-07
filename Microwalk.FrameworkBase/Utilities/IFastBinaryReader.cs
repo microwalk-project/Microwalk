@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Microwalk.FrameworkBase.Utilities;
+﻿namespace Microwalk.FrameworkBase.Utilities;
 
 public interface IFastBinaryReader
 {

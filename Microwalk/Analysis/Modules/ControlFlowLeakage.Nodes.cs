@@ -6,9 +6,7 @@ namespace Microwalk.Analysis.Modules;
 
 public partial class ControlFlowLeakage
 {
-    private abstract class CallTreeNode
-    {
-    }
+    private abstract class CallTreeNode;
 
     /// <summary>
     /// Dummy node type that has a number of successor nodes, followed by a split.
@@ -88,9 +86,7 @@ public partial class ControlFlowLeakage
         public ulong CallStackId { get; }
     }
 
-    private class RootNode : SplitNode
-    {
-    }
+    private class RootNode : SplitNode;
 
     private class BranchNode : CallTreeNode
     {

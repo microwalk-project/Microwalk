@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
-using Standart.Hash.xxHash;
 
 namespace Microwalk.Analysis.Modules;
 

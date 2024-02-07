@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microwalk.FrameworkBase.TraceFormat.TraceEntryTypes;
 using Microwalk.FrameworkBase.Utilities;
 
 namespace Microwalk.FrameworkBase.TraceFormat;

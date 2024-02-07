@@ -20,30 +20,30 @@ public interface IFastBinaryWriter
     /// <summary>
     /// Writes a signed 16-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteInt16(short value);
+    void WriteInt16(short value);
 
     /// <summary>
     /// Writes an unsigned 16-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteUInt16(ushort value);
+    void WriteUInt16(ushort value);
 
     /// <summary>
     /// Writes a signed 32-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteInt32(int value);
+    void WriteInt32(int value);
 
     /// <summary>
     /// Writes an unsigned 32-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteUInt32(uint value);
+    void WriteUInt32(uint value);
 
     /// <summary>
     /// Writes a signed 64-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteInt64(long value);
+    void WriteInt64(long value);
 
     /// <summary>
     /// Writes an unsigned 64-bit integer to the buffer.
     /// </summary>
-    unsafe void WriteUInt64(ulong value);
+    void WriteUInt64(ulong value);
 }
