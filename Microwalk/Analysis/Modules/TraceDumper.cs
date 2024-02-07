@@ -65,9 +65,11 @@ namespace Microwalk.Analysis.Modules
             await using var writer = new StreamWriter(File.Open(outputFilePath, FileMode.Create));
 
             // Compose entry sequence
-            IEnumerable<ITraceEntry> entries = _includePrefix
-                ? traceEntity.PreprocessedTraceFile.Prefix!.Concat(traceEntity.PreprocessedTraceFile)
-                : traceEntity.PreprocessedTraceFile;
+            // If the prefix is disabled, only collect its heap allocations (needed for resolving memory accesses)
+            IEnumerable<ITraceEntry> entries = traceEntity.PreprocessedTraceFile.Prefix!;
+            if(!_includePrefix)
+                entries = entries.Where(e => e.EntryType is TraceEntryTypes.HeapAllocation or TraceEntryTypes.HeapFree);
+            entries = entries.Concat(traceEntity.PreprocessedTraceFile);
 
             // Run through entries
             Stack<string> callStack = new();
@@ -268,9 +270,6 @@ namespace Microwalk.Analysis.Modules
             _skipMemoryAccesses = moduleOptions.GetChildNodeOrDefault("skip-memory-accesses")?.AsBoolean() ?? false;
             _skipJumps = moduleOptions.GetChildNodeOrDefault("skip-jumps")?.AsBoolean() ?? false;
             _skipReturns = moduleOptions.GetChildNodeOrDefault("skip-returns")?.AsBoolean() ?? false;
-            
-            if(!_includePrefix)
-                await Logger.LogWarningAsync("[dump] Processing of the trace prefix is turned off. This may lead to false-positive errors regarding missing heap allocations.");
 
             // Load MAP files
             _mapFileCollection = new MapFileCollection(Logger);
