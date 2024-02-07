@@ -1,27 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29020.237
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microwalk", "Microwalk\Microwalk.csproj", "{696C1699-FD59-4903-8BF7-80B366C44154}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PinTracer", "PinTracer\PinTracer.vcxproj", "{8EEB3F5A-0919-4BC9-AE2E-00224342377E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PinTracerWrapper", "PinTracerWrapper\PinTracerWrapper.vcxproj", "{D644FC7B-F921-420B-8181-EFCCA4BB0032}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MapFileConverter", "Tools\MapFileConverter\MapFileConverter.csproj", "{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFileConverter", "Tools\MapFileConverter\MapFileConverter.csproj", "{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microwalk.FrameworkBase", "Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj", "{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.FrameworkBase", "Microwalk.FrameworkBase\Microwalk.FrameworkBase.csproj", "{3105BA1A-0D72-4A51-BA9B-04F17B758BC1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microwalk.Plugins.PinTracer", "Microwalk.Plugins.PinTracer\Microwalk.Plugins.PinTracer.csproj", "{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.PinTracer", "Microwalk.Plugins.PinTracer\Microwalk.Plugins.PinTracer.csproj", "{B6C12179-8A77-49F0-96F9-26CD2DA3FDD8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MapFileGenerator", "Tools\MapFileGenerator\MapFileGenerator.csproj", "{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFileGenerator", "Tools\MapFileGenerator\MapFileGenerator.csproj", "{EEDAC3B3-146D-4201-B518-D6FF478FDFA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microwalk.Plugins.QemuKernelTracer", "Microwalk.Plugins.QemuKernelTracer\Microwalk.Plugins.QemuKernelTracer.csproj", "{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.QemuKernelTracer", "Microwalk.Plugins.QemuKernelTracer\Microwalk.Plugins.QemuKernelTracer.csproj", "{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microwalk.Plugins.JavascriptTracer", "Microwalk.Plugins.JavascriptTracer\Microwalk.Plugins.JavascriptTracer.csproj", "{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microwalk.Plugins.JavascriptTracer", "Microwalk.Plugins.JavascriptTracer\Microwalk.Plugins.JavascriptTracer.csproj", "{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CiReportGenerator", "Tools\CiReportGenerator\CiReportGenerator.csproj", "{1CD7183F-BAF1-41FE-9F26-401512C4C6DF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CiReportGenerator", "Tools\CiReportGenerator\CiReportGenerator.csproj", "{1CD7183F-BAF1-41FE-9F26-401512C4C6DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,18 +55,6 @@ Global
 		{8EEB3F5A-0919-4BC9-AE2E-00224342377E}.Release|x64.Build.0 = Release|x64
 		{8EEB3F5A-0919-4BC9-AE2E-00224342377E}.Release|x86.ActiveCfg = Release|Win32
 		{8EEB3F5A-0919-4BC9-AE2E-00224342377E}.Release|x86.Build.0 = Release|Win32
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|Any CPU.Build.0 = Debug|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|x64.ActiveCfg = Debug|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|x64.Build.0 = Debug|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|x86.ActiveCfg = Debug|Win32
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Debug|x86.Build.0 = Debug|Win32
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|Any CPU.ActiveCfg = Release|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|Any CPU.Build.0 = Release|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|x64.ActiveCfg = Release|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|x64.Build.0 = Release|x64
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|x86.ActiveCfg = Release|Win32
-		{D644FC7B-F921-420B-8181-EFCCA4BB0032}.Release|x86.Build.0 = Release|Win32
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B4FF7C1-7D84-4FB4-8AA0-6EE9E2AF7E72}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -129,7 +115,6 @@ Global
 		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x64.Build.0 = Release|Any CPU
 		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x86.ActiveCfg = Release|Any CPU
 		{7405B66B-474E-4F98-A7ED-2ACEB7CAE159}.Release|x86.Build.0 = Release|Any CPU
-
 		{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0ED87CBB-423B-43FD-B31E-9DF9CDD733F4}.Debug|x64.ActiveCfg = Debug|Any CPU
