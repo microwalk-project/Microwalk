@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Microwalk.FrameworkBase.TraceFormat;
 
 namespace Microwalk.FrameworkBase.Utilities
 {
@@ -18,6 +17,12 @@ namespace Microwalk.FrameworkBase.Utilities
         /// Loaded MAP files.
         /// </summary>
         private readonly List<MapFile> _mapFiles = new();
+
+        /// <summary>
+        /// Tracks image IDs for which no MAP file is available.
+        /// We output a warning the first time a MAP file lookup fails.
+        /// </summary>
+        private static readonly ConcurrentDictionary<int, object> _imageIdsWithoutMapFile = new();
 
         /// <summary>
         /// Contains (image ID, map file) pairs.
@@ -84,6 +89,11 @@ namespace Microwalk.FrameworkBase.Utilities
             mapFile = _mapFiles.FirstOrDefault(m => string.Compare(imageFileName, m.ImageName, true, CultureInfo.InvariantCulture) == 0);
             if(mapFile != null)
                 _mapFileIdLookup[imageId] = mapFile;
+            else if(_imageIdsWithoutMapFile.TryAdd(imageId, new object()))
+            {
+                _logger.LogWarningAsync($"No MAP file found for image #{imageId} \"{imageFileName}\"").Wait();
+            }
+
             return mapFile;
         }
     }
