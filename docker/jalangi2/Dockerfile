@@ -1,6 +1,6 @@
 
 ## BUILD ##
-FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 
 WORKDIR /src
 
@@ -21,7 +21,7 @@ RUN dotnet publish Tools/CiReportGenerator/CiReportGenerator.csproj -c Release -
 
 ## RUNTIME ##
 
-FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy
+FROM mcr.microsoft.com/dotnet/runtime:8.0-jammy
 
 # Get some dependencies
 RUN apt-get update -y && apt-get install -y \
