@@ -29,7 +29,7 @@ The following guide is mostly for Linux systems and command line builds on Windo
 
 ### Main application
 
-The main application is based on [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0), so the .NET 6.0 SDK is required for compiling.
+The main application is based on [.NET 8.0](https://dotnet.microsoft.com/download/dotnet/8.0), so the .NET 8.0 SDK is required for compiling.
 
 Compile (optional):
 ```
