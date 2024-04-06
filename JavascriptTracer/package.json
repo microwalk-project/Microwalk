@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@babel/generator": "^7.21.1",
+    "@babel/parser": "^7.21.2",
+    "@babel/template": "^7.20.7",
+    "@babel/traverse": "^7.21.2",
+    "@babel/types": "^7.21.2",
+    "ast-pretty-print": "2.0.1",
+    "import-meta-resolve": "4.0.0"
+  },
+  "type": "module",
+  "devDependencies": {
+    "eslint": "^8.55.0"
+  }
+}
