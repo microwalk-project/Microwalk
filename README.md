@@ -49,17 +49,13 @@ The command line arguments `<args>` are documented in Section "[Running Microwal
 
 Microwalk comes with a Pin tool for instrumenting and tracing x86 binaries. Building the Pin tool requires the [full Pin kit](https://software.intel.com/content/www/us/en/develop/articles/pin-a-binary-instrumentation-tool-downloads.html), preferably the latest version. It is assumed that Pin's directory path is contained in the variable `$pinDir`.
 
-**When building through Visual Studio**: Edit [Settings.props](PinTracer/Settings.props) to point to the Pin directory.
+**When building through Visual Studio**: Edit [Settings.props](PinTracer/Settings.props) to point to the Pin directory. You also need to install the clang-cl toolset for Visual Studio.
 
-Compile:
+Compiling and running the Pin tool via command line on Linux:
 ```
 cd PinTracer
 make PIN_ROOT="$pinDir" obj-intel64/PinTracer.so
-```
-
-Run (assuming the `pin` executable is in the system's `PATH`):
-```
-pin -t PinTracer/obj-intel64/PinTracer.so -o /path/to/output/file -- /path/to/wrapper/executable
+$pinDir/pin -t PinTracer/obj-intel64/PinTracer.so -o /path/to/output/file -- /path/to/wrapper/executable
 ```
 
 Note that the above run command is needed for testing/debugging only, since `Microwalk` calls the Pin tool itself.
