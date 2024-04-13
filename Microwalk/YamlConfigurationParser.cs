@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Text.RegularExpressions;
 using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
 using YamlDotNet.RepresentationModel;
@@ -99,10 +99,10 @@ public class YamlConfigurationParser
                             string constantValue = (constantNode.Value as YamlScalarNode)?.Value ?? throw new ConfigurationException("Could not parse constant value.");
 
                             // Apply existing constants to value
-                            constantValue = Constants.Aggregate(constantValue, (current, replacement) => current.Replace(replacement.Key, replacement.Value));
+                            constantValue = ReplaceConstants(constantValue);
 
                             // Store/update constant
-                            Constants[$"$${constantName}$$"] = constantValue;
+                            Constants[$"${constantName}"] = constantValue;
                         }
 
                         break;
@@ -150,8 +150,32 @@ public class YamlConfigurationParser
         }
         else if(currentNode is ValueNode valueNode)
         {
-            valueNode.Value = Constants.Aggregate(valueNode.Value, (current, replacement) => current?.Replace(replacement.Key, replacement.Value));
+            valueNode.Value = valueNode.Value != null ? ReplaceConstants(valueNode.Value) : "";
         }
+    }
+    
+    /// <summary>
+    /// Replaces constant expressions in the given string.
+    /// </summary>
+    /// <param name="value">String to replace constants in.</param>
+    /// <returns>Input string with replaced constants.</returns>
+    private string ReplaceConstants(string value)
+    {
+        // Find and handle constants
+        return Regex.Replace(value, @"(\$+[A-Za-z0-9_]+)\$*", match =>
+        {
+            // If this is a constant with the old format, remove one leading $ from its name
+            //   $$NAME$$ -> $NAME (config variables)
+            //   $$$NAME$$$ -> $$NAME (environment variables)               
+            string constantName = match.Groups[1].Value;
+            if(match.Value.EndsWith('$'))
+                constantName = constantName.Substring(1);
+            
+            if(Constants.TryGetValue(constantName, out string? constantValue))
+                return constantValue;
+
+            throw new ConfigurationException($"Can not resolve constant '{constantName}'.");
+        });
     }
 
     /// <summary>
@@ -201,13 +225,13 @@ public class YamlConfigurationParser
         RootNodes = new Dictionary<string, Node>();
         Constants = new Dictionary<string, string>
         {
-            { "$$CONFIG_PATH$$", Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new Exception("Could not resolve configuration directory.") },
-            { "$$CONFIG_FILENAME$$", Path.GetFileNameWithoutExtension(path) }
+            { "$CONFIG_PATH", Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new Exception("Could not resolve configuration directory.") },
+            { "$CONFIG_FILENAME", Path.GetFileNameWithoutExtension(path) }
         };
 
         // Load environment variables as constants as well
         foreach(DictionaryEntry variable in Environment.GetEnvironmentVariables())
-            Constants.Add($"$$${(string)variable.Key}$$$", (string?)variable.Value ?? "");
+            Constants.Add($"$${(string)variable.Key}", (string?)variable.Value ?? "");
 
         // Load passed configuration file
         ParseConfigurationFile(path);

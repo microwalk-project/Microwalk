@@ -67,7 +67,7 @@ Base configuration file which should be loaded and parsed before the current one
 Keys existing in both the base file and the current file are always superseded by those of the current file.
 
 ### `constants`
-A number of arbitrary string constants, which can be referenced by `$$CONSTANT_NAME$$` in other parts of the file.
+A number of arbitrary string constants, which can be referenced by `$CONSTANT_NAME` in other parts of the file.
 
 Predefined constants:
 - `CONFIG_PATH`<br>
@@ -77,7 +77,7 @@ Predefined constants:
   Name of the main configuration file, without extension (e.g., `target-aes` for `target-aes.yml`).
 
 ### Enviroment variables
-All environment variables of the current process environment are available as `$$$VARIABLE_NAME$$$` and are treated just like constants.
+All environment variables of the current process environment are available as `$$VARIABLE_NAME` (mind the double `$`) and are treated just like constants.
 
 
 ## `general`
