@@ -16,6 +16,8 @@ namespace Microwalk.Plugins.PinTracer;
 public class PinTraceGenerator : TraceStage
 {
     private const string _genericLogMessagePrefix = "[trace:pin]";
+    private const string _pinLogMessagePrefix = "[trace:pin:stderr]";
+    private const string _pinOutMessagePrefix = "[trace:pin:stdout]";
 
     /// <summary>
     /// The trace output directory.
@@ -48,7 +50,7 @@ public class PinTraceGenerator : TraceStage
                                    ?? throw new IOException("Could not read from Pin tool standard output (null). Probably the process has exited early.");
 
             // Parse output
-            await Logger.LogDebugAsync($"{logMessagePrefix} Pin tool output: {pinToolOutput}");
+            await Logger.LogDebugAsync($"{_pinOutMessagePrefix} {pinToolOutput}");
             string[] outputParts = pinToolOutput.Split('\t');
             if(outputParts[0] == "t")
             {
@@ -58,6 +60,7 @@ public class PinTraceGenerator : TraceStage
             }
 
             await Logger.LogWarningAsync($"{logMessagePrefix} Unexpected message from Pin tool.\nPlease make sure that the investigated program does not print anything on stdout, since this might interfere with the Pin tool's output pipe.");
+            await Logger.LogWarningAsync($"{logMessagePrefix}   >>> {pinToolOutput}");
         }
     }
 
@@ -85,6 +88,14 @@ public class PinTraceGenerator : TraceStage
         ulong? fixedRdrand = moduleOptions.GetChildNodeOrDefault("rdrand")?.AsUnsignedLongHex();
         int cpuModelId = moduleOptions.GetChildNodeOrDefault("cpu")?.AsInteger() ?? 0;
         bool enableStackTracking = moduleOptions.GetChildNodeOrDefault("stack-tracking")?.AsBoolean() ?? false;
+        
+        // Wrapper arguments
+        List<string> wrapperArgs = new();
+        var wrapperArgsNode = moduleOptions.GetChildNodeOrDefault("wrapper-args");
+        if(wrapperArgsNode is ListNode wrapperArgsListNode)
+            wrapperArgs.AddRange(wrapperArgsListNode.Children.Select(arg => arg.AsString()).OfType<string>());
+        else if(wrapperArgsNode != null)
+            throw new ConfigurationException("Wrapper arguments node has wrong type (should be a list node).");
 
         // Prepare argument list
         var pinArgs = new List<string>
@@ -109,8 +120,9 @@ public class PinTraceGenerator : TraceStage
 
         pinArgs.Add("-c");
         pinArgs.Add($"{cpuModelId}");
-        pinArgs.Add("--");
+        pinArgs.Add("--");           
         pinArgs.Add(wrapperPath);
+        pinArgs.AddRange(wrapperArgs);
 
         // Prepare Pin tool process
         await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Starting Pin tool process");
@@ -173,7 +185,7 @@ public class PinTraceGenerator : TraceStage
         _pinToolProcess.ErrorDataReceived += async (_, e) =>
         {
             if(!string.IsNullOrWhiteSpace(e.Data))
-                await Logger.LogDebugAsync($"{_genericLogMessagePrefix} Pin tool log: {e.Data}");
+                await Logger.LogDebugAsync($"{_pinLogMessagePrefix} {e.Data}");
         };
         _pinToolProcess.BeginErrorReadLine();
     }

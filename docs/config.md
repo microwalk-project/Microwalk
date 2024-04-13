@@ -121,6 +121,7 @@ Currently, this does only track total memory usage.
 ### Module: `load`
 
 Loads existing test case files (`*.testcase`) from a given directory.
+Our templates usually only use this module, as we generate the test cases through the analysis script.
 
 Options:
 - `input-directory`<br>
@@ -226,6 +227,16 @@ Options:
   Path to the `pin` executable.
   
   Default: `pin`
+
+- `wrapper-args` (optional)<br>
+  List of arguments passed to the wrapper binary.
+
+  Example:
+  ```yaml
+  wrapper-args:
+    - trace
+    - ecb128
+  ```
   
 - `stack-tracking` (optional)<br>
   Enable tracking of stack allocations and deallocations. Enabling this setting allows the preprocessor to assign memory accesses to specific stack frames.
