@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microwalk.Analysis.Modules.CallTree;
 using Microwalk.FrameworkBase;
 using Microwalk.FrameworkBase.Configuration;
 using Microwalk.FrameworkBase.Exceptions;
@@ -18,7 +19,7 @@ using Standart.Hash.xxHash;
 namespace Microwalk.Analysis.Modules;
 
 [FrameworkModule("control-flow-leakage", "Finds control flow variations on each call stack level.")]
-public partial class ControlFlowLeakage : AnalysisStage
+public class ControlFlowLeakage : AnalysisStage
 {
     private const ulong _addressIdFlagImage = 0x0000_0000_0000_0000;
     private const ulong _addressIdFlagMemory = 0x8000_0000_0000_0000;
@@ -897,7 +898,7 @@ public partial class ControlFlowLeakage : AnalysisStage
             {
                 // First time encounter of this node
 
-                if(currentNode == _rootNode)
+                if(ReferenceEquals(currentNode, _rootNode))
                 {
                     if(_dumpCallTree)
                         await callTreeDumpWriter.WriteLineAsync($"{indentation}@root");
@@ -933,7 +934,7 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                         // Testcase IDs
                         // We print testcase IDs only for pure split nodes, to improve readability of the output file
-                        await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {FormatIntegerSequence(currentNode.TestcaseIds.AsEnumerable())} ({currentNode.TestcaseIds.Count} total)");
+                        await callTreeDumpWriter.WriteLineAsync($"{indentation}  Testcases: {Utilities.FormatIntegerSequence(currentNode.TestcaseIds.AsEnumerable())} ({currentNode.TestcaseIds.Count} total)");
                     }
                 }
 
@@ -1096,7 +1097,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                                         ? _formattedMemoryAddresses[targetAddress.Key]
                                         : _formattedImageAddresses[targetAddress.Key];
 
-                                    await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
+                                    await callTreeDumpWriter.WriteLineAsync($"{indentation}      {formattedTargetAddress} : {Utilities.FormatIntegerSequence(targetAddress.Value.AsEnumerable())} ({targetAddress.Value.Count} total)");
                                 }
                             }
                         }
@@ -1302,7 +1303,7 @@ public partial class ControlFlowLeakage : AnalysisStage
 
                     // Print individual measures
                     {
-                        var subtreeDepth = ComputeMean(treeDepths.Select(v => (double)v));
+                        var subtreeDepth = Utilities.ComputeMean(treeDepths.Select(v => (double)v));
                         await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Tree depth: {subtreeDepth.mean:F2} +/- {subtreeDepth.standardDeviation:F2}, min {treeDepths.Min()}, max {treeDepths.Max()}");
                         await callStacksWriter.WriteAsync($"\"TreeDepth\":{{" +
                                                           $"\"Mean\":{subtreeDepth.mean:F2}," +
@@ -1312,7 +1313,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                                                           $"}},"
                         );
 
-                        var mutualInformation = ComputeMean(mutualInformations);
+                        var mutualInformation = Utilities.ComputeMean(mutualInformations);
                         await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Mutual information: {mutualInformation.mean:F2} +/- {mutualInformation.standardDeviation:F2} bits, min {mutualInformations.Min():F2} bits, max {mutualInformations.Max():F2} bits");
                         await callStacksWriter.WriteAsync($"\"MutualInformation\":{{" +
                                                           $"\"Mean\":{mutualInformation.mean:F2}," +
@@ -1322,7 +1323,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                                                           $"}},"
                         );
 
-                        var conditionalGuessingEntropy = ComputeMean(conditionalGuessingEntropies);
+                        var conditionalGuessingEntropy = Utilities.ComputeMean(conditionalGuessingEntropies);
                         var conditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(conditionalGuessingEntropy));
                         await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Cond. guessing entropy: {conditionalGuessingEntropy.mean:F2} +/- {conditionalGuessingEntropy.standardDeviation:F2}, min {conditionalGuessingEntropies.Min():F2}, max {conditionalGuessingEntropies.Max():F2}, score {conditionalGuessingEntropyScore.mean:F2} +/- {conditionalGuessingEntropyScore.standardDeviation:F2}");
                         await callStacksWriter.WriteAsync($"\"ConditionalGuessingEntropy\":{{" +
@@ -1335,7 +1336,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                                                           $"}},"
                         );
 
-                        var minConditionalGuessingEntropy = ComputeMean(minConditionalGuessingEntropies);
+                        var minConditionalGuessingEntropy = Utilities.ComputeMean(minConditionalGuessingEntropies);
                         var minConditionalGuessingEntropyScore = (ComputeConditionalGuessingEntropyScore(minConditionalGuessingEntropy));
                         await formattedCallStacksWriter.WriteLineAsync($"{indentation}    - Min. cond. guessing entropy: {minConditionalGuessingEntropy.mean:F2} +/- {minConditionalGuessingEntropy.standardDeviation:F2}, min {minConditionalGuessingEntropies.Min():F2}, max {minConditionalGuessingEntropies.Max():F2}, score {minConditionalGuessingEntropyScore.mean:F2} +/- {minConditionalGuessingEntropyScore.standardDeviation:F2}");
                         await callStacksWriter.WriteAsync($"\"MinimumConditionalGuessingEntropy\":{{" +
@@ -1457,104 +1458,6 @@ public partial class ControlFlowLeakage : AnalysisStage
         return key;
     }
 
-    /// <summary>
-    /// Formats a sequence of integers in compressed form.
-    /// Example:
-    ///     1 2 3 4 6 7 8 10
-    ///   becomes
-    ///     1-4 6-8 10
-    /// </summary>
-    /// <param name="sequence">Number sequence, in ascending order.</param>
-    /// <returns></returns>
-    private static string FormatIntegerSequence(IEnumerable<int> sequence)
-    {
-        StringBuilder result = new();
-
-        // Number of consecutive integers to trigger a merge
-        const int consecutiveThreshold = 2;
-
-        bool first = true;
-        int consecutiveStart = 0;
-        int consecutiveCurrent = 0;
-        foreach(var i in sequence)
-        {
-            if(first)
-            {
-                // Initialize first sequence
-                consecutiveStart = i;
-                consecutiveCurrent = i;
-
-                first = false;
-            }
-            else if(i == consecutiveCurrent + 1)
-            {
-                // We are still in a sequence
-                consecutiveCurrent = i;
-            }
-            else
-            {
-                // We left the previous sequence
-                // Did it reach the threshold? -> write it in the appropriate format
-                if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
-                    result.Append($"{consecutiveStart}-{consecutiveCurrent} ");
-                else
-                {
-                    // Threshold missed, just write the numbers
-                    for(int j = consecutiveStart; j <= consecutiveCurrent; ++j)
-                        result.Append($"{j} ");
-                }
-
-                // New sequence
-                consecutiveStart = i;
-                consecutiveCurrent = i;
-            }
-        }
-
-        // Write remaining elements of last sequence
-        if(consecutiveCurrent - consecutiveStart >= consecutiveThreshold)
-            result.Append($"{consecutiveStart}-{consecutiveCurrent} ");
-        else
-        {
-            for(int j = consecutiveStart; j <= consecutiveCurrent; ++j)
-                result.Append($"{j} ");
-        }
-
-        // Remove trailing space
-        if(result[^1] == ' ')
-            result.Remove(result.Length - 1, 1);
-
-        return result.ToString();
-    }
-
-    /// <summary>
-    /// Computes the mean and standard deviation of the given list of values.
-    /// </summary>
-    /// <param name="values">Values.</param>
-    /// <returns></returns>
-    private static (double mean, double standardDeviation) ComputeMean(IEnumerable<double> values)
-    {
-        // Welford's method
-
-        double mean = 0.0;
-        double sum = 0.0;
-        int i = 0;
-        foreach(var v in values)
-        {
-            ++i;
-
-            double delta = v - mean;
-
-            mean += delta / i;
-            sum += delta * (v - mean);
-        }
-
-        double standardDeviation = 0.0;
-        if(i > 1)
-            standardDeviation = Math.Sqrt(sum / i);
-
-        return (mean, standardDeviation);
-    }
-
     private class AnalysisData
     {
         public InstructionType Type { get; init; }
@@ -1632,8 +1535,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                 {
                     stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
                             "{0}─[M] {1} ({2} total)",
-                            indentationFirst,
-                            FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                            indentationFirst, Utilities.FormatIntegerSequence(TestcaseIds.AsEnumerable()),
                             TestcaseIds.Count)
                         .AppendLine();
                 }
@@ -1644,8 +1546,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                     {
                         stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
                                 "{0}─ {1} ({2} total) ({3:F2} bits global leakage)",
-                                indentationFirst,
-                                FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                                indentationFirst, Utilities.FormatIntegerSequence(TestcaseIds.AsEnumerable()),
                                 TestcaseIds.Count,
                                 Math.Log2((double)totalCount / TestcaseIds.Count))
                             .AppendLine();
@@ -1654,8 +1555,7 @@ public partial class ControlFlowLeakage : AnalysisStage
                     {
                         stringBuilder.AppendFormat(CultureInfo.InvariantCulture,
                                 "{0}─ {1} ({2} total)",
-                                indentationFirst,
-                                FormatIntegerSequence(TestcaseIds.AsEnumerable()),
+                                indentationFirst, Utilities.FormatIntegerSequence(TestcaseIds.AsEnumerable()),
                                 TestcaseIds.Count)
                             .AppendLine();
                     }

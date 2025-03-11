@@ -21,12 +21,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Update="Analysis\Modules\ControlFlowLeakage.Nodes.cs">
-            <DependentUpon>ControlFlowLeakage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="Analysis\Modules\ControlFlowLeakage.TestcaseIdSet.cs">
-            <DependentUpon>ControlFlowLeakage.cs</DependentUpon>
-        </Compile>
         <Compile Include="..\GlobalAssemblyInfo.cs">
             <Link>GlobalAssemblyInfo.cs</Link>
         </Compile>
