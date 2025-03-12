@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Microwalk.Analysis.Modules.CallTree;
+namespace Microwalk.Analysis.Modules.CallTreeTools;
 
 public static class Utilities
 {

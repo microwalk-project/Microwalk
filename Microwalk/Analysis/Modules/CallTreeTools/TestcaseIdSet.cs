@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Numerics;
 
-namespace Microwalk.Analysis.Modules.CallTree;
+namespace Microwalk.Analysis.Modules.CallTreeTools;
 
 /// <summary>
 /// Utility class for efficient storage of a testcase ID set.
